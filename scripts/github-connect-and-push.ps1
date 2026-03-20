@@ -1,7 +1,8 @@
 # Connects project to GitHub and pushes branch main.
 # Prerequisite: gh auth login   OR   GITHUB_TOKEN + gh auth login --with-token
 
-$ErrorActionPreference = "Stop"
+# gh writes to stderr; do not use Stop here
+$ErrorActionPreference = "Continue"
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
     [System.Environment]::GetEnvironmentVariable("Path", "User")
 
@@ -11,14 +12,14 @@ Set-Location -LiteralPath $RepoRoot
 $RepoName = if ($env:GITHUB_REPO) { $env:GITHUB_REPO } else { "osti-vistoria" }
 
 $authOk = $false
-gh auth status 2>$null | Out-Null
+gh auth status 2>&1 | Out-Null
 if ($LASTEXITCODE -eq 0) {
     $authOk = $true
 }
 elseif ($env:GITHUB_TOKEN) {
     Write-Host "Using GITHUB_TOKEN for gh auth..."
-    $env:GITHUB_TOKEN | gh auth login --hostname github.com --with-token 2>$null
-    gh auth status 2>$null | Out-Null
+    $env:GITHUB_TOKEN | gh auth login --hostname github.com --with-token 2>&1 | Out-Null
+    gh auth status 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) { $authOk = $true }
 }
 
@@ -45,7 +46,7 @@ if (-not $login) {
 
 $fullName = "$login/$RepoName"
 $exists = $false
-gh repo view $fullName 2>$null | Out-Null
+gh repo view $fullName 2>&1 | Out-Null
 if ($LASTEXITCODE -eq 0) { $exists = $true }
 
 git branch -M main
