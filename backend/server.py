@@ -87,6 +87,8 @@ class InspectionCreate(BaseModel):
     cliente: str
     data: str
     endereco: str
+    cidade: str = ""
+    uf: str = ""
     unidade: str
     empreendimento: str
     construtora: str
@@ -122,6 +124,8 @@ class Inspection(BaseModel):
     cliente: str
     data: str
     endereco: str
+    cidade: str = ""
+    uf: str = ""
     unidade: str
     empreendimento: str
     construtora: str
@@ -150,6 +154,8 @@ class IdentificationUpdate(BaseModel):
     cliente: Optional[str] = None
     data: Optional[str] = None
     endereco: Optional[str] = None
+    cidade: Optional[str] = None
+    uf: Optional[str] = None
     unidade: Optional[str] = None
     empreendimento: Optional[str] = None
     construtora: Optional[str] = None

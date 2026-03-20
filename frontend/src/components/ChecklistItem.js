@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, MessageSquare, X, Image, FolderOpen, Smartphone } from 'lucide-react';
+import { Camera, MessageSquare, X, Image, FolderOpen, Smartphone, Info } from 'lucide-react';
+import InspectionOrientationModal from './InspectionOrientationModal';
+import { getOrientationForItemName } from '../constants/itemOrientations';
 import { compressImage, formatFileSize, getDataUrlSize } from '../utils/imageCompressor';
 
 const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoCount }) => {
@@ -7,6 +9,8 @@ const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoC
   const [showObservations, setShowObservations] = useState(false);
   const [showMobileWarning, setShowMobileWarning] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [showOrientationModal, setShowOrientationModal] = useState(false);
+  const orientation = getOrientationForItemName(item.name);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
@@ -144,7 +148,25 @@ const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoC
 
   return (
     <div data-testid="checklist-item" className={`border-2 rounded-lg p-4 mb-3 transition-all duration-200 ${getStatusColor()}`}>
-      <h4 className="font-bold text-slate-900 mb-3">{item.name}</h4>
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <h4 className="font-bold text-slate-900 flex-1 leading-snug">{item.name}</h4>
+        <button
+          type="button"
+          data-testid={`orientation-info-${item.name}`}
+          onClick={() => setShowOrientationModal(true)}
+          className="shrink-0 p-2 rounded-full text-slate-500 hover:bg-slate-200/80 hover:text-slate-900 transition-colors"
+          aria-label="Orientações de inspeção"
+        >
+          <Info size={20} strokeWidth={2.25} />
+        </button>
+      </div>
+
+      <InspectionOrientationModal
+        isOpen={showOrientationModal}
+        onClose={() => setShowOrientationModal(false)}
+        itemTitle={orientation.title}
+        bullets={orientation.bullets}
+      />
 
       {/* Existência - NÃO mostrar para Limpeza e Dimensões */}
       {!isApenasCondicao && (

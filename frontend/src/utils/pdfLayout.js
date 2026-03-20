@@ -209,7 +209,7 @@ export function drawResponsavelAssinaturaSection(
   };
 
   const blockH =
-    12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 2 + 16;
+    12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 6 + 20;
   let y = ensureVerticalSpace(doc, yPos, blockH, pageOpts);
 
   const texto = String(localTexto || '').trim();
@@ -228,18 +228,25 @@ export function drawResponsavelAssinaturaSection(
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.5);
   doc.line(lineX, y, lineX + lineW, y);
-  y += 10;
+  y += 12;
 
-  doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_BODY_PT);
   const nome = String(responsavel || '').trim();
   const creaStr = String(crea || '').trim();
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_BODY_PT);
+  doc.text('RESPONSÁVEL TÉCNICO:', pageWidth / 2, y, { align: 'center' });
+  y += PDF_BODY_LINE_MM;
+  doc.setFont(PDF_FONT, 'normal');
   if (nome && nome !== '-') {
     doc.text(nome, pageWidth / 2, y, { align: 'center' });
     y += PDF_BODY_LINE_MM;
   }
+  doc.setFont(PDF_FONT, 'bold');
+  doc.text('CREA:', pageWidth / 2, y, { align: 'center' });
+  y += PDF_BODY_LINE_MM;
+  doc.setFont(PDF_FONT, 'normal');
   if (creaStr && creaStr !== '-') {
-    doc.text(`CREA: ${creaStr}`, pageWidth / 2, y, { align: 'center' });
+    doc.text(creaStr, pageWidth / 2, y, { align: 'center' });
     y += PDF_BODY_LINE_MM;
   }
 

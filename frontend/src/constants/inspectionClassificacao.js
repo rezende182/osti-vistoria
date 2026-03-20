@@ -17,16 +17,16 @@ Tais inconformidades comprometem o uso adequado da unidade, podendo implicar ris
 
 /** Rótulos exibidos na UI e no PDF */
 export const CLASSIFICACAO_FINAL_LABELS = {
-  aprovado: 'IMÓVEL EM CONFORMIDADE TÉCNICA',
-  aprovado_com_ressalvas: 'IMÓVEL COM NÃO CONFORMIDADES EXECUTIVAS',
-  reprovado: 'IMÓVEL NÃO CONFORME / REPROVADO',
+  aprovado: 'APTO AO RECEBIMENTO',
+  aprovado_com_ressalvas: 'RECEBIMENTO CONDICIONADO',
+  reprovado: 'REPROVADO',
 };
 
-/** Versões curtas para cartões e filtros */
+/** Versões curtas para cartões e detalhe (abas do dashboard usam rótulos próprios) */
 export const CLASSIFICACAO_BADGE_SHORT = {
-  aprovado: 'CONFORMIDADE TÉCNICA',
-  aprovado_com_ressalvas: 'NÃO CONF. EXECUTIVAS',
-  reprovado: 'NÃO CONFORME',
+  aprovado: 'APTO',
+  aprovado_com_ressalvas: 'CONDICIONADO',
+  reprovado: 'REPROVADO',
 };
 
 /** Textos automáticos legados (para detectar se a conclusão ainda é “padrão” e pode ser substituída) */

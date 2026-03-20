@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { inspectionsApi } from '../services/api';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import TimePickerField from '../components/TimePickerField';
+import { BRASIL_UFS } from '../constants/brasilEstados';
+
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
 const EditInspection = () => {
@@ -17,6 +19,8 @@ const EditInspection = () => {
     cliente: '',
     data: '',
     endereco: '',
+    cidade: '',
+    uf: '',
     unidade: '',
     empreendimento: '',
     construtora: '',
@@ -52,6 +56,8 @@ const EditInspection = () => {
         cliente: data.cliente || '',
         data: data.data || '',
         endereco: data.endereco || '',
+        cidade: data.cidade || '',
+        uf: data.uf || '',
         unidade: data.unidade || '',
         empreendimento: data.empreendimento || '',
         construtora: data.construtora || '',
@@ -191,6 +197,42 @@ const EditInspection = () => {
               required
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                Cidade
+              </label>
+              <input
+                data-testid="input-cidade"
+                type="text"
+                name="cidade"
+                value={formData.cidade}
+                onChange={handleChange}
+                placeholder="Ex.: Santos"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                UF
+              </label>
+              <select
+                data-testid="input-uf"
+                name="uf"
+                value={formData.uf}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Selecione</option>
+                {BRASIL_UFS.map(({ uf, nome }) => (
+                  <option key={uf} value={uf}>
+                    {uf} — {nome}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Apartamento */}

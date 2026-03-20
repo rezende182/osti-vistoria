@@ -133,6 +133,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const identificacaoData = [
     ['Cliente', inspection.cliente || '-'],
     ['Endereço', inspection.endereco || '-'],
+    ['Cidade', inspection.cidade || '-'],
+    ['UF', inspection.uf || '-'],
     ['Apartamento', inspection.unidade || '-'],
     ['Empreendimento', inspection.empreendimento || '-'],
     ['Construtora', inspection.construtora || '-'],
@@ -415,8 +417,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const responsavel = inspection.responsavel_final || inspection.responsavel_tecnico || '-';
   const crea = inspection.crea_final || inspection.crea || '-';
   const localAssinatura = formatPdfAssinaturaDataLine(
-    inspection.local_assinatura_responsavel,
-    inspection.data_final
+    inspection.cidade,
+    inspection.uf,
+    inspection.data
   );
 
   yPos = drawResponsavelAssinaturaSection(

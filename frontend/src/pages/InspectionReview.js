@@ -25,14 +25,6 @@ import {
 } from '../utils/pdfLayout';
 import { formatPdfAssinaturaDataLine } from '../utils/pdfAssinaturaFormat';
 
-/** Migração: valor antigo "Cidade, data por extenso" → só o nome da cidade */
-function parseCidadeFromStored(raw) {
-  if (!raw || typeof raw !== 'string') return '';
-  const s = raw.trim();
-  if (!s.includes(',')) return s;
-  return s.split(',')[0].trim();
-}
-
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
 const LEGAL_TEXT =
@@ -54,8 +46,6 @@ const InspectionReview = () => {
   const [conclusao, setConclusao] = useState('');
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
-  const [dataFinal, setDataFinal] = useState(new Date().toISOString().split('T')[0]);
-  const [cidadeLaudo, setCidadeLaudo] = useState('');
   const [horarioTermino, setHorarioTermino] = useState('');
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlob, setPdfBlob] = useState(null);
@@ -77,8 +67,6 @@ const InspectionReview = () => {
       setConclusao(data.conclusao || '');
       setResponsavelFinal(data.responsavel_final || data.responsavel_tecnico || '');
       setCreaFinal(data.crea_final || data.crea || '');
-      setDataFinal(data.data_final || new Date().toISOString().split('T')[0]);
-      setCidadeLaudo(parseCidadeFromStored(data.local_assinatura_responsavel));
       setHorarioTermino(data.horario_termino || '');
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
@@ -106,8 +94,6 @@ const InspectionReview = () => {
         assinatura: '',
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
-        data_final: dataFinal,
-        local_assinatura_responsavel: cidadeLaudo,
         horario_termino: horarioTermino,
       };
       const result = await inspectionsApi.update(id, payload);
@@ -153,8 +139,6 @@ const InspectionReview = () => {
         assinatura: '',
         responsavel_final: responsavelFinal || '',
         crea_final: creaFinal || '',
-        data_final: dataFinal || '',
-        local_assinatura_responsavel: cidadeLaudo || '',
         horario_termino: horarioTermino || '',
       });
       if (!result.ok) {
@@ -167,8 +151,6 @@ const InspectionReview = () => {
             assinatura: '',
             responsavel_final: responsavelFinal || '',
             crea_final: creaFinal || '',
-            data_final: dataFinal || '',
-            local_assinatura_responsavel: cidadeLaudo || '',
             horario_termino: horarioTermino || '',
           });
           await enqueueSyncOperation({
@@ -180,8 +162,6 @@ const InspectionReview = () => {
               assinatura: '',
               responsavel_final: responsavelFinal || '',
               crea_final: creaFinal || '',
-              data_final: dataFinal || '',
-              local_assinatura_responsavel: cidadeLaudo || '',
               horario_termino: horarioTermino || '',
             },
             dedupKey: `PUT:/inspections/${id}:review_partial`,
@@ -465,8 +445,9 @@ const InspectionReview = () => {
       checkNewPage,
       {
         localTexto: formatPdfAssinaturaDataLine(
-          cidadeLaudo || parseCidadeFromStored(inspection?.local_assinatura_responsavel || ''),
-          dataFinal
+          inspection?.cidade,
+          inspection?.uf,
+          inspection?.data
         ),
         responsavel: responsavelFinal || inspection?.responsavel_tecnico || '',
         crea: creaFinal || inspection?.crea || '',
@@ -650,35 +631,6 @@ const InspectionReview = () => {
             />
           </div>
 
-          {/* Data realização do laudo */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              DATA (Realização do Laudo)
-            </label>
-            <input
-              data-testid="data-input"
-              type="date"
-              value={dataFinal}
-              onChange={(e) => setDataFinal(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Cidade — compõe automaticamente a linha da assinatura no PDF */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              CIDADE
-            </label>
-            <input
-              data-testid="cidade-laudo-input"
-              type="text"
-              value={cidadeLaudo}
-              onChange={(e) => setCidadeLaudo(e.target.value)}
-              placeholder="Ex.: São Paulo"
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
           {/* Horários */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
@@ -706,7 +658,7 @@ const InspectionReview = () => {
           </div>
 
           <p className="mb-6 text-xs text-slate-500">
-            No PDF, a linha acima (cidade + data por extenso) aparece à direita acima do espaço de assinatura; nome e CREA vêm dos campos de identificação.
+            Cidade, UF e data do laudo vêm da identificação da vistoria; a linha por extenso na assinatura do PDF é gerada automaticamente.
           </p>
 
           {/* Buttons */}

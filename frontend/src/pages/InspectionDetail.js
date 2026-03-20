@@ -216,6 +216,16 @@ const InspectionDetail = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cidade</span>
+                <p className="text-slate-900">{inspection.cidade || '-'}</p>
+              </div>
+              <div>
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">UF</span>
+                <p className="text-slate-900">{inspection.uf || '-'}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
                 <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Apartamento</span>
                 <p className="text-slate-900">{inspection.unidade}</p>
               </div>

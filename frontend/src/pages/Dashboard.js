@@ -101,7 +101,7 @@ const Dashboard = () => {
     { id: 'all', label: 'TODOS', count: inspections.length },
     { id: 'andamento', label: 'EM ANDAMENTO', count: inspections.filter(i => getStatusInfo(i).tab === 'andamento').length },
     { id: 'aprovado', label: 'APROVADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'aprovado').length },
-    { id: 'ressalvas', label: 'NÃO CONF. EXEC.', count: inspections.filter(i => getStatusInfo(i).tab === 'ressalvas').length },
+    { id: 'ressalvas', label: 'CONDICIONADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'ressalvas').length },
     { id: 'reprovado', label: 'REPROVADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'reprovado').length },
   ];
 
