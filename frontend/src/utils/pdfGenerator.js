@@ -426,8 +426,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
   }
 
-  /* 1,5 mm entre o fim do texto da secção 4 e o título da secção 5 */
-  yPos += 1.5;
+  /* Espaço entre o fim do texto da secção 4 e o título da secção 5 (evita título colado ao parágrafo) */
+  yPos += 12;
 
   // ============================================================
   // 5. ASSINATURA DO RESPONSÁVEL

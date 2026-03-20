@@ -492,7 +492,7 @@ const InspectionReview = () => {
       );
     }
 
-    yPos += 1.5;
+    yPos += 12;
 
     checkNewPage(60);
     doc.setFontSize(12);
