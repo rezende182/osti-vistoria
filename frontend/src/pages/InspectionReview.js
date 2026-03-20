@@ -48,6 +48,7 @@ const InspectionReview = () => {
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
   const [horarioTermino, setHorarioTermino] = useState('');
+  const [outroSomenteConclusao, setOutroSomenteConclusao] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlob, setPdfBlob] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -69,6 +70,7 @@ const InspectionReview = () => {
       setResponsavelFinal(data.responsavel_final || data.responsavel_tecnico || '');
       setCreaFinal(data.crea_final || data.crea || '');
       setHorarioTermino(data.horario_termino || '');
+      setOutroSomenteConclusao(!!data.outro_somente_conclusao);
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
       toast.error('Erro ao carregar vistoria');
@@ -96,6 +98,8 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
         horario_termino: horarioTermino,
+        outro_somente_conclusao:
+          classificacao === 'outro' ? outroSomenteConclusao : false,
       };
       const result = await inspectionsApi.update(id, payload);
       if (result.ok) {
@@ -141,6 +145,8 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal || '',
         crea_final: creaFinal || '',
         horario_termino: horarioTermino || '',
+        outro_somente_conclusao:
+          classificacao === 'outro' ? outroSomenteConclusao : false,
       });
       if (!result.ok) {
         const local = await getInspectionLocally(id);
@@ -153,6 +159,8 @@ const InspectionReview = () => {
             responsavel_final: responsavelFinal || '',
             crea_final: creaFinal || '',
             horario_termino: horarioTermino || '',
+            outro_somente_conclusao:
+              classificacao === 'outro' ? outroSomenteConclusao : false,
           });
           await enqueueSyncOperation({
             method: 'PUT',
@@ -164,6 +172,8 @@ const InspectionReview = () => {
               responsavel_final: responsavelFinal || '',
               crea_final: creaFinal || '',
               horario_termino: horarioTermino || '',
+              outro_somente_conclusao:
+                classificacao === 'outro' ? outroSomenteConclusao : false,
             },
             dedupKey: `PUT:/inspections/${id}:review_partial`,
             inspectionId: id,
@@ -388,10 +398,11 @@ const InspectionReview = () => {
     doc.addPage();
     yPos = 20;
 
-    const outroSemTextoPreview =
-      classificacao === 'outro' && !String(conclusao || '').trim();
+    const hideBadgePreview =
+      classificacao === 'outro' &&
+      (!String(conclusao || '').trim() || outroSomenteConclusao);
 
-    if (!outroSemTextoPreview) {
+    if (!hideBadgePreview) {
       doc.setFillColor(0, 51, 102);
       doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
       doc.setFont('helvetica', 'bold');
@@ -579,9 +590,13 @@ const InspectionReview = () => {
                   onClick={() => {
                     setClassificacao(option.value);
                     if (option.value === 'outro') {
+                      setOutroSomenteConclusao(false);
                       if (conclusaoPareceAutomatica(conclusao)) setConclusao('');
-                    } else if (conclusaoPareceAutomatica(conclusao)) {
-                      setConclusao(TEXTOS_CONCLUSAO[option.value]);
+                    } else {
+                      setOutroSomenteConclusao(false);
+                      if (conclusaoPareceAutomatica(conclusao)) {
+                        setConclusao(TEXTOS_CONCLUSAO[option.value]);
+                      }
                     }
                   }}
                   className={`w-full py-3 px-3 rounded-lg text-left text-sm leading-snug font-semibold transition-all duration-200 ${
@@ -606,6 +621,46 @@ const InspectionReview = () => {
             </div>
           </div>
 
+          {classificacao === 'outro' && (
+            <div className="mb-4">
+              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                OUTRO no laudo
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  data-testid="outro-modo-personalizada"
+                  onClick={() => setOutroSomenteConclusao(false)}
+                  className={`rounded-lg px-3 py-3 text-left text-sm font-semibold leading-snug transition-all border-2 ${
+                    !outroSomenteConclusao
+                      ? 'border-blue-600 bg-blue-50 text-slate-900'
+                      : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Classificação personalizada
+                  <span className="mt-1 block text-xs font-normal text-slate-600">
+                    Define o texto que acompanha o selo OUTRO no laudo.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  data-testid="outro-modo-so-conclusao"
+                  onClick={() => setOutroSomenteConclusao(true)}
+                  className={`rounded-lg px-3 py-3 text-left text-sm font-semibold leading-snug transition-all border-2 ${
+                    outroSomenteConclusao
+                      ? 'border-blue-600 bg-blue-50 text-slate-900'
+                      : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Apenas conclusão
+                  <span className="mt-1 block text-xs font-normal text-slate-600">
+                    Sem selo de classificação; só o texto de conclusão no laudo.
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Conclusão */}
           <div
             className={`mb-6 rounded-lg ${
@@ -616,13 +671,19 @@ const InspectionReview = () => {
           >
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
               {classificacao === 'outro'
-                ? 'Conclusão (opcional — personaliza o selo OUTRO no laudo)'
+                ? outroSomenteConclusao
+                  ? 'Conclusão'
+                  : 'Conclusão / classificação personalizada (com selo OUTRO)'
                 : 'Conclusão / Observações Gerais'}
             </label>
-            {classificacao === 'outro' && (
+            {classificacao === 'outro' && !outroSomenteConclusao && (
               <p className="text-xs text-slate-600 mb-2 leading-relaxed">
-                Se preencher, o laudo exibe o selo OUTRO e este texto. Se deixar em branco, o laudo mostra
-                apenas a secção de conclusão, sem selo de classificação personalizada.
+                Opcional: em branco, o laudo não exibe o selo OUTRO nem o bloco de classificação.
+              </p>
+            )}
+            {classificacao === 'outro' && outroSomenteConclusao && (
+              <p className="text-xs text-slate-600 mb-2 leading-relaxed">
+                O texto abaixo entra no laudo como conclusão, sem selo OUTRO.
               </p>
             )}
             <textarea
@@ -631,7 +692,9 @@ const InspectionReview = () => {
               onChange={(e) => setConclusao(e.target.value)}
               placeholder={
                 classificacao === 'outro'
-                  ? 'Opcional: descreva tecnicamente a classificação e as condições observadas (ou deixe em branco).'
+                  ? outroSomenteConclusao
+                    ? 'Informe a justificativa técnica e as condições observadas (conclusão sem selo OUTRO).'
+                    : 'Descreva tecnicamente a classificação e as condições observadas (opcional).'
                   : 'Digite suas observações finais sobre a vistoria...'
               }
               className={`w-full p-4 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${

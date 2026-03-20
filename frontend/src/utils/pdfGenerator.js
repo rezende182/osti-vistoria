@@ -360,10 +360,13 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const cf = inspection.classificacao_final;
   const conclusaoTrim = (inspection.conclusao || '').trim();
-  /** OUTRO sem texto: no laudo só a secção conclusão (sem selo nem rótulo de classificação) */
-  const outroSemTexto = cf === 'outro' && !conclusaoTrim;
+  const outroSomente =
+    cf === 'outro' && !!inspection.outro_somente_conclusao;
+  /** OUTRO: sem selo se só conclusão, ou sem texto, ou modo “apenas conclusão” */
+  const hideClassificacaoBlock =
+    cf === 'outro' && (!conclusaoTrim || outroSomente);
 
-  if (!outroSemTexto) {
+  if (!hideClassificacaoBlock) {
     doc.text('Classificação Final do Imóvel:', margin, yPos);
     yPos += 8;
 

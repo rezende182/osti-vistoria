@@ -185,7 +185,8 @@ export function drawClassificationBadge(
 }
 
 /**
- * Secção 5: data à direita (texto livre), espaço para assinatura, linha centralizada, nome e CREA centralizados.
+ * Secção 5: data à direita (texto livre), espaço para assinatura, linha centralizada;
+ * abaixo da linha: “Responsável Técnico: (nome)” e “CREA: (número)”, centralizados.
  */
 export function drawResponsavelAssinaturaSection(
   doc,
@@ -208,7 +209,7 @@ export function drawResponsavelAssinaturaSection(
     topMarginMm: options.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM,
   };
 
-  const blockH = 12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 5 + 20;
+  const blockH = 12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 6 + 24;
   let y = ensureVerticalSpace(doc, yPos, blockH, pageOpts);
 
   const texto = String(localTexto || '').trim();
@@ -234,25 +235,21 @@ export function drawResponsavelAssinaturaSection(
   const nomeVal = nome && nome !== '-' ? nome : '—';
   const creaVal = creaStr && creaStr !== '-' ? creaStr : '—';
 
-  let cy = y;
-  doc.setFont(PDF_FONT, 'bold');
-  doc.text('RESPONSÁVEL TÉCNICO:', pageWidth / 2, cy, { align: 'center' });
-  cy += PDF_BODY_LINE_MM;
-
   doc.setFont(PDF_FONT, 'normal');
-  const nameLines = doc.splitTextToSize(nomeVal, contentWidth * 0.88);
-  nameLines.forEach((line) => {
-    doc.text(line, pageWidth / 2, cy, { align: 'center' });
-    cy += PDF_BODY_LINE_MM;
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+
+  const linhaRt = `Responsável Técnico: ${nomeVal}`;
+  const rtLines = doc.splitTextToSize(linhaRt, contentWidth * 0.88);
+  rtLines.forEach((line) => {
+    doc.text(line, pageWidth / 2, y, { align: 'center' });
+    y += PDF_BODY_LINE_MM;
   });
 
-  cy += 2;
-  doc.setFont(PDF_FONT, 'bold');
-  doc.text('CREA:', pageWidth / 2, cy, { align: 'center' });
-  cy += PDF_BODY_LINE_MM;
-  doc.setFont(PDF_FONT, 'normal');
-  doc.text(creaVal, pageWidth / 2, cy, { align: 'center' });
-  cy += PDF_BODY_LINE_MM;
+  y += 2;
+  const linhaCrea = `CREA: ${creaVal}`;
+  doc.text(linhaCrea, pageWidth / 2, y, { align: 'center' });
+  y += PDF_BODY_LINE_MM;
 
-  return cy + 6;
+  return y + 6;
 }

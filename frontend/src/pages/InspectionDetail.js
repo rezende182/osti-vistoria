@@ -8,6 +8,13 @@ import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/fxky5xni_Design%20sem%20nome-Photoroom.png';
 
+function formatInspectionDate(iso) {
+  if (!iso) return '—';
+  const p = String(iso).split('-');
+  if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+  return String(iso);
+}
+
 const InspectionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -324,7 +331,10 @@ const InspectionDetail = () => {
             <div className="text-sm text-slate-600 space-y-1">
               <p><strong>Responsável:</strong> {inspection.responsavel_final || inspection.responsavel_tecnico}</p>
               <p><strong>CREA:</strong> {inspection.crea_final || inspection.crea}</p>
-              <p><strong>Data:</strong> {inspection.data_final}</p>
+              <p>
+                <strong>Data:</strong>{' '}
+                {formatInspectionDate(inspection.data || inspection.data_final)}
+              </p>
               <div className="grid grid-cols-2 gap-4 mt-2">
                 <p><strong>Horário de Início:</strong> {inspection.horario_inicio || '-'}</p>
                 <p><strong>Horário de Término:</strong> {inspection.horario_termino || '-'}</p>

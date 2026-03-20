@@ -115,6 +115,7 @@ class InspectionUpdate(BaseModel):
     data_final: Optional[str] = None
     local_assinatura_responsavel: Optional[str] = None
     horario_termino: Optional[str] = None
+    outro_somente_conclusao: Optional[bool] = None
 
 
 class Inspection(BaseModel):
@@ -146,6 +147,7 @@ class Inspection(BaseModel):
     crea_final: Optional[str] = None
     data_final: Optional[str] = None
     local_assinatura_responsavel: Optional[str] = None
+    outro_somente_conclusao: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: Literal["em_andamento", "concluida"] = "em_andamento"
 
