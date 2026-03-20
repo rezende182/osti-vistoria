@@ -1,5 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import {
+  TEXTOS_CONCLUSAO,
+  CLASSIFICACAO_FINAL_LABELS,
+} from '../constants/inspectionClassificacao';
 
 // Logo da empresa - usar arquivo local para evitar problemas de CORS/CDN
 const LOGO_URL = '/logo-osti.png';
@@ -16,27 +20,6 @@ const COLORS = {
   green: [34, 139, 34],
   yellow: [218, 165, 32],
   red: [178, 34, 34]
-};
-
-// Textos automáticos de conclusão
-const TEXTOS_CONCLUSAO = {
-  aprovado: `O imóvel vistoriado encontra-se em conformidade com as condições esperadas para recebimento, não sendo identificadas anomalias ou vícios construtivos aparentes que comprometam seu uso, segurança ou desempenho.
-
-Os sistemas, elementos construtivos e acabamentos avaliados apresentam funcionamento adequado, estando aptos para utilização imediata.
-
-Dessa forma, o imóvel é considerado APROVADO, podendo ser recebido sem ressalvas.`,
-  
-  aprovado_com_ressalvas: `O imóvel vistoriado apresenta condições gerais adequadas para recebimento, entretanto foram identificadas não conformidades pontuais, de caráter não impeditivo, que não comprometem de forma significativa o uso, a segurança ou o desempenho da edificação.
-
-As ocorrências observadas referem-se, em sua maioria, a ajustes, acabamentos ou correções localizadas, devendo ser sanadas pela construtora/incorporadora dentro dos prazos de garantia e assistência técnica.
-
-Dessa forma, o imóvel é considerado APROVADO COM RESSALVAS, ficando o recebimento condicionado à correção dos itens apontados neste relatório.`,
-  
-  reprovado: `O imóvel vistoriado apresenta não conformidades relevantes, incluindo anomalias construtivas e/ou falhas de execução que comprometem o desempenho, a segurança, a funcionalidade ou as condições adequadas de uso.
-
-As irregularidades identificadas exigem intervenção técnica corretiva antes do recebimento do imóvel, não sendo recomendada sua aceitação nas condições atuais.
-
-Dessa forma, o imóvel é considerado REPROVADO, devendo a construtora/incorporadora providenciar as devidas correções antes da entrega definitiva.`
 };
 
 // Carregar imagem como base64 com retry
@@ -139,7 +122,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const identificacaoData = [
     ['Cliente', inspection.cliente || '-'],
     ['Endereço', inspection.endereco || '-'],
-    ['Unidade/Apartamento', inspection.unidade || '-'],
+    ['Apartamento', inspection.unidade || '-'],
     ['Empreendimento', inspection.empreendimento || '-'],
     ['Construtora', inspection.construtora || '-'],
     ['Responsável Técnico', inspection.responsavel_tecnico || '-'],
@@ -360,41 +343,45 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += 10;
 
   if (inspection.classificacao_final) {
-    let bgColor, labelText;
+    let bgColor;
     switch (inspection.classificacao_final) {
       case 'aprovado':
         bgColor = COLORS.green;
-        labelText = 'IMÓVEL APROVADO';
         break;
       case 'aprovado_com_ressalvas':
         bgColor = COLORS.yellow;
-        labelText = 'IMÓVEL APROVADO COM RESSALVAS';
         break;
       case 'reprovado':
         bgColor = COLORS.red;
-        labelText = 'IMÓVEL REPROVADO';
         break;
       default:
         bgColor = COLORS.gray;
-        labelText = 'PENDENTE';
     }
 
-    const textWidth = doc.getTextWidth(labelText);
-    const boxWidth = textWidth + 20;
-    const boxX = (pageWidth - boxWidth) / 2;
+    const labelText =
+      CLASSIFICACAO_FINAL_LABELS[inspection.classificacao_final] || 'PENDENTE';
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    const labelLines = doc.splitTextToSize(labelText, contentWidth - 24);
+    const boxH = 8 + labelLines.length * 4.5;
+    const boxW = contentWidth;
+    const boxX = margin;
 
     doc.setFillColor(...bgColor);
-    doc.roundedRect(boxX, yPos - 4, boxWidth, 12, 2, 2, 'F');
-    
-    if (inspection.classificacao_final === 'aprovado_com_ressalvas') {
-      doc.setTextColor(0, 0, 0);
-    } else {
-      doc.setTextColor(255, 255, 255);
-    }
-    doc.setFont('helvetica', 'bold');
-    doc.text(labelText, pageWidth / 2, yPos + 3, { align: 'center' });
+    doc.roundedRect(boxX, yPos - 4, boxW, boxH, 2, 2, 'F');
+
+    let ly = yPos + 2;
+    labelLines.forEach((line) => {
+      if (inspection.classificacao_final === 'aprovado_com_ressalvas') {
+        doc.setTextColor(0, 0, 0);
+      } else {
+        doc.setTextColor(255, 255, 255);
+      }
+      doc.text(line, pageWidth / 2, ly, { align: 'center' });
+      ly += 4.5;
+    });
     doc.setTextColor(0, 0, 0);
-    yPos += 18;
+    yPos += boxH + 6;
   }
 
   // Texto da Conclusão
@@ -455,28 +442,29 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   yPos += 10;
 
-  // Assinatura
-  if (inspection.assinatura) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Assinatura:', margin, yPos);
-    yPos += 5;
+  // Assinatura (gov.br — sem imagem desenhada no app)
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Assinatura digital (gov.br):', margin, yPos);
+  yPos += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const sigLines = doc.splitTextToSize(
+    'A assinatura deve ser realizada digitalmente pelo portal gov.br.',
+    contentWidth
+  );
+  doc.text(sigLines, margin, yPos);
+  yPos += sigLines.length * 4.5 + 6;
 
-    try {
-      doc.addImage(inspection.assinatura, 'PNG', margin, yPos, 60, 30);
-      yPos += 35;
-    } catch (e) {
-      console.error('Erro ao adicionar assinatura:', e);
-    }
-
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-    doc.line(margin, yPos, margin + 100, yPos);
-    yPos += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.text(responsavel, margin, yPos);
-    yPos += 6;
-    doc.text(`CREA: ${crea}`, margin, yPos);
-  }
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.line(margin, yPos, margin + 100, yPos);
+  yPos += 6;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text(responsavel, margin, yPos);
+  yPos += 6;
+  doc.text(`CREA: ${crea}`, margin, yPos);
 
   // ============================================================
   // 6. OBSERVAÇÕES LEGAIS

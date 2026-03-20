@@ -5,6 +5,7 @@ import NavigationModal from '../components/NavigationModal';
 import { toast } from 'sonner';
 import { inspectionsApi } from '../services/api';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
+import TimePickerField from '../components/TimePickerField';
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
 const EditInspection = () => {
@@ -192,10 +193,10 @@ const EditInspection = () => {
             />
           </div>
 
-          {/* Unidade */}
+          {/* Apartamento */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Unidade/Apartamento *
+              Apartamento *
             </label>
             <input
               data-testid="input-unidade"
@@ -273,13 +274,11 @@ const EditInspection = () => {
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
               Horário de Início
             </label>
-            <input
+            <TimePickerField
               data-testid="input-horario-inicio"
-              type="time"
-              name="horario_inicio"
               value={formData.horario_inicio}
-              onChange={handleChange}
-              className="w-32 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
+              className="w-full max-w-xs border border-slate-300 rounded-lg"
             />
           </div>
 

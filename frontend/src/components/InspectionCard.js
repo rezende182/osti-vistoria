@@ -1,6 +1,7 @@
 import React from 'react';
 import { Calendar, MapPin, FileText, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
 
 const InspectionCard = ({ inspection }) => {
   const navigate = useNavigate();
@@ -8,11 +9,11 @@ const InspectionCard = ({ inspection }) => {
   const getStatusInfo = () => {
     if (inspection.status === 'concluida') {
       if (inspection.classificacao_final === 'aprovado') {
-        return { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', label: 'APROVADO' };
+        return { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', label: CLASSIFICACAO_BADGE_SHORT.aprovado };
       } else if (inspection.classificacao_final === 'aprovado_com_ressalvas') {
-        return { icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: 'APROVADO C/ RESSALVAS' };
+        return { icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: CLASSIFICACAO_BADGE_SHORT.aprovado_com_ressalvas };
       } else if (inspection.classificacao_final === 'reprovado') {
-        return { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', label: 'REPROVADO' };
+        return { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', label: CLASSIFICACAO_BADGE_SHORT.reprovado };
       }
     }
     return { icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', label: 'EM ANDAMENTO' };

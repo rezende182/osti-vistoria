@@ -6,6 +6,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { toast } from 'sonner';
 import { inspectionsApi } from '../services/api';
 import { getAllInspectionsLocally, initDB } from '../utils/offlineStorage';
+import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
@@ -74,11 +75,11 @@ const Dashboard = () => {
   const getStatusInfo = (inspection) => {
     if (inspection.status === 'concluida') {
       if (inspection.classificacao_final === 'aprovado') {
-        return { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', label: 'APROVADO', tab: 'aprovado' };
+        return { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', label: CLASSIFICACAO_BADGE_SHORT.aprovado, tab: 'aprovado' };
       } else if (inspection.classificacao_final === 'aprovado_com_ressalvas') {
-        return { icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: 'APROVADO C/ RESSALVAS', tab: 'ressalvas' };
+        return { icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: CLASSIFICACAO_BADGE_SHORT.aprovado_com_ressalvas, tab: 'ressalvas' };
       } else if (inspection.classificacao_final === 'reprovado') {
-        return { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', label: 'REPROVADO', tab: 'reprovado' };
+        return { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', label: CLASSIFICACAO_BADGE_SHORT.reprovado, tab: 'reprovado' };
       }
     }
     return { icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', label: 'EM ANDAMENTO', tab: 'andamento' };
@@ -99,9 +100,9 @@ const Dashboard = () => {
   const tabs = [
     { id: 'all', label: 'Todas', count: inspections.length },
     { id: 'andamento', label: 'Em Andamento', count: inspections.filter(i => getStatusInfo(i).tab === 'andamento').length },
-    { id: 'ressalvas', label: 'C/ Ressalvas', count: inspections.filter(i => getStatusInfo(i).tab === 'ressalvas').length },
-    { id: 'aprovado', label: 'Aprovadas', count: inspections.filter(i => getStatusInfo(i).tab === 'aprovado').length },
-    { id: 'reprovado', label: 'Reprovadas', count: inspections.filter(i => getStatusInfo(i).tab === 'reprovado').length },
+    { id: 'ressalvas', label: 'Não conf. exec.', count: inspections.filter(i => getStatusInfo(i).tab === 'ressalvas').length },
+    { id: 'aprovado', label: 'Conformidade', count: inspections.filter(i => getStatusInfo(i).tab === 'aprovado').length },
+    { id: 'reprovado', label: 'Não conforme', count: inspections.filter(i => getStatusInfo(i).tab === 'reprovado').length },
   ];
 
   return (

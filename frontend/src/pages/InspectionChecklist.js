@@ -31,6 +31,7 @@ const ROOM_TEMPLATES = {
       'Rodapé',
       'Tomadas, interruptores e iluminação',
       'Quadro de energia',
+      'Ponto de Ar-Condicionado',
       'Limpeza',
       'Dimensões'
     ]

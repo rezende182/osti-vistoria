@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Edit, Share2, X, MessageCircle, Mail } from 'lucide-react';
-import SignaturePad from '../components/SignaturePad';
+import TimePickerField from '../components/TimePickerField';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -13,30 +13,21 @@ import {
   initDB,
   enqueueSyncOperation,
 } from '../utils/offlineStorage';
+import {
+  TEXTOS_CONCLUSAO,
+  CLASSIFICACAO_FINAL_LABELS,
+  conclusaoPareceAutomatica,
+} from '../constants/inspectionClassificacao';
+
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
 const LEGAL_TEXT = "A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes. Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.";
 
-// Textos automáticos de conclusão baseados na classificação
-const TEXTOS_CONCLUSAO = {
-  aprovado: `O imóvel vistoriado encontra-se em conformidade com as condições esperadas para recebimento, não sendo identificadas anomalias ou vícios construtivos aparentes que comprometam seu uso, segurança ou desempenho.
-
-Os sistemas, elementos construtivos e acabamentos avaliados apresentam funcionamento adequado, estando aptos para utilização imediata.
-
-Dessa forma, o imóvel é considerado APROVADO, podendo ser recebido sem ressalvas.`,
-  
-  aprovado_com_ressalvas: `O imóvel vistoriado apresenta condições gerais adequadas para recebimento, entretanto foram identificadas não conformidades pontuais, de caráter não impeditivo, que não comprometem de forma significativa o uso, a segurança ou o desempenho da edificação.
-
-As ocorrências observadas referem-se, em sua maioria, a ajustes, acabamentos ou correções localizadas, devendo ser sanadas pela construtora/incorporadora dentro dos prazos de garantia e assistência técnica.
-
-Dessa forma, o imóvel é considerado APROVADO COM RESSALVAS, ficando o recebimento condicionado à correção dos itens apontados neste relatório.`,
-  
-  reprovado: `O imóvel vistoriado apresenta não conformidades relevantes, incluindo anomalias construtivas e/ou falhas de execução que comprometem o desempenho, a segurança, a funcionalidade ou as condições adequadas de uso.
-
-As irregularidades identificadas exigem intervenção técnica corretiva antes do recebimento do imóvel, não sendo recomendada sua aceitação nas condições atuais.
-
-Dessa forma, o imóvel é considerado REPROVADO, devendo a construtora/incorporadora providenciar as devidas correções antes da entrega definitiva.`
-};
+const CLASSIFICACAO_OPTIONS = [
+  { value: 'aprovado', label: CLASSIFICACAO_FINAL_LABELS.aprovado, color: 'green' },
+  { value: 'aprovado_com_ressalvas', label: CLASSIFICACAO_FINAL_LABELS.aprovado_com_ressalvas, color: 'yellow' },
+  { value: 'reprovado', label: CLASSIFICACAO_FINAL_LABELS.reprovado, color: 'red' },
+];
 
 const InspectionReview = () => {
   const { id } = useParams();
@@ -45,7 +36,6 @@ const InspectionReview = () => {
   const [loading, setLoading] = useState(true);
   const [classificacao, setClassificacao] = useState('');
   const [conclusao, setConclusao] = useState('');
-  const [assinatura, setAssinatura] = useState('');
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
   const [dataFinal, setDataFinal] = useState(new Date().toISOString().split('T')[0]);
@@ -68,7 +58,6 @@ const InspectionReview = () => {
       setInspection(data);
       setClassificacao(data.classificacao_final || '');
       setConclusao(data.conclusao || '');
-      setAssinatura(data.assinatura || '');
       setResponsavelFinal(data.responsavel_final || data.responsavel_tecnico || '');
       setCreaFinal(data.crea_final || data.crea || '');
       setDataFinal(data.data_final || new Date().toISOString().split('T')[0]);
@@ -91,17 +80,12 @@ const InspectionReview = () => {
       return;
     }
 
-    if (!assinatura) {
-      toast.error('Assinatura é obrigatória');
-      return;
-    }
-
     try {
       await initDB().catch(() => {});
       const payload = {
         classificacao_final: classificacao,
         conclusao,
-        assinatura,
+        assinatura: '',
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
         data_final: dataFinal,
@@ -147,7 +131,7 @@ const InspectionReview = () => {
       const result = await inspectionsApi.update(id, {
         classificacao_final: classificacao || null,
         conclusao: conclusao || '',
-        assinatura: assinatura || '',
+        assinatura: '',
         responsavel_final: responsavelFinal || '',
         crea_final: creaFinal || '',
         data_final: dataFinal || '',
@@ -160,7 +144,7 @@ const InspectionReview = () => {
             ...local,
             classificacao_final: classificacao || null,
             conclusao: conclusao || '',
-            assinatura: assinatura || '',
+            assinatura: '',
             responsavel_final: responsavelFinal || '',
             crea_final: creaFinal || '',
             data_final: dataFinal || '',
@@ -172,7 +156,7 @@ const InspectionReview = () => {
             payload: {
               classificacao_final: classificacao || null,
               conclusao: conclusao || '',
-              assinatura: assinatura || '',
+              assinatura: '',
               responsavel_final: responsavelFinal || '',
               crea_final: creaFinal || '',
               data_final: dataFinal || '',
@@ -246,7 +230,7 @@ const InspectionReview = () => {
       ['Cliente:', inspection.cliente],
       ['Data:', inspection.data],
       ['Endereço:', inspection.endereco],
-      ['Unidade/Apartamento:', inspection.unidade],
+      ['Apartamento:', inspection.unidade],
       ['Empreendimento:', inspection.empreendimento || '-'],
       ['Construtora:', inspection.construtora || '-'],
       ['Responsável Técnico:', responsavelFinal || inspection.responsavel_tecnico || '-'],
@@ -409,19 +393,34 @@ const InspectionReview = () => {
     doc.text('CLASSIFICAÇÃO FINAL', margin + 5, yPos + 2);
     yPos += 20;
 
-    const classificacaoText = classificacao === 'aprovado' ? 'IMÓVEL APROVADO' :
-      classificacao === 'aprovado_com_ressalvas' ? 'IMÓVEL APROVADO COM RESSALVAS' : 'IMÓVEL REPROVADO';
-    
-    const classificacaoColor = classificacao === 'aprovado' ? [0, 128, 0] :
-      classificacao === 'aprovado_com_ressalvas' ? [204, 153, 0] : [204, 0, 0];
+    const classificacaoText =
+      CLASSIFICACAO_FINAL_LABELS[classificacao] || 'CLASSIFICAÇÃO PENDENTE';
 
-    doc.setFillColor(...classificacaoColor);
-    doc.roundedRect(margin, yPos, contentWidth, 15, 3, 3, 'F');
+    const classificacaoColor =
+      classificacao === 'aprovado'
+        ? [0, 128, 0]
+        : classificacao === 'aprovado_com_ressalvas'
+          ? [204, 153, 0]
+          : [204, 0, 0];
+
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);
-    doc.text(classificacaoText, pageWidth / 2, yPos + 10, { align: 'center' });
-    yPos += 30;
+    const titleLines = doc.splitTextToSize(classificacaoText, contentWidth - 16);
+    const boxH = 10 + titleLines.length * 5;
+    doc.setFillColor(...classificacaoColor);
+    doc.roundedRect(margin, yPos, contentWidth, boxH, 3, 3, 'F');
+    let ty = yPos + 8;
+    titleLines.forEach((line) => {
+      if (classificacao === 'aprovado_com_ressalvas') {
+        doc.setTextColor(0, 0, 0);
+      } else {
+        doc.setTextColor(255, 255, 255);
+      }
+      doc.text(line, pageWidth / 2, ty, { align: 'center' });
+      ty += 5;
+    });
+    yPos += boxH + 12;
 
     // ============ CONCLUSÃO ============
     if (conclusao) {
@@ -441,29 +440,30 @@ const InspectionReview = () => {
       yPos += splitConclusao.length * 5 + 15;
     }
 
-    // ============ ASSINATURA ============
+    // ============ ASSINATURA (reservada – gov.br) ============
     checkNewPage(80);
     doc.setFillColor(0, 51, 102);
     doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(255, 255, 255);
-    doc.text('ASSINATURA', margin + 5, yPos + 2);
+    doc.text('ASSINATURA DIGITAL (GOV.BR)', margin + 5, yPos + 2);
     yPos += 15;
 
-    if (assinatura) {
-      try {
-        doc.addImage(assinatura, 'PNG', margin, yPos, 70, 30);
-        yPos += 35;
-      } catch (e) {
-        console.error('Erro ao adicionar assinatura:', e);
-      }
-    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 51, 51);
+    const sigNote = doc.splitTextToSize(
+      'A assinatura deve ser realizada digitalmente pelo portal gov.br. Espaço reservado para conferência do documento.',
+      contentWidth
+    );
+    doc.text(sigNote, margin, yPos);
+    yPos += sigNote.length * 4.5 + 8;
 
     doc.setDrawColor(0, 51, 102);
     doc.setLineWidth(0.5);
-    doc.line(margin, yPos, margin + 80, yPos);
-    yPos += 5;
+    doc.line(margin, yPos, margin + 120, yPos);
+    yPos += 6;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
@@ -569,29 +569,23 @@ const InspectionReview = () => {
               Classificação Final do Imóvel *
             </label>
             <div className="space-y-2">
-              {[
-                { value: 'aprovado', label: 'IMÓVEL APROVADO', color: 'green' },
-                { value: 'aprovado_com_ressalvas', label: 'IMÓVEL APROVADO COM RESSALVAS', color: 'yellow' },
-                { value: 'reprovado', label: 'IMÓVEL REPROVADO', color: 'red' }
-              ].map((option) => (
+              {CLASSIFICACAO_OPTIONS.map((option) => (
                 <button
                   key={option.value}
+                  type="button"
                   data-testid={`classificacao-${option.value}`}
                   onClick={() => {
                     setClassificacao(option.value);
-                    // Preencher automaticamente a conclusão se estiver vazia ou for um texto padrão
-                    const isDefaultText = !conclusao || 
-                      Object.values(TEXTOS_CONCLUSAO).some(texto => conclusao === texto);
-                    if (isDefaultText) {
+                    if (conclusaoPareceAutomatica(conclusao)) {
                       setConclusao(TEXTOS_CONCLUSAO[option.value]);
                     }
                   }}
-                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
+                  className={`w-full py-3 px-3 rounded-lg text-left text-sm leading-snug font-semibold transition-all duration-200 ${
                     classificacao === option.value
                       ? option.color === 'green'
                         ? 'bg-green-600 text-white'
                         : option.color === 'yellow'
-                        ? 'bg-yellow-500 text-white'
+                        ? 'bg-yellow-500 text-slate-900'
                         : 'bg-red-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
@@ -615,6 +609,14 @@ const InspectionReview = () => {
               className="w-full p-4 border border-slate-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               rows={5}
             />
+            <button
+              type="button"
+              data-testid="conclusao-limpar-button"
+              onClick={() => setConclusao('')}
+              className="mt-2 text-sm font-semibold text-slate-600 underline underline-offset-2 hover:text-slate-900"
+            >
+              Limpar texto da conclusão
+            </button>
           </div>
 
           {/* Texto Legal */}
@@ -681,23 +683,18 @@ const InspectionReview = () => {
               <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
                 Horário de Término
               </label>
-              <input
+              <TimePickerField
                 data-testid="horario-termino-input"
-                type="time"
                 value={horarioTermino}
-                onChange={(e) => setHorarioTermino(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={setHorarioTermino}
+                className="w-full border border-slate-300 rounded-lg"
               />
             </div>
           </div>
 
-          {/* Assinatura */}
-          <div className="mb-6">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-3 block">
-              Assinatura *
-            </label>
-            <SignaturePad onChange={setAssinatura} />
-          </div>
+          <p className="mb-6 text-xs text-slate-500">
+            A assinatura no relatório será feita digitalmente pelo <strong>gov.br</strong> (não é necessário desenhar aqui).
+          </p>
 
           {/* Buttons */}
           <div className="space-y-3">
