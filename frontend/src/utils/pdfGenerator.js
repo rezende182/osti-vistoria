@@ -10,7 +10,9 @@ import {
   drawResponsavelAssinaturaSection,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
+  PDF_PAGE_BOTTOM_SAFE_MM,
 } from './pdfLayout';
+import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 
 // Logo da empresa - usar arquivo local para evitar problemas de CORS/CDN
 const LOGO_URL = '/logo-osti.png';
@@ -81,7 +83,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   // Verificar nova página
   const checkNewPage = (neededSpace = 30) => {
-    if (yPos + neededSpace > pageHeight - margin) {
+    if (yPos + neededSpace > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
       doc.addPage();
       yPos = margin;
       return true;
@@ -412,7 +414,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const responsavel = inspection.responsavel_final || inspection.responsavel_tecnico || '-';
   const crea = inspection.crea_final || inspection.crea || '-';
-  const localAssinatura = inspection.local_assinatura_responsavel || '';
+  const localAssinatura = formatPdfAssinaturaDataLine(
+    inspection.local_assinatura_responsavel,
+    inspection.data_final
+  );
 
   yPos = drawResponsavelAssinaturaSection(
     doc,
@@ -425,7 +430,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       localTexto: localAssinatura,
       responsavel,
       crea,
-      signatureAreaMm: 32,
+      signatureAreaMm: 26,
     }
   );
 

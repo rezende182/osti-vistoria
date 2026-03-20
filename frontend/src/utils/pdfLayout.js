@@ -10,6 +10,24 @@ export const PDF_BODY_LINE_MM = 7.5;
 export const PDF_BODY_FIRST_LINE_INDENT_MM = 12.5;
 /** Espaço vertical entre parágrafos */
 export const PDF_PARAGRAPH_GAP_MM = 8;
+/** ~60px — zona segura para não invadir o rodapé (jsPDF em mm) */
+export const PDF_PAGE_BOTTOM_SAFE_MM = 20;
+/** ~60px — margem superior ao continuar após quebra de página */
+export const PDF_PAGE_TOP_SAFE_MM = 20;
+
+/**
+ * Garante espaço vertical; se não couber, nova página e y reiniciado.
+ */
+export function ensureVerticalSpace(doc, y, spaceNeededMm, options = {}) {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const bottomSafe = options.bottomMarginMm ?? PDF_PAGE_BOTTOM_SAFE_MM;
+  const topReset = options.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM;
+  if (y + spaceNeededMm > pageHeight - bottomSafe) {
+    doc.addPage();
+    return topReset;
+  }
+  return y;
+}
 
 function justifyLine(doc, words, x, y, maxWidth) {
   if (words.length === 0) return;
@@ -72,12 +90,17 @@ function buildParagraphVisualLines(doc, block, contentWidth, indentMm) {
 
 /**
  * Parágrafos de corpo: 12 pt, justificado, recuo 1ª linha, \\n = novo parágrafo.
- * Não usar para títulos ou células de tabela (só texto corrido).
+ * Paginação interna: reserva inferior/superior (~60px em mm) para não invadir o rodapé.
+ * `checkNewPage` é ignorado (mantido só por compatibilidade com chamadas antigas).
  */
 export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, checkNewPage, options = {}) {
   if (!text || !String(text).trim()) return yStart;
 
   const firstLineIndentMm = options.firstLineIndentMm ?? PDF_BODY_FIRST_LINE_INDENT_MM;
+  const pageOpts = {
+    bottomMarginMm: options.bottomMarginMm ?? PDF_PAGE_BOTTOM_SAFE_MM,
+    topMarginMm: options.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM,
+  };
 
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
@@ -96,7 +119,7 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
   blocks.forEach((block, blockIdx) => {
     const paraLines = buildParagraphVisualLines(doc, block, contentWidth, firstLineIndentMm);
     paraLines.forEach((pl, lineIdx) => {
-      checkNewPage(PDF_BODY_LINE_MM + 1);
+      y = ensureVerticalSpace(doc, y, PDF_BODY_LINE_MM, pageOpts);
       const x = margin + pl.xOffset;
       const words = pl.text.trim().split(/\s+/).filter(Boolean);
       const isLast = lineIdx === paraLines.length - 1;
@@ -108,6 +131,7 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
       y += PDF_BODY_LINE_MM;
     });
     if (blockIdx < blocks.length - 1) {
+      y = ensureVerticalSpace(doc, y, PDF_PARAGRAPH_GAP_MM, pageOpts);
       y += PDF_PARAGRAPH_GAP_MM;
     }
   });
@@ -176,19 +200,26 @@ export function drawResponsavelAssinaturaSection(
     localTexto = '',
     responsavel = '',
     crea = '',
-    signatureAreaMm = 30,
+    signatureAreaMm = 26,
   } = options;
 
-  checkNewPage(signatureAreaMm + 48);
+  const pageOpts = {
+    bottomMarginMm: options.bottomMarginMm ?? PDF_PAGE_BOTTOM_SAFE_MM,
+    topMarginMm: options.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM,
+  };
+
+  const blockH =
+    12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 2 + 16;
+  let y = ensureVerticalSpace(doc, yPos, blockH, pageOpts);
 
   const texto = String(localTexto || '').trim();
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
   if (texto) {
-    doc.text(texto, pageWidth - margin, yPos, { align: 'right' });
+    doc.text(texto, pageWidth - margin, y, { align: 'right' });
   }
-  let y = yPos + (texto ? 12 : 4);
+  y += texto ? 12 : 4;
 
   y += signatureAreaMm;
 

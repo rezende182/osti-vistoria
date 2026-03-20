@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Edit, Share2, X, MessageCircle, Mail } from 'lucide-react';
 import TimePickerField from '../components/TimePickerField';
@@ -23,6 +23,15 @@ import {
   drawClassificationBadge,
   drawResponsavelAssinaturaSection,
 } from '../utils/pdfLayout';
+import { formatPdfAssinaturaDataLine } from '../utils/pdfAssinaturaFormat';
+
+/** Migração: valor antigo "Cidade, data por extenso" → só o nome da cidade */
+function parseCidadeFromStored(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  const s = raw.trim();
+  if (!s.includes(',')) return s;
+  return s.split(',')[0].trim();
+}
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
@@ -46,7 +55,7 @@ const InspectionReview = () => {
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
   const [dataFinal, setDataFinal] = useState(new Date().toISOString().split('T')[0]);
-  const [localAssinaturaResponsavel, setLocalAssinaturaResponsavel] = useState('');
+  const [cidadeLaudo, setCidadeLaudo] = useState('');
   const [horarioTermino, setHorarioTermino] = useState('');
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlob, setPdfBlob] = useState(null);
@@ -69,7 +78,7 @@ const InspectionReview = () => {
       setResponsavelFinal(data.responsavel_final || data.responsavel_tecnico || '');
       setCreaFinal(data.crea_final || data.crea || '');
       setDataFinal(data.data_final || new Date().toISOString().split('T')[0]);
-      setLocalAssinaturaResponsavel(data.local_assinatura_responsavel || '');
+      setCidadeLaudo(parseCidadeFromStored(data.local_assinatura_responsavel));
       setHorarioTermino(data.horario_termino || '');
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
@@ -82,6 +91,11 @@ const InspectionReview = () => {
   useEffect(() => {
     loadInspection();
   }, [loadInspection]);
+
+  const linhaAssinaturaPdf = useMemo(
+    () => formatPdfAssinaturaDataLine(cidadeLaudo, dataFinal),
+    [cidadeLaudo, dataFinal]
+  );
 
   const handleFinalize = async () => {
     if (!classificacao) {
@@ -98,7 +112,7 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
         data_final: dataFinal,
-        local_assinatura_responsavel: localAssinaturaResponsavel,
+        local_assinatura_responsavel: cidadeLaudo,
         horario_termino: horarioTermino,
       };
       const result = await inspectionsApi.update(id, payload);
@@ -145,7 +159,7 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal || '',
         crea_final: creaFinal || '',
         data_final: dataFinal || '',
-        local_assinatura_responsavel: localAssinaturaResponsavel || '',
+        local_assinatura_responsavel: cidadeLaudo || '',
         horario_termino: horarioTermino || '',
       });
       if (!result.ok) {
@@ -159,7 +173,7 @@ const InspectionReview = () => {
             responsavel_final: responsavelFinal || '',
             crea_final: creaFinal || '',
             data_final: dataFinal || '',
-            local_assinatura_responsavel: localAssinaturaResponsavel || '',
+            local_assinatura_responsavel: cidadeLaudo || '',
             horario_termino: horarioTermino || '',
           });
           await enqueueSyncOperation({
@@ -172,7 +186,7 @@ const InspectionReview = () => {
               responsavel_final: responsavelFinal || '',
               crea_final: creaFinal || '',
               data_final: dataFinal || '',
-              local_assinatura_responsavel: localAssinaturaResponsavel || '',
+              local_assinatura_responsavel: cidadeLaudo || '',
               horario_termino: horarioTermino || '',
             },
             dedupKey: `PUT:/inspections/${id}:review_partial`,
@@ -455,10 +469,13 @@ const InspectionReview = () => {
       yPos,
       checkNewPage,
       {
-        localTexto: localAssinaturaResponsavel || inspection?.local_assinatura_responsavel || '',
+        localTexto: formatPdfAssinaturaDataLine(
+          cidadeLaudo || parseCidadeFromStored(inspection?.local_assinatura_responsavel || ''),
+          dataFinal
+        ),
         responsavel: responsavelFinal || inspection?.responsavel_tecnico || '',
         crea: creaFinal || inspection?.crea || '',
-        signatureAreaMm: 32,
+        signatureAreaMm: 26,
       }
     );
 
@@ -638,10 +655,10 @@ const InspectionReview = () => {
             />
           </div>
 
-          {/* Data */}
+          {/* Data realização do laudo */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Data
+              DATA (Realização do Laudo)
             </label>
             <input
               data-testid="data-input"
@@ -652,22 +669,29 @@ const InspectionReview = () => {
             />
           </div>
 
-          {/* Local e data por extenso (canto direito do PDF — secção assinatura) */}
+          {/* Cidade — compõe automaticamente a linha da assinatura no PDF */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Local e data por extenso (ass. do responsável no PDF)
+              CIDADE
             </label>
             <input
-              data-testid="local-assinatura-input"
+              data-testid="cidade-laudo-input"
               type="text"
-              value={localAssinaturaResponsavel}
-              onChange={(e) => setLocalAssinaturaResponsavel(e.target.value)}
-              placeholder="Ex.: São Paulo, 19 de março de 2026"
+              value={cidadeLaudo}
+              onChange={(e) => setCidadeLaudo(e.target.value)}
+              placeholder="Ex.: São Paulo"
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <p className="mt-1 text-xs text-slate-500">
-              Aparece alinhado à direita acima do espaço de assinatura no relatório.
-            </p>
+            {linhaAssinaturaPdf ? (
+              <p className="mt-2 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+                <span className="font-semibold text-slate-600">No PDF (assinatura): </span>
+                {linhaAssinaturaPdf}
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-slate-500">
+                Preencha a data e a cidade para ver a linha que sairá à direita na assinatura.
+              </p>
+            )}
           </div>
 
           {/* Horários */}
@@ -697,7 +721,7 @@ const InspectionReview = () => {
           </div>
 
           <p className="mb-6 text-xs text-slate-500">
-            No PDF há espaço reservado para assinatura digital ou imagem; preencha acima o local e a data por extenso como devem sair no documento.
+            No PDF, a linha acima (cidade + data por extenso) aparece à direita acima do espaço de assinatura; nome e CREA vêm dos campos de identificação.
           </p>
 
           {/* Buttons */}
