@@ -27,6 +27,13 @@ import { formatPdfAssinaturaDataLine } from '../utils/pdfAssinaturaFormat';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
+function formatIdentificacaoDate(iso) {
+  if (!iso) return '—';
+  const p = String(iso).split('-');
+  if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+  return String(iso);
+}
+
 const LEGAL_TEXT =
   'A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes.\n\n' +
   'Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.';
@@ -628,6 +635,20 @@ const InspectionReview = () => {
               value={creaFinal}
               onChange={(e) => setCreaFinal(e.target.value)}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Data da identificação (somente leitura — mesma da ficha inicial) */}
+          <div className="mb-4">
+            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+              Data (identificação da vistoria)
+            </label>
+            <input
+              data-testid="data-identificacao-readonly"
+              type="text"
+              readOnly
+              value={formatIdentificacaoDate(inspection?.data)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 cursor-default"
             />
           </div>
 

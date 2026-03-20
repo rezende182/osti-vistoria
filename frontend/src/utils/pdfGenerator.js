@@ -191,11 +191,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   // ============================================================
-  // 3. CHECKLIST DA VISTORIA (nova página)
+  // 3. CHECKLIST DA VISTORIA (fluxo contínuo após documentos)
   // ============================================================
-  doc.addPage();
-  yPos = margin;
-  
+  checkNewPage(24);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
@@ -214,7 +212,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         continue;
       }
 
-      checkNewPage(60);
+      checkNewPage(26);
 
       // Nome do cômodo (ex: 3.1 SALA)
       doc.setFontSize(12);
@@ -231,7 +229,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
       // Itens do cômodo (APENAS os que existem)
       for (const item of itensExistentes) {
-        checkNewPage(100);
+        // Espaço mínimo para faixa + condição (~30 mm); observações/fotos quebram depois
+        checkNewPage(30);
 
         // FAIXA CINZA com nome do item (#CDCDCC)
         doc.setFillColor(205, 205, 204);
@@ -293,8 +292,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         // Fotos
         const photos = item.photos || [];
         if (photos.length > 0) {
-          checkNewPage(50);
-          
+          checkNewPage(14);
+
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(0, 0, 0);
           doc.text('Fotos:', margin, yPos);
@@ -304,7 +303,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
           const imgHeight = 90;
 
           for (const photo of photos) {
-            checkNewPage(imgHeight + 20);
+            checkNewPage(imgHeight + 18);
 
             // Legenda centralizada
             const caption = photo.caption || `Foto ${photo.number || ''}`;
@@ -343,9 +342,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   // ============================================================
-  // 4. CONCLUSÃO
+  // 4. CONCLUSÃO (sempre inicia no topo de uma página nova)
   // ============================================================
-  checkNewPage(60);
+  doc.addPage();
+  yPos = margin;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
@@ -408,7 +408,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   // 5. ASSINATURA DO RESPONSÁVEL
   // ============================================================
-  checkNewPage(80);
+  checkNewPage(36);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('5. ASSINATURA DO RESPONSÁVEL', margin, yPos);
@@ -441,7 +441,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // 6. OBSERVAÇÕES LEGAIS
   // ============================================================
   yPos += 8;
-  checkNewPage(50);
+  checkNewPage(28);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('6. OBSERVAÇÕES LEGAIS', margin, yPos);

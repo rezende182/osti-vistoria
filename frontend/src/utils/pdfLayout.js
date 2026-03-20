@@ -208,8 +208,7 @@ export function drawResponsavelAssinaturaSection(
     topMarginMm: options.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM,
   };
 
-  const blockH =
-    12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 6 + 20;
+  const blockH = 12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 3 + 14;
   let y = ensureVerticalSpace(doc, yPos, blockH, pageOpts);
 
   const texto = String(localTexto || '').trim();
@@ -228,27 +227,31 @@ export function drawResponsavelAssinaturaSection(
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.5);
   doc.line(lineX, y, lineX + lineW, y);
-  y += 12;
+  y += 10;
 
   const nome = String(responsavel || '').trim();
   const creaStr = String(crea || '').trim();
+  const nomeVal = nome && nome !== '-' ? nome : '—';
+  const creaVal = creaStr && creaStr !== '-' ? creaStr : '—';
+
+  const yRow = y;
+  const labRt = 'RESPONSÁVEL TÉCNICO: ';
+
   doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_BODY_PT);
-  doc.text('RESPONSÁVEL TÉCNICO:', pageWidth / 2, y, { align: 'center' });
-  y += PDF_BODY_LINE_MM;
-  doc.setFont(PDF_FONT, 'normal');
-  if (nome && nome !== '-') {
-    doc.text(nome, pageWidth / 2, y, { align: 'center' });
-    y += PDF_BODY_LINE_MM;
-  }
+  doc.text(`CREA: ${creaVal}`, pageWidth - margin, yRow, { align: 'right' });
+
   doc.setFont(PDF_FONT, 'bold');
-  doc.text('CREA:', pageWidth / 2, y, { align: 'center' });
-  y += PDF_BODY_LINE_MM;
+  doc.text(labRt, margin, yRow);
   doc.setFont(PDF_FONT, 'normal');
-  if (creaStr && creaStr !== '-') {
-    doc.text(creaStr, pageWidth / 2, y, { align: 'center' });
-    y += PDF_BODY_LINE_MM;
+  const labW = doc.getTextWidth(labRt);
+  const nameMaxW = contentWidth * 0.52 - labW;
+  const nameLines = doc.splitTextToSize(nomeVal, Math.max(24, nameMaxW));
+  doc.text(nameLines[0], margin + labW, yRow);
+  for (let i = 1; i < nameLines.length; i++) {
+    doc.text(nameLines[i], margin, yRow + i * PDF_BODY_LINE_MM);
   }
+
+  y = yRow + PDF_BODY_LINE_MM * nameLines.length;
 
   return y + 6;
 }
