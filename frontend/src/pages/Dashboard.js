@@ -98,11 +98,11 @@ const Dashboard = () => {
   });
 
   const tabs = [
-    { id: 'all', label: 'Todas', count: inspections.length },
-    { id: 'andamento', label: 'Em Andamento', count: inspections.filter(i => getStatusInfo(i).tab === 'andamento').length },
-    { id: 'ressalvas', label: 'Não conf. exec.', count: inspections.filter(i => getStatusInfo(i).tab === 'ressalvas').length },
-    { id: 'aprovado', label: 'Conformidade', count: inspections.filter(i => getStatusInfo(i).tab === 'aprovado').length },
-    { id: 'reprovado', label: 'Não conforme', count: inspections.filter(i => getStatusInfo(i).tab === 'reprovado').length },
+    { id: 'all', label: 'TODOS', count: inspections.length },
+    { id: 'andamento', label: 'EM ANDAMENTO', count: inspections.filter(i => getStatusInfo(i).tab === 'andamento').length },
+    { id: 'aprovado', label: 'APROVADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'aprovado').length },
+    { id: 'ressalvas', label: 'NÃO CONF. EXEC.', count: inspections.filter(i => getStatusInfo(i).tab === 'ressalvas').length },
+    { id: 'reprovado', label: 'REPROVADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'reprovado').length },
   ];
 
   return (

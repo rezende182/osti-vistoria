@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Edit, Share2, X, MessageCircle, Mail } from 'lucide-react';
 import TimePickerField from '../components/TimePickerField';
@@ -91,11 +91,6 @@ const InspectionReview = () => {
   useEffect(() => {
     loadInspection();
   }, [loadInspection]);
-
-  const linhaAssinaturaPdf = useMemo(
-    () => formatPdfAssinaturaDataLine(cidadeLaudo, dataFinal),
-    [cidadeLaudo, dataFinal]
-  );
 
   const handleFinalize = async () => {
     if (!classificacao) {
@@ -682,16 +677,6 @@ const InspectionReview = () => {
               placeholder="Ex.: São Paulo"
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            {linhaAssinaturaPdf ? (
-              <p className="mt-2 text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-                <span className="font-semibold text-slate-600">No PDF (assinatura): </span>
-                {linhaAssinaturaPdf}
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-slate-500">
-                Preencha a data e a cidade para ver a linha que sairá à direita na assinatura.
-              </p>
-            )}
           </div>
 
           {/* Horários */}
