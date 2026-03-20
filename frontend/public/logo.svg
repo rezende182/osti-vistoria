@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#1e293b"/>
+  <text x="256" y="200" font-family="Arial, sans-serif" font-size="100" font-weight="bold" fill="white" text-anchor="middle">OSTI</text>
+  <text x="256" y="320" font-family="Arial, sans-serif" font-size="40" fill="#94a3b8" text-anchor="middle">ENGENHARIA</text>
+  <text x="256" y="400" font-family="Arial, sans-serif" font-size="30" fill="#64748b" text-anchor="middle">VISTORIA</text>
+</svg>

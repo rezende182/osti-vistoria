@@ -1,0 +1,2 @@
+# Mesmo conjunto que requirements.txt (compatível com run-local.bat).
+-r requirements.txt

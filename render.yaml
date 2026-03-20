@@ -1,0 +1,23 @@
+# Blueprint Render: Web Service Python apontando para ./backend
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: osti-vistoria-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: BEHIND_PROXY
+        value: "true"
+      # Defina no painel (Secrets): MONGO_URL, CORS_ORIGINS, DB_NAME
+      - key: MONGO_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DB_NAME
+        sync: false

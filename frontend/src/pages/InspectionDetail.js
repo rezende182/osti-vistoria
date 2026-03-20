@@ -1,0 +1,495 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Home, Download, CheckCircle2, AlertCircle, Clock, Edit, FileText, XCircle, Share2, MessageCircle, Mail, Eye, X } from 'lucide-react';
+import NavigationModal from '../components/NavigationModal';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { generateInspectionPDF } from '../utils/pdfGenerator';
+import { API_BASE as API } from '../config/api';
+const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/fxky5xni_Design%20sem%20nome-Photoroom.png';
+
+const InspectionDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [inspection, setInspection] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [pdfDataUrl, setPdfDataUrl] = useState(null);
+
+  useEffect(() => {
+    loadInspection();
+  }, [id]);
+
+  const loadInspection = async () => {
+    try {
+      const response = await axios.get(`${API}/inspections/${id}`);
+      setInspection(response.data);
+    } catch (error) {
+      console.error('Erro ao carregar vistoria:', error);
+      toast.error('Erro ao carregar vistoria');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusInfo = () => {
+    if (inspection?.status === 'concluida') {
+      if (inspection.classificacao_final === 'aprovado') {
+        return { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', label: 'APROVADO' };
+      } else if (inspection.classificacao_final === 'aprovado_com_ressalvas') {
+        return { icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: 'APROVADO C/ RESSALVAS' };
+      } else if (inspection.classificacao_final === 'reprovado') {
+        return { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', label: 'REPROVADO' };
+      }
+    }
+    return { icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', label: 'EM ANDAMENTO' };
+  };
+
+  // Função para BAIXAR PDF diretamente (sem abrir nova aba)
+  const handleDownloadPDF = async () => {
+    if (!inspection) {
+      toast.error('Dados da vistoria não disponíveis');
+      return;
+    }
+
+    setGeneratingPdf(true);
+    toast.info('Gerando PDF...');
+
+    try {
+      const result = await generateInspectionPDF(inspection, false);
+      if (result) {
+        toast.success('PDF baixado com sucesso!');
+      }
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar PDF. Tente novamente.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  // Função para VISUALIZAR PDF dentro do app (modal)
+  const handleViewPDF = async () => {
+    if (!inspection) {
+      toast.error('Dados da vistoria não disponíveis');
+      return;
+    }
+
+    setGeneratingPdf(true);
+    toast.info('Gerando visualização...');
+
+    try {
+      const result = await generateInspectionPDF(inspection, true);
+      if (result && result.blob) {
+        // Criar URL do blob para exibir no modal
+        const blobUrl = URL.createObjectURL(result.blob);
+        setPdfDataUrl(blobUrl);
+        setShowPdfViewer(true);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar visualização:', error);
+      toast.error('Erro ao gerar visualização.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
+  // Fechar visualização do PDF
+  const closePdfViewer = () => {
+    if (pdfDataUrl) {
+      URL.revokeObjectURL(pdfDataUrl);
+    }
+    setShowPdfViewer(false);
+    setPdfDataUrl(null);
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = `Relatório de Vistoria - ${inspection?.cliente} - ${inspection?.data}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+    setShowShareModal(false);
+  };
+
+  const handleShareEmail = () => {
+    const subject = `Relatório de Vistoria - ${inspection?.cliente}`;
+    const body = `Segue em anexo o relatório de vistoria do imóvel.\n\nCliente: ${inspection?.cliente}\nData: ${inspection?.data}\nEndereço: ${inspection?.endereco}`;
+    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(url, '_blank');
+    setShowShareModal(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!inspection) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <p className="text-slate-500">Vistoria não encontrada</p>
+      </div>
+    );
+  }
+
+  const statusInfo = getStatusInfo();
+  const StatusIcon = statusInfo.icon;
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white py-6 px-4">
+        <div className="max-w-md mx-auto md:max-w-2xl">
+          <button
+            data-testid="home-button"
+            onClick={() => setShowExitModal(true)}
+            className="flex items-center gap-2 text-slate-300 hover:text-white mb-4 transition-colors"
+          >
+            <Home size={20} />
+            Página Inicial
+          </button>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              <img src={LOGO_URL} alt="OSTI Engenharia" className="h-10 w-auto" />
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight font-secondary uppercase mb-1">
+                  {inspection.cliente}
+                </h1>
+                <p className="text-sm text-slate-300">{inspection.data}</p>
+              </div>
+            </div>
+            <div className={`flex items-center gap-1 px-3 py-2 rounded-lg ${statusInfo.bg}`}>
+              <StatusIcon size={18} className={statusInfo.color} />
+              <span className={`text-xs font-bold ${statusInfo.color}`}>{statusInfo.label}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-md mx-auto md:max-w-2xl px-4 py-6">
+        {/* Botões de Edição (quando concluída) */}
+        {inspection.status === 'concluida' && (
+          <div className="space-y-2 mb-4">
+            <button
+              data-testid="edit-inspection-button"
+              onClick={() => navigate(`/inspection/${id}/checklist`)}
+              className="w-full bg-slate-100 text-slate-700 py-3 rounded-lg font-semibold transition-all duration-200 hover:bg-slate-200 flex items-center justify-center gap-2"
+            >
+              <Edit size={18} />
+              Editar Vistoria
+            </button>
+            <button
+              data-testid="edit-info-button"
+              onClick={() => navigate(`/inspection/${id}/edit`)}
+              className="w-full bg-slate-100 text-slate-700 py-3 rounded-lg font-semibold transition-all duration-200 hover:bg-slate-200 flex items-center justify-center gap-2"
+            >
+              <FileText size={18} />
+              Editar Informações
+            </button>
+          </div>
+        )}
+
+        {/* Informações - Mostra dados da identificação */}
+        <div className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6 mb-4">
+          <h2 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">Informações</h2>
+          <div className="space-y-3 text-sm">
+            <div>
+              <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cliente</span>
+              <p className="text-slate-900">{inspection.cliente}</p>
+            </div>
+            <div>
+              <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Endereço</span>
+              <p className="text-slate-900">{inspection.endereco}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Unidade/Apartamento</span>
+                <p className="text-slate-900">{inspection.unidade}</p>
+              </div>
+              <div>
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Empreendimento</span>
+                <p className="text-slate-900">{inspection.empreendimento || '-'}</p>
+              </div>
+            </div>
+            <div>
+              <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Construtora</span>
+              <p className="text-slate-900">{inspection.construtora || '-'}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Tipo do Imóvel</span>
+                <p className="text-slate-900">{inspection.tipo_imovel === 'novo' ? 'Novo' : inspection.tipo_imovel === 'usado' ? 'Usado' : 'Reformado'}</p>
+              </div>
+              <div>
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Energia Disponível</span>
+                <p className="text-slate-900">{inspection.energia_disponivel === 'sim' ? 'Sim' : 'Não'}</p>
+              </div>
+            </div>
+            {inspection.documentos_recebidos?.length > 0 && (
+              <div>
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Documentos Recebidos</span>
+                <ul className="text-slate-900 mt-1">
+                  {inspection.documentos_recebidos.map((doc, idx) => (
+                    <li key={idx} className="text-sm">• {doc}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Checklist Summary */}
+        {inspection.rooms_checklist?.length > 0 && (
+          <div className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6 mb-4">
+            <h2 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">Checklist da Vistoria</h2>
+            {inspection.rooms_checklist.map((room, index) => {
+              // Filtrar apenas itens que existem (aprovados ou reprovados)
+              const itensExistentes = room.items.filter(item => item.exists === 'sim');
+              
+              if (itensExistentes.length === 0) return null; // Não mostrar cômodos vazios
+              
+              return (
+                <div key={index} className="mb-4 pb-4 border-b border-slate-200 last:border-0">
+                  <h3 className="font-bold text-slate-900 mb-2">{room.room_name}</h3>
+                  <div className="space-y-1">
+                    {itensExistentes.map((item, itemIndex) => {
+                      const getItemColor = () => {
+                        if (item.condition === 'aprovado') return 'text-green-600';
+                        if (item.condition === 'reprovado') return 'text-red-600';
+                        return 'text-slate-400';
+                      };
+                      return (
+                        <div key={itemIndex} className="flex items-start justify-between text-sm">
+                          <div className="flex-1">
+                            <span className="text-slate-700">{item.name}</span>
+                          </div>
+                          <span className={`font-semibold ${getItemColor()}`}>
+                            {item.condition === 'aprovado' ? 'Aprovado' :
+                              item.condition === 'reprovado' ? 'Reprovado' : '-'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Finalização */}
+        {inspection.status === 'concluida' && (
+          <div className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6 mb-4">
+            <h2 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">Finalização</h2>
+            
+            {inspection.conclusao && (
+              <div className="mb-4">
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Conclusão</span>
+                <p className="text-slate-700 mt-1">{inspection.conclusao}</p>
+              </div>
+            )}
+
+            {inspection.assinatura && (
+              <div className="mb-4">
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500 block mb-2">Assinatura</span>
+                <img src={inspection.assinatura} alt="Assinatura" className="border border-slate-300 rounded-lg max-w-xs" />
+              </div>
+            )}
+
+            <div className="text-sm text-slate-600 space-y-1">
+              <p><strong>Responsável:</strong> {inspection.responsavel_final || inspection.responsavel_tecnico}</p>
+              <p><strong>CREA:</strong> {inspection.crea_final || inspection.crea}</p>
+              <p><strong>Data:</strong> {inspection.data_final}</p>
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <p><strong>Horário de Início:</strong> {inspection.horario_inicio || '-'}</p>
+                <p><strong>Horário de Término:</strong> {inspection.horario_termino || '-'}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          {inspection.status === 'em_andamento' && (
+            <button
+              data-testid="continue-inspection-button"
+              onClick={() => navigate(`/inspection/${id}/checklist`)}
+              className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Edit size={20} />
+              Continuar Vistoria
+            </button>
+          )}
+          {inspection.status === 'concluida' && (
+            <>
+              {/* Botão Visualizar PDF */}
+              <button
+                data-testid="view-pdf-button"
+                onClick={handleViewPDF}
+                disabled={generatingPdf}
+                className="w-full bg-slate-700 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-slate-800 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 mb-3"
+              >
+                {generatingPdf ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Gerando...
+                  </>
+                ) : (
+                  <>
+                    <Eye size={20} />
+                    Visualizar PDF
+                  </>
+                )}
+              </button>
+              
+              {/* Botão Baixar PDF */}
+              <button
+                data-testid="download-pdf-button"
+                onClick={handleDownloadPDF}
+                disabled={generatingPdf}
+                className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {generatingPdf ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    Gerando...
+                  </>
+                ) : (
+                  <>
+                    <Download size={20} />
+                    Baixar PDF
+                  </>
+                )}
+              </button>
+              
+              {/* Botão Concluído */}
+              <button
+                data-testid="done-button"
+                onClick={() => {
+                  toast.success('Vistoria salva com sucesso!');
+                  navigate('/');
+                }}
+                className="w-full mt-3 bg-green-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-green-700 active:scale-95 flex items-center justify-center gap-2"
+              >
+                Concluído
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation Modal */}
+      <NavigationModal
+        isOpen={showExitModal}
+        onClose={() => setShowExitModal(false)}
+        onConfirm={() => navigate('/')}
+        title="Voltar para Início"
+        message="Tem certeza que deseja voltar para a página inicial?"
+      />
+
+      {/* PDF Viewer Modal - Visualização interna */}
+      {showPdfViewer && pdfDataUrl && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
+          {/* Header do Viewer */}
+          <div className="bg-slate-900 p-4 flex items-center justify-between">
+            <h3 className="text-lg font-bold text-white">Pré-visualização do PDF</h3>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  closePdfViewer();
+                  handleDownloadPDF();
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-700"
+              >
+                <Download size={18} />
+                Baixar
+              </button>
+              <button 
+                onClick={closePdfViewer} 
+                className="p-2 text-white hover:bg-slate-700 rounded-lg"
+              >
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+          
+          {/* PDF usando embed tag */}
+          <div className="flex-1 overflow-auto bg-slate-700 p-4">
+            <embed
+              src={pdfDataUrl}
+              type="application/pdf"
+              className="w-full h-full min-h-[75vh] bg-white rounded-lg"
+              title="Visualização do PDF"
+            />
+          </div>
+          
+          {/* Footer do Viewer */}
+          <div className="bg-slate-900 p-3 flex justify-center gap-3">
+            <button
+              onClick={() => {
+                closePdfViewer();
+                handleDownloadPDF();
+              }}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-blue-700"
+            >
+              <Download size={18} />
+              Baixar PDF
+            </button>
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="px-6 py-3 bg-slate-700 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-slate-600"
+            >
+              <Share2 size={18} />
+              Compartilhar
+            </button>
+            <button
+              onClick={closePdfViewer}
+              className="px-6 py-3 bg-slate-600 text-white rounded-lg font-semibold hover:bg-slate-500"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <h3 className="text-xl font-bold text-slate-900 mb-4">Compartilhar</h3>
+            <div className="space-y-3">
+              <button
+                onClick={handleShareWhatsApp}
+                className="w-full py-3 px-4 bg-green-500 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+              >
+                <MessageCircle size={20} />
+                WhatsApp
+              </button>
+              <button
+                onClick={handleShareEmail}
+                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
+              >
+                <Mail size={20} />
+                E-mail
+              </button>
+            </div>
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="w-full mt-4 py-3 px-4 bg-slate-100 text-slate-700 rounded-lg font-semibold"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default InspectionDetail;

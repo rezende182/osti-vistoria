@@ -1,0 +1,154 @@
+{
+  "brand_identity": {
+    "name": "VistoriaPro",
+    "persona": "Engineering Precision",
+    "tone": "Professional, Efficient, Trustworthy",
+    "theme_mode": "light",
+    "theme_strategy": "Field-First Engineering"
+  },
+  "typography": {
+    "primary_font": "Manrope",
+    "secondary_font": "Barlow Condensed",
+    "mono_font": "JetBrains Mono",
+    "scale": {
+      "h1": "text-4xl md:text-5xl font-bold tracking-tight font-secondary uppercase",
+      "h2": "text-3xl font-bold tracking-tight font-secondary uppercase",
+      "h3": "text-2xl font-semibold tracking-tight font-secondary",
+      "body": "text-base font-normal leading-relaxed text-slate-600",
+      "label": "text-xs font-bold tracking-wider uppercase text-slate-500",
+      "mono": "font-mono text-sm tracking-tight text-slate-500"
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#0F172A",
+        "foreground": "#F8FAFC"
+      },
+      "secondary": {
+        "DEFAULT": "#3B82F6",
+        "foreground": "#FFFFFF"
+      },
+      "background": "#F1F5F9",
+      "surface": "#FFFFFF",
+      "border": "#E2E8F0",
+      "success": "#10B981",
+      "warning": "#F59E0B",
+      "error": "#EF4444",
+      "muted": "#94A3B8"
+    },
+    "gradients": {
+      "hero": "bg-gradient-to-br from-slate-900 to-slate-800",
+      "glass": "bg-white/80 backdrop-blur-lg border border-white/20"
+    }
+  },
+  "visual_enhancers": {
+    "radius": "rounded-lg",
+    "shadows": {
+      "card": "shadow-[0_2px_8px_rgba(0,0,0,0.04)]",
+      "floating": "shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
+    },
+    "textures": "bg-[url('https://www.transparenttextures.com/patterns/graphy.png')] bg-fixed opacity-[0.03]",
+    "animations": {
+      "hover": "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md",
+      "click": "active:scale-95 transition-transform duration-100"
+    }
+  },
+  "layout_strategy": {
+    "container": "max-w-md mx-auto md:max-w-2xl lg:max-w-4xl min-h-screen pb-24",
+    "grid": "grid grid-cols-1 md:grid-cols-2 gap-4",
+    "spacing": {
+      "section": "py-8",
+      "element": "mb-4"
+    }
+  },
+  "components": [
+    {
+      "name": "InspectionCard",
+      "path": "/src/components/InspectionCard.js",
+      "description": "Main list item for inspection history",
+      "usage": "Use in Dashboard list"
+    },
+    {
+      "name": "ChecklistItem",
+      "path": "/src/components/ChecklistItem.js",
+      "description": "Complex form item with toggle switches for 'Exist' and 'Condition', plus Photo/Note buttons",
+      "usage": "Use in Inspection Checklist screens"
+    },
+    {
+      "name": "RoomSelector",
+      "path": "/src/components/RoomSelector.js",
+      "description": "Horizontal scrollable list of rooms with progress indicators",
+      "usage": "Sticky top navigation in Checklist"
+    },
+    {
+      "name": "SignaturePad",
+      "path": "/src/components/SignaturePad.js",
+      "description": "Canvas based signature input",
+      "usage": "Final step of inspection"
+    },
+    {
+      "name": "FAB",
+      "path": "/src/components/FAB.js",
+      "description": "Floating Action Button for primary actions like 'New Inspection'",
+      "usage": "Bottom right on Dashboard"
+    }
+  ],
+  "image_urls": {
+    "hero_bg": "https://images.unsplash.com/photo-1553601581-8a1f1010efbe?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "blueprint_texture": "https://images.unsplash.com/photo-1698846296220-e44d9d4b9100?crop=entropy&cs=srgb&fm=jpg&q=85",
+    "empty_state": "https://images.unsplash.com/photo-1735795798441-89cb505e1970?crop=entropy&cs=srgb&fm=jpg&q=85"
+  },
+  "data_structure": {
+    "rooms": [
+      {
+        "id": "general",
+        "name": "Geral",
+        "items": ["Instalação elétrica", "Paredes", "Teto", "Tomadas/Iluminação"]
+      },
+      {
+        "id": "living",
+        "name": "Sala",
+        "items": ["Piso", "Rodapé", "Esquadrias Porta", "Esquadrias Janela", "Pintura", "Tomadas/Iluminação", "Paredes", "Teto"]
+      },
+      {
+        "id": "kitchen",
+        "name": "Cozinha",
+        "items": ["Louças/Metais", "Hidráulica", "Gás", "Ralo", "Piso", "Azulejo", "Janela", "Porta", "Pintura"]
+      },
+      {
+        "id": "bathroom",
+        "name": "Banheiro",
+        "items": ["Tomadas/Iluminação", "Paredes", "Teto", "Piso/Azulejo", "Ralo", "Louças/Metais", "Hidráulica", "Janela", "Porta", "Box"]
+      },
+      {
+        "id": "balcony",
+        "name": "Varanda",
+        "items": ["Rodapé", "Ralo", "Janela", "Porta", "Guarda-Corpo", "Pintura"]
+      },
+      {
+        "id": "bedroom",
+        "name": "Quarto",
+        "items": ["Tomadas/Iluminação", "Paredes", "Teto", "Piso", "Porta", "Janela", "Rodapé", "Pintura", "Ar-Condicionado"]
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Use 'lucide-react' for all icons.",
+    "Implement 'react-signature-canvas' for the signature pad.",
+    "Use 'jspdf' and 'jspdf-autotable' for generating the PDF report.",
+    "Ensure the layout is MOBILE-FIRST. Inputs should be large (min 44px height).",
+    "The 'ChecklistItem' component is critical. It must show the status clearly. Use color coding: Green for Approved, Red for Rejected, Gray for Not Checked.",
+    "For the 'Existência' field: If 'Não existe' is selected, disable the 'Condição' field.",
+    "Include the mandatory legal text automatically in the footer of the PDF and the review screen."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not use gradients for text.",
+    "Avoid centering everything; use left alignment for forms.",
+    "Use 'sonner' for toast notifications.",
+    "Ensure all interactive elements have 'data-testid'.",
+    "Use 'shadcn/ui' components for complex interactions (Select, Dialog, Tabs) but customize their style to match the 'Engineering' theme (square corners, distinct borders).",
+    "Backgrounds must not be transparent if they overlay content.",
+    "Use 'Manrope' for all UI text to ensure readability."
+  ]
+}

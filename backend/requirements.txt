@@ -1,0 +1,9 @@
+# Dependências da API (FastAPI + Mongo). Usado pelo Render com: pip install -r requirements.txt
+# motor 3.6.1 exige pymongo >= 4.9 e < 4.10
+fastapi==0.110.1
+uvicorn[standard]==0.25.0
+motor==3.6.1
+pymongo==4.9.2
+pydantic-settings==2.8.1
+python-dotenv==1.2.1
+python-multipart==0.0.22

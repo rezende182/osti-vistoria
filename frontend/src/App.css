@@ -1,0 +1,55 @@
+.font-secondary {
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Custom scrollbar for horizontal room selector */
+.room-selector-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.room-selector-scroll::-webkit-scrollbar-track {
+  background: #E2E8F0;
+}
+
+.room-selector-scroll::-webkit-scrollbar-thumb {
+  background: #94A3B8;
+  border-radius: 4px;
+}
+
+.room-selector-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748B;
+}
+
+/* Signature canvas styling */
+.signature-canvas {
+  border: 2px solid #E2E8F0;
+  border-radius: 8px;
+  touch-action: none;
+}
+
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile touch optimization */
+@media (hover: none) and (pointer: coarse) {
+  button, input, textarea, select {
+    min-height: 44px;
+  }
+}
