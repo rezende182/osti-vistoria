@@ -4,6 +4,13 @@ import {
   TEXTOS_CONCLUSAO,
   CLASSIFICACAO_FINAL_LABELS,
 } from '../constants/inspectionClassificacao';
+import {
+  drawBodyParagraphs,
+  drawClassificationBadge,
+  drawSignatureBlock,
+  PDF_BODY_PT,
+  PDF_BODY_LINE_MM,
+} from './pdfLayout';
 
 // Logo da empresa - usar arquivo local para evitar problemas de CORS/CDN
 const LOGO_URL = '/logo-osti.png';
@@ -139,7 +146,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     body: identificacaoData,
     theme: 'grid',
     styles: {
-      fontSize: 10,
+      font: 'helvetica',
+      fontSize: PDF_BODY_PT,
       cellPadding: 3,
       textColor: [0, 0, 0],
       lineColor: [0, 0, 0],
@@ -163,17 +171,17 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += 8;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(PDF_BODY_PT);
   
   if (inspection.documentos_recebidos && inspection.documentos_recebidos.length > 0) {
     inspection.documentos_recebidos.forEach((docItem, index) => {
       doc.text(`${index + 1}. ${docItem}`, margin + 5, yPos);
-      yPos += 6;
+      yPos += PDF_BODY_LINE_MM;
     });
   } else {
     doc.setFont('helvetica', 'italic');
     doc.text('Nenhum documento recebido registrado.', margin + 5, yPos);
-    yPos += 6;
+    yPos += PDF_BODY_LINE_MM;
   }
 
   // ============================================================
@@ -211,9 +219,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       
       // "Itens verificados:"
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
+      doc.setFontSize(PDF_BODY_PT);
       doc.text('Itens verificados:', margin, yPos);
-      yPos += 8;
+      yPos += PDF_BODY_LINE_MM + 2;
 
       // Itens do cômodo (APENAS os que existem)
       for (const item of itensExistentes) {
@@ -224,13 +232,14 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         doc.rect(margin, yPos - 4, contentWidth, 10, 'F');
         
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
+        doc.setFontSize(PDF_BODY_PT);
         doc.setTextColor(0, 0, 0);
         doc.text(item.name, margin + 3, yPos + 2);
         yPos += 12;
 
         // Condição
         doc.setFont('helvetica', 'normal');
+        doc.setFontSize(PDF_BODY_PT);
         doc.setTextColor(0, 0, 0);
         doc.text('Condição: ', margin, yPos);
         
@@ -246,30 +255,31 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
           doc.text('-', margin + 22, yPos);
         }
         doc.setTextColor(0, 0, 0); // Resetar cor para preto
-        yPos += 7;
+        yPos += PDF_BODY_LINE_MM;
 
         // Observações
         doc.setFont('helvetica', 'normal');
+        doc.setFontSize(PDF_BODY_PT);
         
         if (item.condition === 'aprovado') {
           // Texto automático para APROVADO
           doc.text('Observações: ', margin, yPos);
           doc.setFont('helvetica', 'italic');
           doc.text('Item em conformidade, sem irregularidades aparentes.', margin + 26, yPos);
-          yPos += 7;
+          yPos += PDF_BODY_LINE_MM;
         } else if (item.condition === 'reprovado') {
-          // Para REPROVADO: mostrar observações do usuário
           doc.text('Observações:', margin, yPos);
-          yPos += 6;
+          yPos += PDF_BODY_LINE_MM;
           
           if (item.observations && item.observations.trim()) {
-            doc.setFont('helvetica', 'normal');
-            const obsLines = doc.splitTextToSize(item.observations, contentWidth - 10);
-            obsLines.forEach(line => {
-              checkNewPage(8);
-              doc.text(line, margin + 5, yPos);
-              yPos += 5;
-            });
+            yPos = drawBodyParagraphs(
+              doc,
+              item.observations,
+              margin + 5,
+              contentWidth - 10,
+              yPos,
+              checkNewPage
+            );
           }
           yPos += 2;
         }
@@ -293,7 +303,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
             // Legenda centralizada
             const caption = photo.caption || `Foto ${photo.number || ''}`;
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
+            doc.setFontSize(PDF_BODY_PT);
             doc.text(caption, pageWidth / 2, yPos, { align: 'center' });
             yPos += 5;
 
@@ -321,7 +331,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     }
   } else {
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(10);
+    doc.setFontSize(PDF_BODY_PT);
     doc.text('Nenhum cômodo foi adicionado ao checklist.', margin + 5, yPos);
     yPos += 10;
   }
@@ -336,20 +346,21 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   doc.text('4. CONCLUSÃO', margin, yPos);
   yPos += 10;
 
-  // Classificação Final
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(PDF_BODY_PT);
   doc.text('Classificação Final do Imóvel:', margin, yPos);
-  yPos += 10;
+  yPos += 8;
 
   if (inspection.classificacao_final) {
     let bgColor;
+    let darkOnYellow = false;
     switch (inspection.classificacao_final) {
       case 'aprovado':
         bgColor = COLORS.green;
         break;
       case 'aprovado_com_ressalvas':
         bgColor = COLORS.yellow;
+        darkOnYellow = true;
         break;
       case 'reprovado':
         bgColor = COLORS.red;
@@ -357,55 +368,35 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       default:
         bgColor = COLORS.gray;
     }
-
     const labelText =
       CLASSIFICACAO_FINAL_LABELS[inspection.classificacao_final] || 'PENDENTE';
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    const labelLines = doc.splitTextToSize(labelText, contentWidth - 24);
-    const boxH = 8 + labelLines.length * 4.5;
-    const boxW = contentWidth;
-    const boxX = margin;
-
-    doc.setFillColor(...bgColor);
-    doc.roundedRect(boxX, yPos - 4, boxW, boxH, 2, 2, 'F');
-
-    let ly = yPos + 2;
-    labelLines.forEach((line) => {
-      if (inspection.classificacao_final === 'aprovado_com_ressalvas') {
-        doc.setTextColor(0, 0, 0);
-      } else {
-        doc.setTextColor(255, 255, 255);
-      }
-      doc.text(line, pageWidth / 2, ly, { align: 'center' });
-      ly += 4.5;
-    });
-    doc.setTextColor(0, 0, 0);
-    yPos += boxH + 6;
+    yPos = drawClassificationBadge(
+      doc,
+      labelText,
+      margin,
+      contentWidth,
+      yPos,
+      bgColor,
+      darkOnYellow
+    );
   }
 
-  // Texto da Conclusão
-  const textoConclusao = inspection.conclusao || 
-    (inspection.classificacao_final ? TEXTOS_CONCLUSAO[inspection.classificacao_final] : null);
+  const textoConclusao =
+    inspection.conclusao ||
+    (inspection.classificacao_final
+      ? TEXTOS_CONCLUSAO[inspection.classificacao_final]
+      : null);
 
   if (textoConclusao) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    
-    const paragrafos = textoConclusao.split('\n\n');
-    paragrafos.forEach((paragrafo) => {
-      if (paragrafo.trim()) {
-        const lines = doc.splitTextToSize(paragrafo.trim(), contentWidth);
-        lines.forEach((line, idx) => {
-          checkNewPage(8);
-          // Recuo na primeira linha
-          const x = idx === 0 ? margin + 10 : margin;
-          doc.text(line, x, yPos);
-          yPos += 6;
-        });
-        yPos += 4;
-      }
-    });
+    yPos += 4;
+    yPos = drawBodyParagraphs(
+      doc,
+      textoConclusao,
+      margin,
+      contentWidth,
+      yPos,
+      checkNewPage
+    );
   }
 
   // ============================================================
@@ -422,69 +413,46 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const dataFinal = inspection.data_final ? formatDate(inspection.data_final) : formatDate(inspection.data);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
+  doc.setFontSize(PDF_BODY_PT);
   
   doc.text(`Responsável: ${responsavel}`, margin, yPos);
-  yPos += 6;
+  yPos += PDF_BODY_LINE_MM;
   doc.text(`CREA: ${crea}`, margin, yPos);
-  yPos += 6;
+  yPos += PDF_BODY_LINE_MM;
   doc.text(`Data: ${dataFinal}`, margin, yPos);
-  yPos += 6;
+  yPos += PDF_BODY_LINE_MM;
   
   if (inspection.horario_inicio) {
     doc.text(`Horário de Início: ${inspection.horario_inicio}`, margin, yPos);
-    yPos += 6;
+    yPos += PDF_BODY_LINE_MM;
   }
   if (inspection.horario_termino) {
     doc.text(`Horário de Término: ${inspection.horario_termino}`, margin, yPos);
-    yPos += 6;
+    yPos += PDF_BODY_LINE_MM;
   }
 
-  yPos += 10;
+  yPos += 8;
 
-  // Assinatura (gov.br — sem imagem desenhada no app)
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('Assinatura digital (gov.br):', margin, yPos);
-  yPos += 6;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  const sigLines = doc.splitTextToSize(
-    'A assinatura deve ser realizada digitalmente pelo portal gov.br.',
-    contentWidth
-  );
-  doc.text(sigLines, margin, yPos);
-  yPos += sigLines.length * 4.5 + 6;
-
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.5);
-  doc.line(margin, yPos, margin + 100, yPos);
-  yPos += 6;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(responsavel, margin, yPos);
-  yPos += 6;
-  doc.text(`CREA: ${crea}`, margin, yPos);
+  yPos = drawSignatureBlock(doc, margin, contentWidth, yPos, 42, checkNewPage);
 
   // ============================================================
   // 6. OBSERVAÇÕES LEGAIS
   // ============================================================
-  yPos += 20;
+  yPos += 8;
   checkNewPage(50);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('6. OBSERVAÇÕES LEGAIS', margin, yPos);
   yPos += 10;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  const legalLines = doc.splitTextToSize(LEGAL_TEXT, contentWidth);
-  legalLines.forEach((line, idx) => {
-    checkNewPage(8);
-    const x = idx === 0 ? margin + 10 : margin;
-    doc.text(line, x, yPos);
-    yPos += 6;
-  });
+  yPos = drawBodyParagraphs(
+    doc,
+    LEGAL_TEXT,
+    margin,
+    contentWidth,
+    yPos,
+    checkNewPage
+  );
 
   // ============================================================
   // RODAPÉ em todas as páginas

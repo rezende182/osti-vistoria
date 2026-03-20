@@ -8,9 +8,9 @@ Os sistemas, elementos construtivos e acabamentos avaliados apresentam funcionam
 
 Dessa forma, o imóvel é considerado em conformidade técnica, podendo ser recebido sem ressalvas.`,
 
-  aprovado_com_ressalvas: `CONCLUSÃO / OBSERVAÇÕES GERAIS: Foram identificadas não conformidades de natureza executiva, as quais, embora não comprometam a habitabilidade imediata do imóvel, configuram desvios em relação aos padrões construtivos e de acabamento esperados. Recomenda-se a devida regularização por parte da construtora, em conformidade com os prazos de garantia e normativas técnicas vigentes.`,
+  aprovado_com_ressalvas: `Foram identificadas não conformidades de natureza executiva, as quais, embora não comprometam a habitabilidade imediata do imóvel, configuram desvios em relação aos padrões construtivos e de acabamento esperados. Recomenda-se a devida regularização por parte da construtora, em conformidade com os prazos de garantia e normativas técnicas vigentes.`,
 
-  reprovado: `CONCLUSÃO: O imóvel apresenta não conformidades de caráter relevante, configurando desvios significativos em relação aos padrões construtivos, requisitos de desempenho e condições de segurança e habitabilidade. Tais inconformidades comprometem o uso adequado da unidade, podendo implicar riscos ao usuário e/ou prejuízos à sua funcionalidade. Diante do exposto, não se recomenda a aceitação do imóvel na presente condição, devendo a construtora proceder com a devida regularização das anomalias identificadas, em conformidade com as exigências técnicas, normativas vigentes e obrigações contratuais.`,
+  reprovado: `O imóvel apresenta não conformidades de caráter relevante, configurando desvios significativos em relação aos padrões construtivos, requisitos de desempenho e condições de segurança e habitabilidade. Tais inconformidades comprometem o uso adequado da unidade, podendo implicar riscos ao usuário e/ou prejuízos à sua funcionalidade. Diante do exposto, não se recomenda a aceitação do imóvel na presente condição, devendo a construtora proceder com a devida regularização das anomalias identificadas, em conformidade com as exigências técnicas, normativas vigentes e obrigações contratuais.`,
 };
 
 /** Rótulos exibidos na UI e no PDF */
@@ -32,6 +32,8 @@ const LEGACY_TEXTOS_SNIPPETS = [
   'Dessa forma, o imóvel é considerado APROVADO',
   'APROVADO COM RESSALVAS',
   'o imóvel é considerado REPROVADO',
+  'Foram identificadas não conformidades de natureza executiva',
+  'O imóvel apresenta não conformidades de caráter relevante',
 ];
 
 export function conclusaoPareceAutomatica(conclusao) {

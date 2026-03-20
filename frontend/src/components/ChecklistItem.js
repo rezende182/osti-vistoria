@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Camera, MessageSquare, X, Image, FolderOpen, Smartphone } from 'lucide-react';
 import { compressImage, formatFileSize, getDataUrlSize } from '../utils/imageCompressor';
 
@@ -28,6 +28,9 @@ const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoC
   };
 
   const handleConditionChange = (value) => {
+    if (value === 'reprovado') {
+      setShowObservations(true);
+    }
     // Para itens que são apenas condição, marcar automaticamente como "existe"
     if (isApenasCondicao && item.exists !== 'sim') {
       onChange({ ...item, exists: 'sim', condition: value });
@@ -35,6 +38,12 @@ const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoC
       onChange({ ...item, condition: value });
     }
   };
+
+  useEffect(() => {
+    if (item.condition === 'reprovado') {
+      setShowObservations(true);
+    }
+  }, [item.condition]);
 
   const handleObservationsChange = (value) => {
     onChange({ ...item, observations: value });

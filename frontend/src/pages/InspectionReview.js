@@ -18,6 +18,11 @@ import {
   CLASSIFICACAO_FINAL_LABELS,
   conclusaoPareceAutomatica,
 } from '../constants/inspectionClassificacao';
+import {
+  drawBodyParagraphs,
+  drawClassificationBadge,
+  drawSignatureBlock,
+} from '../utils/pdfLayout';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
@@ -396,97 +401,51 @@ const InspectionReview = () => {
     const classificacaoText =
       CLASSIFICACAO_FINAL_LABELS[classificacao] || 'CLASSIFICAÇÃO PENDENTE';
 
-    const classificacaoColor =
-      classificacao === 'aprovado'
-        ? [0, 128, 0]
-        : classificacao === 'aprovado_com_ressalvas'
-          ? [204, 153, 0]
-          : [204, 0, 0];
+    let badgeBg = [205, 205, 204];
+    let darkOnYellow = false;
+    if (classificacao === 'aprovado') badgeBg = [34, 139, 34];
+    else if (classificacao === 'aprovado_com_ressalvas') {
+      badgeBg = [218, 165, 32];
+      darkOnYellow = true;
+    } else if (classificacao === 'reprovado') badgeBg = [178, 34, 34];
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(255, 255, 255);
-    const titleLines = doc.splitTextToSize(classificacaoText, contentWidth - 16);
-    const boxH = 10 + titleLines.length * 5;
-    doc.setFillColor(...classificacaoColor);
-    doc.roundedRect(margin, yPos, contentWidth, boxH, 3, 3, 'F');
-    let ty = yPos + 8;
-    titleLines.forEach((line) => {
-      if (classificacao === 'aprovado_com_ressalvas') {
-        doc.setTextColor(0, 0, 0);
-      } else {
-        doc.setTextColor(255, 255, 255);
-      }
-      doc.text(line, pageWidth / 2, ty, { align: 'center' });
-      ty += 5;
-    });
-    yPos += boxH + 12;
+    yPos = drawClassificationBadge(
+      doc,
+      classificacaoText,
+      margin,
+      contentWidth,
+      yPos,
+      badgeBg,
+      darkOnYellow
+    );
 
     // ============ CONCLUSÃO ============
     if (conclusao) {
-      doc.setFillColor(0, 51, 102);
-      doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(255, 255, 255);
-      doc.text('CONCLUSÃO', margin + 5, yPos + 2);
-      yPos += 15;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.setTextColor(51, 51, 51);
-      const splitConclusao = doc.splitTextToSize(conclusao, contentWidth);
-      doc.text(splitConclusao, margin, yPos);
-      yPos += splitConclusao.length * 5 + 15;
+      yPos += 4;
+      yPos = drawBodyParagraphs(
+        doc,
+        conclusao,
+        margin,
+        contentWidth,
+        yPos,
+        checkNewPage
+      );
     }
 
-    // ============ ASSINATURA (reservada – gov.br) ============
-    checkNewPage(80);
-    doc.setFillColor(0, 51, 102);
-    doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(255, 255, 255);
-    doc.text('ASSINATURA DIGITAL (GOV.BR)', margin + 5, yPos + 2);
-    yPos += 15;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(51, 51, 51);
-    const sigNote = doc.splitTextToSize(
-      'A assinatura deve ser realizada digitalmente pelo portal gov.br. Espaço reservado para conferência do documento.',
-      contentWidth
-    );
-    doc.text(sigNote, margin, yPos);
-    yPos += sigNote.length * 4.5 + 8;
-
-    doc.setDrawColor(0, 51, 102);
-    doc.setLineWidth(0.5);
-    doc.line(margin, yPos, margin + 120, yPos);
-    yPos += 6;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(51, 51, 51);
-    doc.text(responsavelFinal || '', margin, yPos);
-    yPos += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.text(`CREA: ${creaFinal || '-'}`, margin, yPos);
-    yPos += 5;
-    doc.text(`Data: ${dataFinal}`, margin, yPos);
-    yPos += 20;
+    checkNewPage(60);
+    yPos = drawSignatureBlock(doc, margin, contentWidth, yPos, 42, checkNewPage);
 
     // ============ TEXTO LEGAL ============
+    yPos += 8;
     checkNewPage(50);
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(margin, yPos, contentWidth, 40, 3, 3);
-    
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    const splitLegal = doc.splitTextToSize(LEGAL_TEXT, contentWidth - 10);
-    doc.text(splitLegal, margin + 5, yPos + 8);
+    yPos = drawBodyParagraphs(
+      doc,
+      LEGAL_TEXT,
+      margin,
+      contentWidth,
+      yPos,
+      checkNewPage
+    );
 
     // Rodapé
     doc.setFontSize(8);
