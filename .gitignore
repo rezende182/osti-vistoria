@@ -87,6 +87,8 @@ android-sdk/
 .env.*
 !.env.example
 !**/.env.example
+# URL pública do backend para build de produção (CRA)
+!**/.env.production
 
 # Electron / frontend build
 frontend/dist-electron/

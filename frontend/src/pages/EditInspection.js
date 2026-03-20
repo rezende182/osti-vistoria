@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Home, ArrowRight } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
-import axios from 'axios';
 import { toast } from 'sonner';
-import { API_BASE as API } from '../config/api';
+import { inspectionsApi } from '../services/api';
+import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
 const EditInspection = () => {
@@ -42,8 +42,15 @@ const EditInspection = () => {
 
   const loadInspection = async () => {
     try {
-      const response = await axios.get(`${API}/inspections/${id}`);
-      const data = response.data;
+      const res = await loadInspectionWithFallback(id);
+      if (!res.ok) {
+        toast.error(res.error || 'Erro ao carregar vistoria');
+        return;
+      }
+      if (res.fromLocal) {
+        toast.info('Sem servidor — a mostrar dados guardados neste dispositivo.');
+      }
+      const data = res.data;
       setFormData({
         cliente: data.cliente || '',
         data: data.data || '',
@@ -90,9 +97,13 @@ const EditInspection = () => {
     }
 
     try {
-      await axios.put(`${API}/inspections/${id}/identification`, formData);
-      toast.success('Informações atualizadas!');
-      navigate(`/inspection/${id}/checklist`);
+      const result = await inspectionsApi.updateIdentification(id, formData);
+      if (result.ok) {
+        toast.success('Informações atualizadas!');
+        navigate(`/inspection/${id}/checklist`);
+      } else {
+        toast.error(result.error || 'Erro ao atualizar vistoria');
+      }
     } catch (error) {
       console.error('Erro ao atualizar vistoria:', error);
       toast.error('Erro ao atualizar vistoria');

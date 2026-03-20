@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Edit, Share2, X, MessageCircle, Mail } from 'lucide-react';
 import SignaturePad from '../components/SignaturePad';
-import axios from 'axios';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { API_BASE as API } from '../config/api';
+import { inspectionsApi } from '../services/api';
+import { loadInspectionWithFallback } from '../utils/inspectionLoader';
+import {
+  getInspectionLocally,
+  saveInspectionLocally,
+  initDB,
+} from '../utils/offlineStorage';
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
 const LEGAL_TEXT = "A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes. Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.";
@@ -54,8 +59,15 @@ const InspectionReview = () => {
 
   const loadInspection = async () => {
     try {
-      const response = await axios.get(`${API}/inspections/${id}`);
-      const data = response.data;
+      const res = await loadInspectionWithFallback(id);
+      if (!res.ok) {
+        toast.error(res.error || 'Erro ao carregar vistoria');
+        return;
+      }
+      if (res.fromLocal) {
+        toast.info('Sem servidor — a mostrar dados guardados neste dispositivo.');
+      }
+      const data = res.data;
       setInspection(data);
       setClassificacao(data.classificacao_final || '');
       setConclusao(data.conclusao || '');
@@ -84,17 +96,36 @@ const InspectionReview = () => {
     }
 
     try {
-      await axios.put(`${API}/inspections/${id}`, {
+      await initDB().catch(() => {});
+      const payload = {
         classificacao_final: classificacao,
         conclusao,
         assinatura,
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
         data_final: dataFinal,
-        horario_termino: horarioTermino
-      });
-      toast.success('Vistoria finalizada com sucesso!');
-      navigate(`/inspection/${id}`);
+        horario_termino: horarioTermino,
+      };
+      const result = await inspectionsApi.update(id, payload);
+      if (result.ok) {
+        toast.success('Vistoria finalizada com sucesso!');
+        navigate(`/inspection/${id}`);
+        return;
+      }
+      const local = await getInspectionLocally(id);
+      if (local) {
+        await saveInspectionLocally({
+          ...local,
+          ...payload,
+          status: 'concluida',
+        });
+        toast.warning(
+          'Servidor indisponível — finalização guardada só neste dispositivo.'
+        );
+        navigate(`/inspection/${id}`);
+        return;
+      }
+      toast.error(result.error || 'Erro ao finalizar vistoria');
     } catch (error) {
       console.error('Erro ao finalizar vistoria:', error);
       toast.error('Erro ao finalizar vistoria');
@@ -104,15 +135,31 @@ const InspectionReview = () => {
   // Salvar dados parciais ao voltar ao checklist
   const handleBackToChecklist = async () => {
     try {
-      await axios.put(`${API}/inspections/${id}`, {
+      await initDB().catch(() => {});
+      const result = await inspectionsApi.update(id, {
         classificacao_final: classificacao || null,
         conclusao: conclusao || '',
         assinatura: assinatura || '',
         responsavel_final: responsavelFinal || '',
         crea_final: creaFinal || '',
         data_final: dataFinal || '',
-        horario_termino: horarioTermino || ''
+        horario_termino: horarioTermino || '',
       });
+      if (!result.ok) {
+        const local = await getInspectionLocally(id);
+        if (local) {
+          await saveInspectionLocally({
+            ...local,
+            classificacao_final: classificacao || null,
+            conclusao: conclusao || '',
+            assinatura: assinatura || '',
+            responsavel_final: responsavelFinal || '',
+            crea_final: creaFinal || '',
+            data_final: dataFinal || '',
+            horario_termino: horarioTermino || '',
+          });
+        }
+      }
     } catch (error) {
       console.error('Erro ao salvar dados parciais:', error);
     }

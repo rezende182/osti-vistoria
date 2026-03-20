@@ -68,3 +68,12 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+---
+
+## API (backend Render)
+
+- URL base configurada em **`REACT_APP_BACKEND_URL`** (ver `.env` e `src/config/api.js`).
+- Cliente HTTP central: **`src/services/api.js`** (axios, tratamento de erros).
+- **CORS (Render):** defina `CORS_ORIGINS` no backend para incluir `http://localhost:3000`, `http://127.0.0.1:3000` e, se necessário, `*` ou o domínio do frontend em produção. Com o `.exe` Electron (`file://`), o navegador pode enviar origem vazia — nesse caso `CORS_ORIGINS=*` no Render costuma ser o mais simples (apenas para testes; em produção restrinja ao domínio do app).
+- **Desenvolvimento local** contra API local: crie **`frontend/.env.local`** com `REACT_APP_BACKEND_URL=http://127.0.0.1:5000`.

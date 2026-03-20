@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import FAB from '../components/FAB';
 import ConfirmModal from '../components/ConfirmModal';
-import axios from 'axios';
 import { toast } from 'sonner';
-import { API_BASE as API } from '../config/api';
+import { inspectionsApi } from '../services/api';
+import { getAllInspectionsLocally, initDB } from '../utils/offlineStorage';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
@@ -23,10 +23,23 @@ const Dashboard = () => {
 
   const fetchInspections = async () => {
     try {
-      const response = await axios.get(`${API}/inspections`);
-      setInspections(response.data);
+      await initDB().catch(() => {});
+      const result = await inspectionsApi.list();
+      if (result.ok) {
+        setInspections(result.data);
+        return;
+      }
+      console.warn('API lista:', result.error);
+      const local = await getAllInspectionsLocally();
+      if (local.length) {
+        setInspections(local);
+        toast.info('Sem conexão com o servidor — mostrando dados salvos neste dispositivo.');
+      } else {
+        toast.error(result.error || 'Não foi possível carregar as vistorias.');
+      }
     } catch (error) {
       console.error('Erro ao carregar vistorias:', error);
+      toast.error('Erro ao carregar vistorias.');
     } finally {
       setLoading(false);
     }
@@ -43,9 +56,13 @@ const Dashboard = () => {
 
   const confirmDelete = async () => {
     try {
-      await axios.delete(`${API}/inspections/${deleteModal.inspectionId}`);
-      toast.success('Vistoria excluída com sucesso!');
-      fetchInspections();
+      const result = await inspectionsApi.remove(deleteModal.inspectionId);
+      if (result.ok) {
+        toast.success('Vistoria excluída com sucesso!');
+        fetchInspections();
+      } else {
+        toast.error(result.error || 'Erro ao excluir vistoria');
+      }
     } catch (error) {
       console.error('Erro ao excluir vistoria:', error);
       toast.error('Erro ao excluir vistoria');

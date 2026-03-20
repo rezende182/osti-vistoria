@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Home, ArrowRight } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
-import axios from 'axios';
 import { toast } from 'sonner';
-import { API_BASE as API } from '../config/api';
+import { inspectionsApi } from '../services/api';
+import {
+  saveInspectionLocally,
+  addToPendingSync,
+  initDB,
+} from '../utils/offlineStorage';
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
 const NewInspection = () => {
@@ -57,9 +61,37 @@ const NewInspection = () => {
     }
 
     try {
-      const response = await axios.post(`${API}/inspections`, formData);
-      toast.success('Vistoria criada com sucesso!');
-      navigate(`/inspection/${response.data.id}/checklist`);
+      await initDB().catch(() => {});
+      const result = await inspectionsApi.create(formData);
+      if (result.ok) {
+        toast.success('Vistoria criada com sucesso!');
+        navigate(`/inspection/${result.data.id}/checklist`);
+        return;
+      }
+
+      const id =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `local-${Date.now()}`;
+      const offlineInspection = {
+        id,
+        ...formData,
+        horario_termino: '',
+        rooms_checklist: [],
+        documentos_recebidos: formData.documentos_recebidos || [],
+        status: 'em_andamento',
+        created_at: new Date().toISOString(),
+      };
+      await saveInspectionLocally(offlineInspection);
+      await addToPendingSync({
+        type: 'CREATE_INSPECTION',
+        id,
+        payload: formData,
+      });
+      toast.warning(
+        `Servidor indisponível: ${result.error || 'erro'}. Rascunho guardado neste dispositivo.`
+      );
+      navigate(`/inspection/${id}/checklist`);
     } catch (error) {
       console.error('Erro ao criar vistoria:', error);
       toast.error('Erro ao criar vistoria');

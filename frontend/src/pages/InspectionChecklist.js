@@ -3,9 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Plus } from 'lucide-react';
 import RoomSelector from '../components/RoomSelector';
 import ChecklistItem from '../components/ChecklistItem';
-import axios from 'axios';
 import { toast } from 'sonner';
-import { API_BASE as API } from '../config/api';
+import { inspectionsApi } from '../services/api';
+import { loadInspectionWithFallback } from '../utils/inspectionLoader';
+import {
+  getInspectionLocally,
+  saveInspectionLocally,
+  initDB,
+} from '../utils/offlineStorage';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
@@ -133,17 +138,25 @@ const InspectionChecklist = () => {
 
   const loadInspection = async () => {
     try {
-      const response = await axios.get(`${API}/inspections/${id}`);
-      const inspection = response.data;
+      const res = await loadInspectionWithFallback(id);
+      if (!res.ok) {
+        toast.error(res.error || 'Erro ao carregar vistoria');
+        return;
+      }
+      if (res.fromLocal) {
+        toast.info('Sem servidor — a mostrar dados guardados neste dispositivo.');
+      }
+      const inspection = res.data;
+      const roomsChecklist = inspection.rooms_checklist || [];
 
-      if (inspection.rooms_checklist.length === 0) {
+      if (roomsChecklist.length === 0) {
         // Sem cômodos padrão - usuário adiciona
         setRoomsData([]);
         setRoomsList([]);
         setSelectedRoomId(null);
       } else {
-        setRoomsData(inspection.rooms_checklist);
-        const savedRooms = inspection.rooms_checklist.map((room) => ({
+        setRoomsData(roomsChecklist);
+        const savedRooms = roomsChecklist.map((room) => ({
           id: room.room_id,
           name: room.room_name,
           type: room.room_type || room.room_id
@@ -371,11 +384,28 @@ const InspectionChecklist = () => {
     }
 
     try {
-      await axios.put(`${API}/inspections/${id}`, {
-        rooms_checklist: roomsData
+      await initDB().catch(() => {});
+      const result = await inspectionsApi.update(id, {
+        rooms_checklist: roomsData,
       });
-      toast.success('Checklist salvo com sucesso!');
-      navigate(`/inspection/${id}/review`);
+      if (result.ok) {
+        toast.success('Checklist salvo com sucesso!');
+        navigate(`/inspection/${id}/review`);
+        return;
+      }
+      const local = await getInspectionLocally(id);
+      if (local) {
+        await saveInspectionLocally({
+          ...local,
+          rooms_checklist: roomsData,
+        });
+        toast.warning(
+          'Servidor indisponível — checklist guardado só neste dispositivo.'
+        );
+        navigate(`/inspection/${id}/review`);
+        return;
+      }
+      toast.error(result.error || 'Erro ao salvar checklist');
     } catch (error) {
       console.error('Erro ao salvar checklist:', error);
       toast.error('Erro ao salvar checklist');

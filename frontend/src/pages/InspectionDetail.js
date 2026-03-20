@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Home, Download, CheckCircle2, AlertCircle, Clock, Edit, FileText, XCircle, Share2, MessageCircle, Mail, Eye, X } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
-import axios from 'axios';
 import { toast } from 'sonner';
 import { generateInspectionPDF } from '../utils/pdfGenerator';
-import { API_BASE as API } from '../config/api';
+import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/fxky5xni_Design%20sem%20nome-Photoroom.png';
 
 const InspectionDetail = () => {
@@ -25,8 +24,15 @@ const InspectionDetail = () => {
 
   const loadInspection = async () => {
     try {
-      const response = await axios.get(`${API}/inspections/${id}`);
-      setInspection(response.data);
+      const res = await loadInspectionWithFallback(id);
+      if (!res.ok) {
+        toast.error(res.error || 'Erro ao carregar vistoria');
+        return;
+      }
+      if (res.fromLocal) {
+        toast.info('Sem servidor — a mostrar dados guardados neste dispositivo.');
+      }
+      setInspection(res.data);
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
       toast.error('Erro ao carregar vistoria');
