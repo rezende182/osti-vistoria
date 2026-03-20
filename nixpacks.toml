@@ -1,0 +1,5 @@
+# Evita deteção WSGI/Django (gunicorn your_application.wsgi). ASGI = Uvicorn.
+# https://nixpacks.com/docs/configuration/file
+
+[start]
+cmd = "cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*"

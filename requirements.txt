@@ -1,0 +1,2 @@
+# Dependências da API (FastAPI). Render: pip install -r requirements.txt na raiz do repo.
+-r backend/requirements.txt
