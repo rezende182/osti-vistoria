@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle, FileText } from 'lucide-react';
 import FAB from '../components/FAB';
 import ConfirmModal from '../components/ConfirmModal';
 import { toast } from 'sonner';
@@ -103,6 +103,7 @@ const Dashboard = () => {
     { id: 'aprovado', label: 'APROVADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'aprovado').length },
     { id: 'ressalvas', label: 'CONDICIONADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'ressalvas').length },
     { id: 'reprovado', label: 'REPROVADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'reprovado').length },
+    { id: 'outro', label: 'OUTROS', count: inspections.filter(i => getStatusInfo(i).tab === 'outro').length },
   ];
 
   return (

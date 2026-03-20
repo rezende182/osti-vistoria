@@ -208,7 +208,7 @@ export function drawResponsavelAssinaturaSection(
     topMarginMm: options.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM,
   };
 
-  const blockH = 12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 3 + 14;
+  const blockH = 12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 5 + 20;
   let y = ensureVerticalSpace(doc, yPos, blockH, pageOpts);
 
   const texto = String(localTexto || '').trim();
@@ -234,24 +234,25 @@ export function drawResponsavelAssinaturaSection(
   const nomeVal = nome && nome !== '-' ? nome : '—';
   const creaVal = creaStr && creaStr !== '-' ? creaStr : '—';
 
-  const yRow = y;
-  const labRt = 'RESPONSÁVEL TÉCNICO: ';
-
+  let cy = y;
   doc.setFont(PDF_FONT, 'bold');
-  doc.text(`CREA: ${creaVal}`, pageWidth - margin, yRow, { align: 'right' });
+  doc.text('RESPONSÁVEL TÉCNICO:', pageWidth / 2, cy, { align: 'center' });
+  cy += PDF_BODY_LINE_MM;
 
-  doc.setFont(PDF_FONT, 'bold');
-  doc.text(labRt, margin, yRow);
   doc.setFont(PDF_FONT, 'normal');
-  const labW = doc.getTextWidth(labRt);
-  const nameMaxW = contentWidth * 0.52 - labW;
-  const nameLines = doc.splitTextToSize(nomeVal, Math.max(24, nameMaxW));
-  doc.text(nameLines[0], margin + labW, yRow);
-  for (let i = 1; i < nameLines.length; i++) {
-    doc.text(nameLines[i], margin, yRow + i * PDF_BODY_LINE_MM);
-  }
+  const nameLines = doc.splitTextToSize(nomeVal, contentWidth * 0.88);
+  nameLines.forEach((line) => {
+    doc.text(line, pageWidth / 2, cy, { align: 'center' });
+    cy += PDF_BODY_LINE_MM;
+  });
 
-  y = yRow + PDF_BODY_LINE_MM * nameLines.length;
+  cy += 2;
+  doc.setFont(PDF_FONT, 'bold');
+  doc.text('CREA:', pageWidth / 2, cy, { align: 'center' });
+  cy += PDF_BODY_LINE_MM;
+  doc.setFont(PDF_FONT, 'normal');
+  doc.text(creaVal, pageWidth / 2, cy, { align: 'center' });
+  cy += PDF_BODY_LINE_MM;
 
-  return y + 6;
+  return cy + 6;
 }

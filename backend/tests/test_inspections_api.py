@@ -231,7 +231,7 @@ class TestInspectionValidation:
     
     def test_create_with_all_classification_types(self, api_client, test_inspection_data):
         """Test creating inspections with different classification types"""
-        classifications = ["aprovado", "aprovado_com_ressalvas", "reprovado"]
+        classifications = ["aprovado", "aprovado_com_ressalvas", "reprovado", "outro"]
         
         for classificacao in classifications:
             # Create

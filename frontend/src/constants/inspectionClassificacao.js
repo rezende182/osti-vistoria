@@ -20,6 +20,7 @@ export const CLASSIFICACAO_FINAL_LABELS = {
   aprovado: 'APTO AO RECEBIMENTO',
   aprovado_com_ressalvas: 'RECEBIMENTO CONDICIONADO',
   reprovado: 'REPROVADO',
+  outro: 'OUTRO (CLASSIFICAÇÃO PERSONALIZADA)',
 };
 
 /** Versões curtas para cartões e detalhe (abas do dashboard usam rótulos próprios) */
@@ -27,6 +28,7 @@ export const CLASSIFICACAO_BADGE_SHORT = {
   aprovado: 'APTO',
   aprovado_com_ressalvas: 'CONDICIONADO',
   reprovado: 'REPROVADO',
+  outro: 'OUTRO',
 };
 
 /** Textos automáticos legados (para detectar se a conclusão ainda é “padrão” e pode ser substituída) */

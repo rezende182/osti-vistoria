@@ -371,6 +371,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       case 'reprovado':
         bgColor = COLORS.red;
         break;
+      case 'outro':
+        bgColor = COLORS.gray;
+        darkOnYellow = true;
+        break;
       default:
         bgColor = COLORS.gray;
     }
@@ -388,10 +392,12 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   const textoConclusao =
-    inspection.conclusao ||
-    (inspection.classificacao_final
-      ? TEXTOS_CONCLUSAO[inspection.classificacao_final]
-      : null);
+    inspection.classificacao_final === 'outro'
+      ? (inspection.conclusao?.trim() ? inspection.conclusao : null)
+      : inspection.conclusao ||
+        (inspection.classificacao_final
+          ? TEXTOS_CONCLUSAO[inspection.classificacao_final]
+          : null);
 
   if (textoConclusao) {
     yPos += 4;
@@ -404,6 +410,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       checkNewPage
     );
   }
+
+  yPos += 1.5;
 
   // ============================================================
   // 5. ASSINATURA DO RESPONSÁVEL

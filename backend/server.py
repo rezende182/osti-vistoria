@@ -106,7 +106,7 @@ class InspectionUpdate(BaseModel):
 
     rooms_checklist: Optional[List[RoomChecklist]] = None
     classificacao_final: Optional[
-        Literal["aprovado", "aprovado_com_ressalvas", "reprovado"]
+        Literal["aprovado", "aprovado_com_ressalvas", "reprovado", "outro"]
     ] = None
     conclusao: Optional[str] = None
     assinatura: Optional[str] = None
@@ -138,7 +138,7 @@ class Inspection(BaseModel):
     documentos_recebidos: List[str] = []
     rooms_checklist: List[RoomChecklist] = []
     classificacao_final: Optional[
-        Literal["aprovado", "aprovado_com_ressalvas", "reprovado"]
+        Literal["aprovado", "aprovado_com_ressalvas", "reprovado", "outro"]
     ] = None
     conclusao: Optional[str] = None
     assinatura: Optional[str] = None

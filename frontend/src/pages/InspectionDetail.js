@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Home, Download, CheckCircle2, AlertCircle, Clock, Edit, FileText, XCircle, Share2, MessageCircle, Mail, Eye, X } from 'lucide-react';
+import { Home, Download, CheckCircle2, AlertCircle, Clock, Edit, FileText, XCircle, Share2, MessageCircle, Mail, Eye, X, Layers } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
 import { toast } from 'sonner';
 import { generateInspectionPDF } from '../utils/pdfGenerator';
@@ -50,6 +50,8 @@ const InspectionDetail = () => {
         return { icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50', label: CLASSIFICACAO_BADGE_SHORT.aprovado_com_ressalvas };
       } else if (inspection.classificacao_final === 'reprovado') {
         return { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', label: CLASSIFICACAO_BADGE_SHORT.reprovado };
+      } else if (inspection.classificacao_final === 'outro') {
+        return { icon: Layers, color: 'text-slate-600', bg: 'bg-slate-100', label: CLASSIFICACAO_BADGE_SHORT.outro };
       }
     }
     return { icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', label: 'EM ANDAMENTO' };

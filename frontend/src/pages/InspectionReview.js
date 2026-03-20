@@ -42,6 +42,7 @@ const CLASSIFICACAO_OPTIONS = [
   { value: 'aprovado', label: CLASSIFICACAO_FINAL_LABELS.aprovado, color: 'green' },
   { value: 'aprovado_com_ressalvas', label: CLASSIFICACAO_FINAL_LABELS.aprovado_com_ressalvas, color: 'yellow' },
   { value: 'reprovado', label: CLASSIFICACAO_FINAL_LABELS.reprovado, color: 'red' },
+  { value: 'outro', label: CLASSIFICACAO_FINAL_LABELS.outro, color: 'slate' },
 ];
 
 const InspectionReview = () => {
@@ -411,7 +412,11 @@ const InspectionReview = () => {
     else if (classificacao === 'aprovado_com_ressalvas') {
       badgeBg = [218, 165, 32];
       darkOnYellow = true;
-    } else if (classificacao === 'reprovado') badgeBg = [178, 34, 34];
+    }     else if (classificacao === 'reprovado') badgeBg = [178, 34, 34];
+    else if (classificacao === 'outro') {
+      badgeBg = [205, 205, 204];
+      darkOnYellow = true;
+    }
 
     yPos = drawClassificationBadge(
       doc,
@@ -424,17 +429,24 @@ const InspectionReview = () => {
     );
 
     // ============ CONCLUSÃO ============
-    if (conclusao) {
+    const textoCorpoPdf =
+      classificacao === 'outro'
+        ? (conclusao?.trim() ? conclusao : null)
+        : conclusao ||
+          (classificacao ? TEXTOS_CONCLUSAO[classificacao] : null);
+    if (textoCorpoPdf) {
       yPos += 4;
       yPos = drawBodyParagraphs(
         doc,
-        conclusao,
+        textoCorpoPdf,
         margin,
         contentWidth,
         yPos,
         checkNewPage
       );
     }
+
+    yPos += 1.5;
 
     checkNewPage(60);
     doc.setFontSize(12);
@@ -562,7 +574,9 @@ const InspectionReview = () => {
                   data-testid={`classificacao-${option.value}`}
                   onClick={() => {
                     setClassificacao(option.value);
-                    if (conclusaoPareceAutomatica(conclusao)) {
+                    if (option.value === 'outro') {
+                      if (conclusaoPareceAutomatica(conclusao)) setConclusao('');
+                    } else if (conclusaoPareceAutomatica(conclusao)) {
                       setConclusao(TEXTOS_CONCLUSAO[option.value]);
                     }
                   }}
@@ -572,7 +586,13 @@ const InspectionReview = () => {
                         ? 'bg-green-600 text-white'
                         : option.color === 'yellow'
                         ? 'bg-yellow-500 text-slate-900'
-                        : 'bg-red-600 text-white'
+                        : option.color === 'red'
+                        ? 'bg-red-600 text-white'
+                        : option.color === 'slate'
+                        ? 'bg-slate-500 text-white'
+                        : 'bg-slate-100 text-slate-600'
+                      : option.value === 'outro'
+                      ? 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -583,17 +603,33 @@ const InspectionReview = () => {
           </div>
 
           {/* Conclusão */}
-          <div className="mb-6">
+          <div
+            className={`mb-6 rounded-lg ${
+              classificacao === 'outro'
+                ? 'border-2 border-dashed border-slate-400 bg-slate-100 p-3'
+                : ''
+            }`}
+          >
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Conclusão / Observações Gerais
+              {classificacao === 'outro'
+                ? 'Conclusão (classificação personalizada) *'
+                : 'Conclusão / Observações Gerais'}
             </label>
             <textarea
               data-testid="conclusao-textarea"
               value={conclusao}
               onChange={(e) => setConclusao(e.target.value)}
-              placeholder="Digite suas observações finais sobre a vistoria..."
-              className="w-full p-4 border border-slate-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={5}
+              placeholder={
+                classificacao === 'outro'
+                  ? 'Descreva tecnicamente a classificação do imóvel e as condições observadas.'
+                  : 'Digite suas observações finais sobre a vistoria...'
+              }
+              className={`w-full p-4 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                classificacao === 'outro'
+                  ? 'border-2 border-dashed border-slate-400 bg-white'
+                  : 'border border-slate-300'
+              }`}
+              rows={classificacao === 'outro' ? 7 : 5}
             />
             <button
               type="button"
