@@ -96,7 +96,7 @@ const InspectionReview = () => {
       !String(classificacaoEscolhaRotulo).trim()
     ) {
       toast.error(
-        'Em ESCOLHA, preencha a classificação personalizada ou selecione “não quero nenhuma definição”.'
+        'Em Outra classificação, preencha a classificação personalizada ou selecione “não quero nenhuma definição”.'
       );
       return;
     }
@@ -657,7 +657,7 @@ const InspectionReview = () => {
           {classificacao === 'outro' && (
             <div className="mb-4">
               <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                ESCOLHA:
+                OUTRA CLASSIFICAÇÃO
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
@@ -673,9 +673,6 @@ const InspectionReview = () => {
                   }`}
                 >
                   Definir classificação personalizada
-                  <span className="mt-1 block text-xs font-normal text-slate-600">
-                    Define o texto em destaque no laudo (fundo cinza, como as demais opções).
-                  </span>
                 </button>
                 <button
                   type="button"
@@ -702,13 +699,13 @@ const InspectionReview = () => {
           {classificacao === 'outro' && !outroSomenteConclusao && (
             <div className="mb-4">
               <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                Classificação final do imóvel (aparece no laudo com fundo cinza) *
+                CLASSIFICAÇÃO FINAL PERSONALIZADA:
               </label>
               <textarea
                 data-testid="classificacao-escolha-rotulo"
                 value={classificacaoEscolhaRotulo}
                 onChange={(e) => setClassificacaoEscolhaRotulo(e.target.value)}
-                placeholder="Ex.: EM ANÁLISE — aguardando documentação complementar"
+                placeholder="Ex. Aprovado com Ressalvas"
                 className="w-full p-4 border-2 border-slate-400 bg-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 font-semibold"
                 rows={3}
               />

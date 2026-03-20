@@ -363,14 +363,12 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const rotuloEscolhaTrim = (inspection.classificacao_escolha_rotulo || '').trim();
   const outroSomente =
     cf === 'outro' && !!inspection.outro_somente_conclusao;
-  /** ESCOLHA: sem bloco se “só conclusão” ou sem rótulo personalizado preenchido */
+  /** Outra classificação: sem bloco se “só conclusão” ou sem rótulo personalizado preenchido */
   const hideClassificacaoBlock =
     cf === 'outro' && (outroSomente || !rotuloEscolhaTrim);
 
   if (!hideClassificacaoBlock) {
-    const subTitulo =
-      cf === 'outro' ? 'ESCOLHA:' : 'Classificação Final do Imóvel:';
-    doc.text(subTitulo, margin, yPos);
+    doc.text('Classificação Final do Imóvel:', margin, yPos);
     yPos += 8;
 
     if (cf) {
