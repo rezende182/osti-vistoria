@@ -26,7 +26,9 @@ import {
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
-const LEGAL_TEXT = "A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes. Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.";
+const LEGAL_TEXT =
+  'A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes.\n\n' +
+  'Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.';
 
 const CLASSIFICACAO_OPTIONS = [
   { value: 'aprovado', label: CLASSIFICACAO_FINAL_LABELS.aprovado, color: 'green' },
@@ -433,7 +435,11 @@ const InspectionReview = () => {
     }
 
     checkNewPage(60);
-    yPos = drawSignatureBlock(doc, margin, contentWidth, yPos, 42, checkNewPage);
+    yPos = drawSignatureBlock(doc, margin, contentWidth, yPos, checkNewPage, {
+      reservedHeightMm: 34,
+      responsavel: responsavelFinal || inspection?.responsavel_tecnico || '',
+      crea: creaFinal || inspection?.crea || '',
+    });
 
     // ============ TEXTO LEGAL ============
     yPos += 8;

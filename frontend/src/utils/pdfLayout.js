@@ -5,6 +5,8 @@
 export const PDF_FONT = 'helvetica';
 export const PDF_BODY_PT = 12;
 export const PDF_BODY_LINE_MM = 7.5;
+/** Espaço vertical entre parágrafos (após o último bloco de linhas de cada parágrafo) */
+export const PDF_PARAGRAPH_GAP_MM = 8;
 
 function justifyLine(doc, words, x, y, maxWidth) {
   if (words.length === 0) return;
@@ -41,11 +43,18 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
 
-  const blocks = String(text).split(/\n\n+/).filter((b) => b.trim());
+  const normalized = String(text)
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ');
+  // Um ou mais parágrafos: quebra dupla (com ou sem espaços entre as linhas)
+  const blocks = normalized
+    .split(/\n\s*\n+/)
+    .map((b) => b.trim())
+    .filter(Boolean);
   let y = yStart;
 
-  for (const block of blocks) {
-    const lines = doc.splitTextToSize(block.trim(), contentWidth);
+  blocks.forEach((block, blockIdx) => {
+    const lines = doc.splitTextToSize(block, contentWidth);
     lines.forEach((line, lineIdx) => {
       checkNewPage(PDF_BODY_LINE_MM + 1);
       const words = line.trim().split(/\s+/).filter(Boolean);
@@ -57,8 +66,10 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
       }
       y += PDF_BODY_LINE_MM;
     });
-    y += 4;
-  }
+    if (blockIdx < blocks.length - 1) {
+      y += PDF_PARAGRAPH_GAP_MM;
+    }
+  });
 
   return y;
 }
@@ -109,24 +120,49 @@ export function drawClassificationBadge(
 }
 
 /**
- * ASSINATURA: + área vazia para assinatura digital.
+ * Assinatura digital: layout anterior (rótulo, faixa livre para imagem, linha, nome e CREA), sem texto gov.br.
  */
 export function drawSignatureBlock(
   doc,
   margin,
   contentWidth,
   yPos,
-  reservedHeightMm,
-  checkNewPage
+  checkNewPage,
+  options = {}
 ) {
-  checkNewPage(reservedHeightMm + 24);
+  const {
+    reservedHeightMm = 34,
+    responsavel = '',
+    crea = '',
+  } = options;
+
+  checkNewPage(reservedHeightMm + 36);
+
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
-  doc.text('ASSINATURA:', margin, yPos);
-  const y = yPos + 8;
-  doc.setDrawColor(210, 210, 210);
-  doc.setLineWidth(0.35);
-  doc.rect(margin, y, contentWidth, reservedHeightMm);
-  return y + reservedHeightMm + 12;
+  doc.text('Assinatura digital:', margin, yPos);
+
+  let y = yPos + 10 + reservedHeightMm;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  const lineWidth = Math.min(120, contentWidth);
+  doc.line(margin, y, margin + lineWidth, y);
+  y += 8;
+
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  const nome = String(responsavel || '').trim();
+  const creaStr = String(crea || '').trim();
+  if (nome && nome !== '-') {
+    doc.text(nome, margin, y);
+    y += PDF_BODY_LINE_MM;
+  }
+  if (creaStr && creaStr !== '-') {
+    doc.text(`CREA: ${creaStr}`, margin, y);
+    y += PDF_BODY_LINE_MM;
+  }
+
+  return y + 6;
 }
