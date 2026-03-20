@@ -1,11 +1,14 @@
 /**
  * Layout comum dos PDFs (Helvetica ≈ Arial no PDF embutido).
- * Corpo 12 pt; entre linhas ~1,5× altura do corpo + 1,5 mm.
+ * Corpo 12 pt; entre linhas ~1,5 (≈ 7,5 mm com fonte 12).
+ * drawBodyParagraphs: textos corridos (conclusão, legais, observações) — não usar em títulos/tabelas.
  */
 export const PDF_FONT = 'helvetica';
 export const PDF_BODY_PT = 12;
 export const PDF_BODY_LINE_MM = 7.5;
-/** Espaço vertical entre parágrafos (após o último bloco de linhas de cada parágrafo) */
+/** Recuo de primeira linha (~1,25 cm) em parágrafos de corpo */
+export const PDF_BODY_FIRST_LINE_INDENT_MM = 12.5;
+/** Espaço vertical entre parágrafos */
 export const PDF_PARAGRAPH_GAP_MM = 8;
 
 function justifyLine(doc, words, x, y, maxWidth) {
@@ -33,11 +36,48 @@ function justifyLine(doc, words, x, y, maxWidth) {
   });
 }
 
+/** Primeira linha do parágrafo com largura reduzida (recuo); demais palavras voltam à margem. */
+function takeFirstLineWords(doc, words, maxW) {
+  let line = '';
+  let i = 0;
+  while (i < words.length) {
+    const test = line ? `${line} ${words[i]}` : words[i];
+    if (doc.getTextWidth(test) <= maxW) {
+      line = test;
+      i++;
+    } else {
+      if (!line) {
+        line = words[i];
+        i++;
+      }
+      break;
+    }
+  }
+  return { line, rest: words.slice(i) };
+}
+
+function buildParagraphVisualLines(doc, block, contentWidth, indentMm) {
+  const trimmed = block.trim();
+  if (!trimmed) return [];
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  const firstMaxW = contentWidth - indentMm;
+  const { line: L1, rest } = takeFirstLineWords(doc, words, firstMaxW);
+  const lines = [{ text: L1, xOffset: indentMm, maxW: firstMaxW }];
+  if (rest.length === 0) return lines;
+  const restStr = rest.join(' ');
+  const more = doc.splitTextToSize(restStr, contentWidth);
+  more.forEach((ln) => lines.push({ text: ln, xOffset: 0, maxW: contentWidth }));
+  return lines;
+}
+
 /**
- * Parágrafos de corpo: 12 pt, linhas justificadas (última linha do bloco alinhada à esquerda).
+ * Parágrafos de corpo: 12 pt, justificado, recuo 1ª linha, \\n = novo parágrafo.
+ * Não usar para títulos ou células de tabela (só texto corrido).
  */
-export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, checkNewPage) {
+export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, checkNewPage, options = {}) {
   if (!text || !String(text).trim()) return yStart;
+
+  const firstLineIndentMm = options.firstLineIndentMm ?? PDF_BODY_FIRST_LINE_INDENT_MM;
 
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
@@ -46,23 +86,24 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
   const normalized = String(text)
     .replace(/\r\n/g, '\n')
     .replace(/\u00a0/g, ' ');
-  // Um ou mais parágrafos: quebra dupla (com ou sem espaços entre as linhas)
   const blocks = normalized
-    .split(/\n\s*\n+/)
+    .split(/\n/)
     .map((b) => b.trim())
     .filter(Boolean);
+
   let y = yStart;
 
   blocks.forEach((block, blockIdx) => {
-    const lines = doc.splitTextToSize(block, contentWidth);
-    lines.forEach((line, lineIdx) => {
+    const paraLines = buildParagraphVisualLines(doc, block, contentWidth, firstLineIndentMm);
+    paraLines.forEach((pl, lineIdx) => {
       checkNewPage(PDF_BODY_LINE_MM + 1);
-      const words = line.trim().split(/\s+/).filter(Boolean);
-      const isLast = lineIdx === lines.length - 1;
+      const x = margin + pl.xOffset;
+      const words = pl.text.trim().split(/\s+/).filter(Boolean);
+      const isLast = lineIdx === paraLines.length - 1;
       if (words.length > 1 && !isLast) {
-        justifyLine(doc, words, margin, y, contentWidth);
+        justifyLine(doc, words, x, y, pl.maxW);
       } else {
-        doc.text(line, margin, y);
+        doc.text(pl.text, x, y);
       }
       y += PDF_BODY_LINE_MM;
     });
@@ -120,47 +161,54 @@ export function drawClassificationBadge(
 }
 
 /**
- * Assinatura digital: layout anterior (rótulo, faixa livre para imagem, linha, nome e CREA), sem texto gov.br.
+ * Secção 5: data à direita (texto livre), espaço para assinatura, linha centralizada, nome e CREA centralizados.
  */
-export function drawSignatureBlock(
+export function drawResponsavelAssinaturaSection(
   doc,
   margin,
+  pageWidth,
   contentWidth,
   yPos,
   checkNewPage,
   options = {}
 ) {
   const {
-    reservedHeightMm = 34,
+    localTexto = '',
     responsavel = '',
     crea = '',
+    signatureAreaMm = 30,
   } = options;
 
-  checkNewPage(reservedHeightMm + 36);
+  checkNewPage(signatureAreaMm + 48);
 
-  doc.setFont(PDF_FONT, 'bold');
+  const texto = String(localTexto || '').trim();
+  doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
-  doc.text('Assinatura digital:', margin, yPos);
+  if (texto) {
+    doc.text(texto, pageWidth - margin, yPos, { align: 'right' });
+  }
+  let y = yPos + (texto ? 12 : 4);
 
-  let y = yPos + 10 + reservedHeightMm;
+  y += signatureAreaMm;
 
+  const lineW = Math.min(110, contentWidth);
+  const lineX = margin + (contentWidth - lineW) / 2;
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.5);
-  const lineWidth = Math.min(120, contentWidth);
-  doc.line(margin, y, margin + lineWidth, y);
-  y += 8;
+  doc.line(lineX, y, lineX + lineW, y);
+  y += 10;
 
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   const nome = String(responsavel || '').trim();
   const creaStr = String(crea || '').trim();
   if (nome && nome !== '-') {
-    doc.text(nome, margin, y);
+    doc.text(nome, pageWidth / 2, y, { align: 'center' });
     y += PDF_BODY_LINE_MM;
   }
   if (creaStr && creaStr !== '-') {
-    doc.text(`CREA: ${creaStr}`, margin, y);
+    doc.text(`CREA: ${creaStr}`, pageWidth / 2, y, { align: 'center' });
     y += PDF_BODY_LINE_MM;
   }
 

@@ -21,7 +21,7 @@ import {
 import {
   drawBodyParagraphs,
   drawClassificationBadge,
-  drawSignatureBlock,
+  drawResponsavelAssinaturaSection,
 } from '../utils/pdfLayout';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
@@ -46,6 +46,7 @@ const InspectionReview = () => {
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
   const [dataFinal, setDataFinal] = useState(new Date().toISOString().split('T')[0]);
+  const [localAssinaturaResponsavel, setLocalAssinaturaResponsavel] = useState('');
   const [horarioTermino, setHorarioTermino] = useState('');
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlob, setPdfBlob] = useState(null);
@@ -68,6 +69,7 @@ const InspectionReview = () => {
       setResponsavelFinal(data.responsavel_final || data.responsavel_tecnico || '');
       setCreaFinal(data.crea_final || data.crea || '');
       setDataFinal(data.data_final || new Date().toISOString().split('T')[0]);
+      setLocalAssinaturaResponsavel(data.local_assinatura_responsavel || '');
       setHorarioTermino(data.horario_termino || '');
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
@@ -96,6 +98,7 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
         data_final: dataFinal,
+        local_assinatura_responsavel: localAssinaturaResponsavel,
         horario_termino: horarioTermino,
       };
       const result = await inspectionsApi.update(id, payload);
@@ -142,6 +145,7 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal || '',
         crea_final: creaFinal || '',
         data_final: dataFinal || '',
+        local_assinatura_responsavel: localAssinaturaResponsavel || '',
         horario_termino: horarioTermino || '',
       });
       if (!result.ok) {
@@ -155,6 +159,7 @@ const InspectionReview = () => {
             responsavel_final: responsavelFinal || '',
             crea_final: creaFinal || '',
             data_final: dataFinal || '',
+            local_assinatura_responsavel: localAssinaturaResponsavel || '',
             horario_termino: horarioTermino || '',
           });
           await enqueueSyncOperation({
@@ -167,6 +172,7 @@ const InspectionReview = () => {
               responsavel_final: responsavelFinal || '',
               crea_final: creaFinal || '',
               data_final: dataFinal || '',
+              local_assinatura_responsavel: localAssinaturaResponsavel || '',
               horario_termino: horarioTermino || '',
             },
             dedupKey: `PUT:/inspections/${id}:review_partial`,
@@ -435,11 +441,26 @@ const InspectionReview = () => {
     }
 
     checkNewPage(60);
-    yPos = drawSignatureBlock(doc, margin, contentWidth, yPos, checkNewPage, {
-      reservedHeightMm: 34,
-      responsavel: responsavelFinal || inspection?.responsavel_tecnico || '',
-      crea: creaFinal || inspection?.crea || '',
-    });
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 51, 102);
+    doc.text('ASSINATURA DO RESPONSÁVEL', margin, yPos);
+    yPos += 12;
+    doc.setTextColor(51, 51, 51);
+    yPos = drawResponsavelAssinaturaSection(
+      doc,
+      margin,
+      pageWidth,
+      contentWidth,
+      yPos,
+      checkNewPage,
+      {
+        localTexto: localAssinaturaResponsavel || inspection?.local_assinatura_responsavel || '',
+        responsavel: responsavelFinal || inspection?.responsavel_tecnico || '',
+        crea: creaFinal || inspection?.crea || '',
+        signatureAreaMm: 32,
+      }
+    );
 
     // ============ TEXTO LEGAL ============
     yPos += 8;
@@ -631,6 +652,24 @@ const InspectionReview = () => {
             />
           </div>
 
+          {/* Local e data por extenso (canto direito do PDF — secção assinatura) */}
+          <div className="mb-4">
+            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+              Local e data por extenso (ass. do responsável no PDF)
+            </label>
+            <input
+              data-testid="local-assinatura-input"
+              type="text"
+              value={localAssinaturaResponsavel}
+              onChange={(e) => setLocalAssinaturaResponsavel(e.target.value)}
+              placeholder="Ex.: São Paulo, 19 de março de 2026"
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Aparece alinhado à direita acima do espaço de assinatura no relatório.
+            </p>
+          </div>
+
           {/* Horários */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
@@ -658,7 +697,7 @@ const InspectionReview = () => {
           </div>
 
           <p className="mb-6 text-xs text-slate-500">
-            A assinatura no relatório será feita digitalmente pelo <strong>gov.br</strong> (não é necessário desenhar aqui).
+            No PDF há espaço reservado para assinatura digital ou imagem; preencha acima o local e a data por extenso como devem sair no documento.
           </p>
 
           {/* Buttons */}

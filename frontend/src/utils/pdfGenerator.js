@@ -7,7 +7,7 @@ import {
 import {
   drawBodyParagraphs,
   drawClassificationBadge,
-  drawSignatureBlock,
+  drawResponsavelAssinaturaSection,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
 } from './pdfLayout';
@@ -402,44 +402,32 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   // ============================================================
-  // 5. RESPONSÁVEL TÉCNICO
+  // 5. ASSINATURA DO RESPONSÁVEL
   // ============================================================
   checkNewPage(80);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text('5. RESPONSÁVEL TÉCNICO', margin, yPos);
-  yPos += 10;
+  doc.text('5. ASSINATURA DO RESPONSÁVEL', margin, yPos);
+  yPos += 12;
 
   const responsavel = inspection.responsavel_final || inspection.responsavel_tecnico || '-';
   const crea = inspection.crea_final || inspection.crea || '-';
-  const dataFinal = inspection.data_final ? formatDate(inspection.data_final) : formatDate(inspection.data);
+  const localAssinatura = inspection.local_assinatura_responsavel || '';
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(PDF_BODY_PT);
-  
-  doc.text(`Responsável: ${responsavel}`, margin, yPos);
-  yPos += PDF_BODY_LINE_MM;
-  doc.text(`CREA: ${crea}`, margin, yPos);
-  yPos += PDF_BODY_LINE_MM;
-  doc.text(`Data: ${dataFinal}`, margin, yPos);
-  yPos += PDF_BODY_LINE_MM;
-  
-  if (inspection.horario_inicio) {
-    doc.text(`Horário de Início: ${inspection.horario_inicio}`, margin, yPos);
-    yPos += PDF_BODY_LINE_MM;
-  }
-  if (inspection.horario_termino) {
-    doc.text(`Horário de Término: ${inspection.horario_termino}`, margin, yPos);
-    yPos += PDF_BODY_LINE_MM;
-  }
-
-  yPos += 8;
-
-  yPos = drawSignatureBlock(doc, margin, contentWidth, yPos, checkNewPage, {
-    reservedHeightMm: 34,
-    responsavel,
-    crea,
-  });
+  yPos = drawResponsavelAssinaturaSection(
+    doc,
+    margin,
+    pageWidth,
+    contentWidth,
+    yPos,
+    checkNewPage,
+    {
+      localTexto: localAssinatura,
+      responsavel,
+      crea,
+      signatureAreaMm: 32,
+    }
+  );
 
   // ============================================================
   // 6. OBSERVAÇÕES LEGAIS
