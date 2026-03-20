@@ -4,25 +4,35 @@ Monorepo com **backend** (FastAPI + MongoDB) e **frontend** (React + Electron).
 
 ## Git e GitHub
 
-Repositório já inicializado na pasta do projeto (`main`).
+Repositório inicializado na branch `main`.
 
-1. **Autenticar no GitHub (CLI)** — num terminal na pasta do projeto:
-   ```bash
-   gh auth login
+### Enviar tudo para o GitHub (recomendado)
+
+1. Autenticar **uma vez** (browser):
+   ```powershell
+   gh auth login -h github.com -p https -w
    ```
-   Escolha *GitHub.com* → *HTTPS* → autenticação por browser.
-
-2. **Criar o repositório remoto e enviar o código**:
-   ```bash
-   gh repo create NOME-DO-REPO --public --source=. --remote=origin --push
+2. Na pasta do projeto, executar:
+   ```powershell
+   .\push-github.bat
    ```
-   Substitua `NOME-DO-REPO` pelo nome desejado (ex.: `osti-vistoria`).
+   ou:
+   ```powershell
+   .\scripts\github-connect-and-push.ps1
+   ```
+   Por defeito o repositório remoto chama-se `osti-vistoria`. Para outro nome:
+   ```powershell
+   $env:GITHUB_REPO = "meu-nome-repo"; .\scripts\github-connect-and-push.ps1
+   ```
 
-**Sem a CLI:** crie um repositório vazio em [github.com/new](https://github.com/new), depois:
-```bash
-git remote add origin https://github.com/SEU-USUARIO/NOME-DO-REPO.git
-git push -u origin main
+**Com Personal Access Token (sem browser):** crie um [classic PAT](https://github.com/settings/tokens) com scope `repo`, depois:
+```powershell
+$env:GITHUB_TOKEN = "ghp_xxxxxxxx"
+echo $env:GITHUB_TOKEN | gh auth login --hostname github.com --with-token
+.\scripts\github-connect-and-push.ps1
 ```
+
+**Manual:** repositório vazio em [github.com/new](https://github.com/new), depois `git remote add origin …` e `git push -u origin main`.
 
 ### Ajustar autor dos commits (recomendado)
 
