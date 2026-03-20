@@ -1,8 +1,5 @@
-# Conecta o projeto ao GitHub e faz push da branch main.
-# Pré-requisito (um dos dois):
-#   1) gh auth login
-#   2) $env:GITHUB_TOKEN = "ghp_..."  (classic PAT com repo) e depois:
-#        echo $env:GITHUB_TOKEN | gh auth login --hostname github.com --with-token
+# Connects project to GitHub and pushes branch main.
+# Prerequisite: gh auth login   OR   GITHUB_TOKEN + gh auth login --with-token
 
 $ErrorActionPreference = "Stop"
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
@@ -13,14 +10,13 @@ Set-Location -LiteralPath $RepoRoot
 
 $RepoName = if ($env:GITHUB_REPO) { $env:GITHUB_REPO } else { "osti-vistoria" }
 
-# Autenticação
 $authOk = $false
 gh auth status 2>$null | Out-Null
 if ($LASTEXITCODE -eq 0) {
     $authOk = $true
 }
 elseif ($env:GITHUB_TOKEN) {
-    Write-Host "A usar GITHUB_TOKEN para autenticar o gh..."
+    Write-Host "Using GITHUB_TOKEN for gh auth..."
     $env:GITHUB_TOKEN | gh auth login --hostname github.com --with-token 2>$null
     gh auth status 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) { $authOk = $true }
@@ -28,15 +24,15 @@ elseif ($env:GITHUB_TOKEN) {
 
 if (-not $authOk) {
     Write-Host ""
-    Write-Host "=== GitHub: ainda não autenticado ===" -ForegroundColor Yellow
-    Write-Host "Opção A — browser (recomendado):"
+    Write-Host "=== GitHub: not logged in ===" -ForegroundColor Yellow
+    Write-Host "Option A (browser):"
     Write-Host "  gh auth login -h github.com -p https -w"
     Write-Host ""
-    Write-Host "Opção B — token (classic PAT com scope 'repo'):"
-    Write-Host '  $env:GITHUB_TOKEN = "ghp_xxxxxxxx"  # PowerShell'
+    Write-Host "Option B (classic PAT with repo scope):"
+    Write-Host '  $env:GITHUB_TOKEN = "ghp_xxxxxxxx"'
     Write-Host '  echo $env:GITHUB_TOKEN | gh auth login --hostname github.com --with-token'
     Write-Host ""
-    Write-Host "Depois execute de novo:"
+    Write-Host "Then run again:"
     Write-Host "  .\scripts\github-connect-and-push.ps1"
     Write-Host ""
     exit 1
@@ -44,7 +40,7 @@ if (-not $authOk) {
 
 $login = (gh api user -q .login).Trim()
 if (-not $login) {
-    Write-Error "Não foi possível obter o utilizador GitHub (gh api user)."
+    Write-Error "Could not get GitHub user (gh api user)."
 }
 
 $fullName = "$login/$RepoName"
@@ -56,10 +52,10 @@ git branch -M main
 git remote remove origin 2>$null
 
 if (-not $exists) {
-    Write-Host "A criar repositório público $fullName e a fazer push..."
-    gh repo create $RepoName --public --description "OSTI — Vistoria de imóvel (FastAPI + React)" --source=. --remote=origin --push
+    Write-Host "Creating public repo $fullName and pushing..."
+    gh repo create $RepoName --public --description "OSTI vistoria - FastAPI + React" --source=. --remote=origin --push
 } else {
-    Write-Host "Repositório remoto já existe; a atualizar origin e push..."
+    Write-Host "Remote repo exists; setting origin and push..."
     git remote remove origin 2>$null
     $remoteUrl = "https://github.com/$fullName.git"
     git remote add origin $remoteUrl
@@ -68,4 +64,4 @@ if (-not $exists) {
 }
 
 Write-Host ""
-Write-Host "Concluído: https://github.com/$fullName" -ForegroundColor Green
+Write-Host "Done: https://github.com/$fullName" -ForegroundColor Green
