@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Edit, Share2, X, MessageCircle, Mail } from 'lucide-react';
 import SignaturePad from '../components/SignaturePad';
@@ -11,6 +11,7 @@ import {
   getInspectionLocally,
   saveInspectionLocally,
   initDB,
+  enqueueSyncOperation,
 } from '../utils/offlineStorage';
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
@@ -53,11 +54,7 @@ const InspectionReview = () => {
   const [pdfBlob, setPdfBlob] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  useEffect(() => {
-    loadInspection();
-  }, [id]);
-
-  const loadInspection = async () => {
+  const loadInspection = useCallback(async () => {
     try {
       const res = await loadInspectionWithFallback(id);
       if (!res.ok) {
@@ -82,7 +79,11 @@ const InspectionReview = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    loadInspection();
+  }, [loadInspection]);
 
   const handleFinalize = async () => {
     if (!classificacao) {
@@ -118,6 +119,13 @@ const InspectionReview = () => {
           ...local,
           ...payload,
           status: 'concluida',
+        });
+        await enqueueSyncOperation({
+          method: 'PUT',
+          path: `/inspections/${id}`,
+          payload: { ...payload, status: 'concluida' },
+          dedupKey: `PUT:/inspections/${id}:finalize`,
+          inspectionId: id,
         });
         toast.warning(
           'Servidor indisponível — finalização guardada só neste dispositivo.'
@@ -157,6 +165,21 @@ const InspectionReview = () => {
             crea_final: creaFinal || '',
             data_final: dataFinal || '',
             horario_termino: horarioTermino || '',
+          });
+          await enqueueSyncOperation({
+            method: 'PUT',
+            path: `/inspections/${id}`,
+            payload: {
+              classificacao_final: classificacao || null,
+              conclusao: conclusao || '',
+              assinatura: assinatura || '',
+              responsavel_final: responsavelFinal || '',
+              crea_final: creaFinal || '',
+              data_final: dataFinal || '',
+              horario_termino: horarioTermino || '',
+            },
+            dedupKey: `PUT:/inspections/${id}:review_partial`,
+            inspectionId: id,
           });
         }
       }

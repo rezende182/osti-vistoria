@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import FAB from '../components/FAB';
@@ -17,11 +17,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, inspectionId: null, inspectionName: '' });
 
-  useEffect(() => {
-    fetchInspections();
-  }, []);
-
-  const fetchInspections = async () => {
+  const fetchInspections = useCallback(async () => {
     try {
       await initDB().catch(() => {});
       const result = await inspectionsApi.list();
@@ -43,7 +39,11 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchInspections();
+  }, [fetchInspections]);
 
   const openDeleteModal = (e, id, name) => {
     e.stopPropagation();

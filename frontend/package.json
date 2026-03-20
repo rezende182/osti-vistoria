@@ -65,6 +65,8 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
+    "ci:build": "cross-env CI=true npm run build",
+    "lint": "eslint \"src/**/*.{js,jsx}\" --max-warnings 0",
     "test": "craco test",
     "electron": "electron .",
     "desktop": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on -t 120000 http://127.0.0.1:3000 && cross-env ELECTRON_IS_DEV=1 electron .\"",

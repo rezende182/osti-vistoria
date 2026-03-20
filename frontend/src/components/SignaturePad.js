@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { RotateCcw } from 'lucide-react';
 

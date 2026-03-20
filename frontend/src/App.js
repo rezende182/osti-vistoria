@@ -1,4 +1,5 @@
 import "@/index.css";
+import { useEffect } from 'react';
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from '@/components/ui/sonner';
 import Dashboard from './pages/Dashboard';
@@ -8,12 +9,19 @@ import InspectionChecklist from './pages/InspectionChecklist';
 import InspectionReview from './pages/InspectionReview';
 import InspectionDetail from './pages/InspectionDetail';
 import OfflineIndicator from './components/OfflineIndicator';
+import SyncIdListener from './components/SyncIdListener';
+import { startSyncManager } from './services/syncManager';
 
 function App() {
+  useEffect(() => {
+    return startSyncManager();
+  }, []);
+
   return (
     <div className="App">
       <OfflineIndicator />
       <HashRouter>
+        <SyncIdListener />
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/new-inspection" element={<NewInspection />} />

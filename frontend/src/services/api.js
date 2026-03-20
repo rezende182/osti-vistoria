@@ -14,6 +14,9 @@ const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+/** Cliente axios base (usado pelo syncManager) */
+export const apiClient = client;
+
 /** Mensagem legível a partir de erro Axios ou rede */
 export function getErrorMessage(error) {
   if (!error) return 'Erro desconhecido.';

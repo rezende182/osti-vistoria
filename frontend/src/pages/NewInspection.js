@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { inspectionsApi } from '../services/api';
 import {
   saveInspectionLocally,
-  addToPendingSync,
+  enqueueSyncOperation,
   initDB,
 } from '../utils/offlineStorage';
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
@@ -83,10 +83,12 @@ const NewInspection = () => {
         created_at: new Date().toISOString(),
       };
       await saveInspectionLocally(offlineInspection);
-      await addToPendingSync({
-        type: 'CREATE_INSPECTION',
-        id,
+      await enqueueSyncOperation({
+        method: 'POST',
+        path: '/inspections',
         payload: formData,
+        dedupKey: `POST:/inspections:local:${id}`,
+        localInspectionId: id,
       });
       toast.warning(
         `Servidor indisponível: ${result.error || 'erro'}. Rascunho guardado neste dispositivo.`

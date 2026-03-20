@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Plus } from 'lucide-react';
 import RoomSelector from '../components/RoomSelector';
@@ -10,6 +10,7 @@ import {
   getInspectionLocally,
   saveInspectionLocally,
   initDB,
+  enqueueSyncOperation,
 } from '../utils/offlineStorage';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
@@ -132,11 +133,7 @@ const InspectionChecklist = () => {
   const [showAddRoom, setShowAddRoom] = useState(false);
   const contentRef = useRef(null);
 
-  useEffect(() => {
-    loadInspection();
-  }, [id]);
-
-  const loadInspection = async () => {
+  const loadInspection = useCallback(async () => {
     try {
       const res = await loadInspectionWithFallback(id);
       if (!res.ok) {
@@ -172,7 +169,11 @@ const InspectionChecklist = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    loadInspection();
+  }, [loadInspection]);
 
   // Função para renumerar TODAS as fotos globalmente
   // Ordem: cômodos da esquerda para direita (ordem das abas), itens de cima para baixo
@@ -398,6 +399,13 @@ const InspectionChecklist = () => {
         await saveInspectionLocally({
           ...local,
           rooms_checklist: roomsData,
+        });
+        await enqueueSyncOperation({
+          method: 'PUT',
+          path: `/inspections/${id}`,
+          payload: { rooms_checklist: roomsData },
+          dedupKey: `PUT:/inspections/${id}:checklist`,
+          inspectionId: id,
         });
         toast.warning(
           'Servidor indisponível — checklist guardado só neste dispositivo.'

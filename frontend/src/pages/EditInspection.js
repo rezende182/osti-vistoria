@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Home, ArrowRight } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
@@ -36,11 +36,7 @@ const EditInspection = () => {
     'Chaves da unidade'
   ];
 
-  useEffect(() => {
-    loadInspection();
-  }, [id]);
-
-  const loadInspection = async () => {
+  const loadInspection = useCallback(async () => {
     try {
       const res = await loadInspectionWithFallback(id);
       if (!res.ok) {
@@ -71,7 +67,11 @@ const EditInspection = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    loadInspection();
+  }, [loadInspection]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
