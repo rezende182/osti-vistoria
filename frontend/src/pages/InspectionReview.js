@@ -27,13 +27,6 @@ import { formatPdfAssinaturaDataLine } from '../utils/pdfAssinaturaFormat';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
-function formatIdentificacaoDate(iso) {
-  if (!iso) return '—';
-  const p = String(iso).split('-');
-  if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
-  return String(iso);
-}
-
 const LEGAL_TEXT =
   'A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes.\n\n' +
   'Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.';
@@ -391,42 +384,53 @@ const InspectionReview = () => {
       }
     }
 
-    // ============ CLASSIFICAÇÃO FINAL ============
+    // ============ CLASSIFICAÇÃO FINAL / CONCLUSÃO (pré-visualização) ============
     doc.addPage();
     yPos = 20;
 
-    doc.setFillColor(0, 51, 102);
-    doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(255, 255, 255);
-    doc.text('CLASSIFICAÇÃO FINAL', margin + 5, yPos + 2);
-    yPos += 20;
+    const outroSemTextoPreview =
+      classificacao === 'outro' && !String(conclusao || '').trim();
 
-    const classificacaoText =
-      CLASSIFICACAO_FINAL_LABELS[classificacao] || 'CLASSIFICAÇÃO PENDENTE';
+    if (!outroSemTextoPreview) {
+      doc.setFillColor(0, 51, 102);
+      doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text('CLASSIFICAÇÃO FINAL', margin + 5, yPos + 2);
+      yPos += 20;
 
-    let badgeBg = [205, 205, 204];
-    let darkOnYellow = false;
-    if (classificacao === 'aprovado') badgeBg = [34, 139, 34];
-    else if (classificacao === 'aprovado_com_ressalvas') {
-      badgeBg = [218, 165, 32];
-      darkOnYellow = true;
-    }     else if (classificacao === 'reprovado') badgeBg = [178, 34, 34];
-    else if (classificacao === 'outro') {
-      badgeBg = [205, 205, 204];
-      darkOnYellow = true;
+      const classificacaoText =
+        CLASSIFICACAO_FINAL_LABELS[classificacao] || 'CLASSIFICAÇÃO PENDENTE';
+
+      let badgeBg = [205, 205, 204];
+      let darkOnYellow = false;
+      if (classificacao === 'aprovado') badgeBg = [34, 139, 34];
+      else if (classificacao === 'aprovado_com_ressalvas') {
+        badgeBg = [218, 165, 32];
+        darkOnYellow = true;
+      } else if (classificacao === 'reprovado') badgeBg = [178, 34, 34];
+      else if (classificacao === 'outro') {
+        badgeBg = [205, 205, 204];
+        darkOnYellow = true;
+      }
+
+      yPos = drawClassificationBadge(
+        doc,
+        classificacaoText,
+        margin,
+        contentWidth,
+        yPos,
+        badgeBg,
+        darkOnYellow
+      );
+    } else {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(0, 51, 102);
+      doc.text('CONCLUSÃO', margin, yPos);
+      yPos += 14;
     }
-
-    yPos = drawClassificationBadge(
-      doc,
-      classificacaoText,
-      margin,
-      contentWidth,
-      yPos,
-      badgeBg,
-      darkOnYellow
-    );
 
     // ============ CONCLUSÃO ============
     const textoCorpoPdf =
@@ -612,16 +616,22 @@ const InspectionReview = () => {
           >
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
               {classificacao === 'outro'
-                ? 'Conclusão (classificação personalizada) *'
+                ? 'Conclusão (opcional — personaliza o selo OUTRO no laudo)'
                 : 'Conclusão / Observações Gerais'}
             </label>
+            {classificacao === 'outro' && (
+              <p className="text-xs text-slate-600 mb-2 leading-relaxed">
+                Se preencher, o laudo exibe o selo OUTRO e este texto. Se deixar em branco, o laudo mostra
+                apenas a secção de conclusão, sem selo de classificação personalizada.
+              </p>
+            )}
             <textarea
               data-testid="conclusao-textarea"
               value={conclusao}
               onChange={(e) => setConclusao(e.target.value)}
               placeholder={
                 classificacao === 'outro'
-                  ? 'Descreva tecnicamente a classificação do imóvel e as condições observadas.'
+                  ? 'Opcional: descreva tecnicamente a classificação e as condições observadas (ou deixe em branco).'
                   : 'Digite suas observações finais sobre a vistoria...'
               }
               className={`w-full p-4 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -671,20 +681,6 @@ const InspectionReview = () => {
               value={creaFinal}
               onChange={(e) => setCreaFinal(e.target.value)}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Data da identificação (somente leitura — mesma da ficha inicial) */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Data (identificação da vistoria)
-            </label>
-            <input
-              data-testid="data-identificacao-readonly"
-              type="text"
-              readOnly
-              value={formatIdentificacaoDate(inspection?.data)}
-              className="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-800 cursor-default"
             />
           </div>
 

@@ -190,10 +190,13 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     yPos += PDF_BODY_LINE_MM;
   }
 
+  // Checklist sempre em página nova: a 1.ª página contém apenas 1 e 2
+  doc.addPage();
+  yPos = margin;
+
   // ============================================================
-  // 3. CHECKLIST DA VISTORIA (fluxo contínuo após documentos)
+  // 3. CHECKLIST DA VISTORIA
   // ============================================================
-  checkNewPage(24);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
@@ -354,50 +357,55 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(PDF_BODY_PT);
-  doc.text('Classificação Final do Imóvel:', margin, yPos);
-  yPos += 8;
 
-  if (inspection.classificacao_final) {
-    let bgColor;
-    let darkOnYellow = false;
-    switch (inspection.classificacao_final) {
-      case 'aprovado':
-        bgColor = COLORS.green;
-        break;
-      case 'aprovado_com_ressalvas':
-        bgColor = COLORS.yellow;
-        darkOnYellow = true;
-        break;
-      case 'reprovado':
-        bgColor = COLORS.red;
-        break;
-      case 'outro':
-        bgColor = COLORS.gray;
-        darkOnYellow = true;
-        break;
-      default:
-        bgColor = COLORS.gray;
+  const cf = inspection.classificacao_final;
+  const conclusaoTrim = (inspection.conclusao || '').trim();
+  /** OUTRO sem texto: no laudo só a secção conclusão (sem selo nem rótulo de classificação) */
+  const outroSemTexto = cf === 'outro' && !conclusaoTrim;
+
+  if (!outroSemTexto) {
+    doc.text('Classificação Final do Imóvel:', margin, yPos);
+    yPos += 8;
+
+    if (cf) {
+      let bgColor;
+      let darkOnYellow = false;
+      switch (cf) {
+        case 'aprovado':
+          bgColor = COLORS.green;
+          break;
+        case 'aprovado_com_ressalvas':
+          bgColor = COLORS.yellow;
+          darkOnYellow = true;
+          break;
+        case 'reprovado':
+          bgColor = COLORS.red;
+          break;
+        case 'outro':
+          bgColor = COLORS.gray;
+          darkOnYellow = true;
+          break;
+        default:
+          bgColor = COLORS.gray;
+      }
+      const labelText = CLASSIFICACAO_FINAL_LABELS[cf] || 'PENDENTE';
+      yPos = drawClassificationBadge(
+        doc,
+        labelText,
+        margin,
+        contentWidth,
+        yPos,
+        bgColor,
+        darkOnYellow
+      );
     }
-    const labelText =
-      CLASSIFICACAO_FINAL_LABELS[inspection.classificacao_final] || 'PENDENTE';
-    yPos = drawClassificationBadge(
-      doc,
-      labelText,
-      margin,
-      contentWidth,
-      yPos,
-      bgColor,
-      darkOnYellow
-    );
   }
 
   const textoConclusao =
-    inspection.classificacao_final === 'outro'
-      ? (inspection.conclusao?.trim() ? inspection.conclusao : null)
+    cf === 'outro'
+      ? (conclusaoTrim ? inspection.conclusao : null)
       : inspection.conclusao ||
-        (inspection.classificacao_final
-          ? TEXTOS_CONCLUSAO[inspection.classificacao_final]
-          : null);
+        (cf ? TEXTOS_CONCLUSAO[cf] : null);
 
   if (textoConclusao) {
     yPos += 4;
