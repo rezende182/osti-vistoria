@@ -360,14 +360,17 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const cf = inspection.classificacao_final;
   const conclusaoTrim = (inspection.conclusao || '').trim();
+  const rotuloEscolhaTrim = (inspection.classificacao_escolha_rotulo || '').trim();
   const outroSomente =
     cf === 'outro' && !!inspection.outro_somente_conclusao;
-  /** OUTRO: sem selo se só conclusão, ou sem texto, ou modo “apenas conclusão” */
+  /** ESCOLHA: sem bloco se “só conclusão” ou sem rótulo personalizado preenchido */
   const hideClassificacaoBlock =
-    cf === 'outro' && (!conclusaoTrim || outroSomente);
+    cf === 'outro' && (outroSomente || !rotuloEscolhaTrim);
 
   if (!hideClassificacaoBlock) {
-    doc.text('Classificação Final do Imóvel:', margin, yPos);
+    const subTitulo =
+      cf === 'outro' ? 'ESCOLHA:' : 'Classificação Final do Imóvel:';
+    doc.text(subTitulo, margin, yPos);
     yPos += 8;
 
     if (cf) {
@@ -391,7 +394,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         default:
           bgColor = COLORS.gray;
       }
-      const labelText = CLASSIFICACAO_FINAL_LABELS[cf] || 'PENDENTE';
+      const labelText =
+        cf === 'outro'
+          ? rotuloEscolhaTrim
+          : CLASSIFICACAO_FINAL_LABELS[cf] || 'PENDENTE';
       yPos = drawClassificationBadge(
         doc,
         labelText,
@@ -422,6 +428,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
   }
 
+  /* 1,5 mm entre o fim do texto da secção 4 e o título da secção 5 */
   yPos += 1.5;
 
   // ============================================================

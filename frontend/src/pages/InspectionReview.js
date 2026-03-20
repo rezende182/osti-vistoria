@@ -49,6 +49,7 @@ const InspectionReview = () => {
   const [creaFinal, setCreaFinal] = useState('');
   const [horarioTermino, setHorarioTermino] = useState('');
   const [outroSomenteConclusao, setOutroSomenteConclusao] = useState(false);
+  const [classificacaoEscolhaRotulo, setClassificacaoEscolhaRotulo] = useState('');
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [pdfBlob, setPdfBlob] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -71,6 +72,7 @@ const InspectionReview = () => {
       setCreaFinal(data.crea_final || data.crea || '');
       setHorarioTermino(data.horario_termino || '');
       setOutroSomenteConclusao(!!data.outro_somente_conclusao);
+      setClassificacaoEscolhaRotulo(data.classificacao_escolha_rotulo || '');
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
       toast.error('Erro ao carregar vistoria');
@@ -88,6 +90,16 @@ const InspectionReview = () => {
       toast.error('Selecione a classificação final do imóvel');
       return;
     }
+    if (
+      classificacao === 'outro' &&
+      !outroSomenteConclusao &&
+      !String(classificacaoEscolhaRotulo).trim()
+    ) {
+      toast.error(
+        'Em ESCOLHA, preencha a classificação personalizada ou selecione “não quero nenhuma definição”.'
+      );
+      return;
+    }
 
     try {
       await initDB().catch(() => {});
@@ -100,6 +112,10 @@ const InspectionReview = () => {
         horario_termino: horarioTermino,
         outro_somente_conclusao:
           classificacao === 'outro' ? outroSomenteConclusao : false,
+        classificacao_escolha_rotulo:
+          classificacao === 'outro' && !outroSomenteConclusao
+            ? classificacaoEscolhaRotulo
+            : '',
       };
       const result = await inspectionsApi.update(id, payload);
       if (result.ok) {
@@ -147,6 +163,10 @@ const InspectionReview = () => {
         horario_termino: horarioTermino || '',
         outro_somente_conclusao:
           classificacao === 'outro' ? outroSomenteConclusao : false,
+        classificacao_escolha_rotulo:
+          classificacao === 'outro' && !outroSomenteConclusao
+            ? classificacaoEscolhaRotulo
+            : '',
       });
       if (!result.ok) {
         const local = await getInspectionLocally(id);
@@ -161,6 +181,10 @@ const InspectionReview = () => {
             horario_termino: horarioTermino || '',
             outro_somente_conclusao:
               classificacao === 'outro' ? outroSomenteConclusao : false,
+            classificacao_escolha_rotulo:
+              classificacao === 'outro' && !outroSomenteConclusao
+                ? classificacaoEscolhaRotulo
+                : '',
           });
           await enqueueSyncOperation({
             method: 'PUT',
@@ -174,6 +198,10 @@ const InspectionReview = () => {
               horario_termino: horarioTermino || '',
               outro_somente_conclusao:
                 classificacao === 'outro' ? outroSomenteConclusao : false,
+              classificacao_escolha_rotulo:
+                classificacao === 'outro' && !outroSomenteConclusao
+                  ? classificacaoEscolhaRotulo
+                  : '',
             },
             dedupKey: `PUT:/inspections/${id}:review_partial`,
             inspectionId: id,
@@ -398,9 +426,10 @@ const InspectionReview = () => {
     doc.addPage();
     yPos = 20;
 
+    const rotuloEscolhaTrim = String(classificacaoEscolhaRotulo || '').trim();
     const hideBadgePreview =
       classificacao === 'outro' &&
-      (!String(conclusao || '').trim() || outroSomenteConclusao);
+      (outroSomenteConclusao || !rotuloEscolhaTrim);
 
     if (!hideBadgePreview) {
       doc.setFillColor(0, 51, 102);
@@ -412,7 +441,9 @@ const InspectionReview = () => {
       yPos += 20;
 
       const classificacaoText =
-        CLASSIFICACAO_FINAL_LABELS[classificacao] || 'CLASSIFICAÇÃO PENDENTE';
+        classificacao === 'outro'
+          ? rotuloEscolhaTrim
+          : CLASSIFICACAO_FINAL_LABELS[classificacao] || 'CLASSIFICAÇÃO PENDENTE';
 
       let badgeBg = [205, 205, 204];
       let darkOnYellow = false;
@@ -591,9 +622,11 @@ const InspectionReview = () => {
                     setClassificacao(option.value);
                     if (option.value === 'outro') {
                       setOutroSomenteConclusao(false);
+                      setClassificacaoEscolhaRotulo('');
                       if (conclusaoPareceAutomatica(conclusao)) setConclusao('');
                     } else {
                       setOutroSomenteConclusao(false);
+                      setClassificacaoEscolhaRotulo('');
                       if (conclusaoPareceAutomatica(conclusao)) {
                         setConclusao(TEXTOS_CONCLUSAO[option.value]);
                       }
@@ -624,40 +657,61 @@ const InspectionReview = () => {
           {classificacao === 'outro' && (
             <div className="mb-4">
               <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                OUTRO no laudo
+                ESCOLHA:
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   data-testid="outro-modo-personalizada"
-                  onClick={() => setOutroSomenteConclusao(false)}
+                  onClick={() => {
+                    setOutroSomenteConclusao(false);
+                  }}
                   className={`rounded-lg px-3 py-3 text-left text-sm font-semibold leading-snug transition-all border-2 ${
                     !outroSomenteConclusao
                       ? 'border-blue-600 bg-blue-50 text-slate-900'
                       : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  Classificação personalizada
+                  Definir classificação personalizada
                   <span className="mt-1 block text-xs font-normal text-slate-600">
-                    Define o texto que acompanha o selo OUTRO no laudo.
+                    Define o texto em destaque no laudo (fundo cinza, como as demais opções).
                   </span>
                 </button>
                 <button
                   type="button"
                   data-testid="outro-modo-so-conclusao"
-                  onClick={() => setOutroSomenteConclusao(true)}
+                  onClick={() => {
+                    setOutroSomenteConclusao(true);
+                    setClassificacaoEscolhaRotulo('');
+                  }}
                   className={`rounded-lg px-3 py-3 text-left text-sm font-semibold leading-snug transition-all border-2 ${
                     outroSomenteConclusao
                       ? 'border-blue-600 bg-blue-50 text-slate-900'
                       : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  Apenas conclusão
+                  Não quero nenhuma definição para a classificação do imóvel
                   <span className="mt-1 block text-xs font-normal text-slate-600">
-                    Sem selo de classificação; só o texto de conclusão no laudo.
+                    No laudo não aparece classificação; apenas a conclusão.
                   </span>
                 </button>
               </div>
+            </div>
+          )}
+
+          {classificacao === 'outro' && !outroSomenteConclusao && (
+            <div className="mb-4">
+              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                Classificação final do imóvel (aparece no laudo com fundo cinza) *
+              </label>
+              <textarea
+                data-testid="classificacao-escolha-rotulo"
+                value={classificacaoEscolhaRotulo}
+                onChange={(e) => setClassificacaoEscolhaRotulo(e.target.value)}
+                placeholder="Ex.: EM ANÁLISE — aguardando documentação complementar"
+                className="w-full p-4 border-2 border-slate-400 bg-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 font-semibold"
+                rows={3}
+              />
             </div>
           )}
 
@@ -673,17 +727,17 @@ const InspectionReview = () => {
               {classificacao === 'outro'
                 ? outroSomenteConclusao
                   ? 'Conclusão'
-                  : 'Conclusão / classificação personalizada (com selo OUTRO)'
+                  : 'Conclusão / observações'
                 : 'Conclusão / Observações Gerais'}
             </label>
             {classificacao === 'outro' && !outroSomenteConclusao && (
               <p className="text-xs text-slate-600 mb-2 leading-relaxed">
-                Opcional: em branco, o laudo não exibe o selo OUTRO nem o bloco de classificação.
+                Texto adicional que aparece abaixo da classificação no laudo (opcional).
               </p>
             )}
             {classificacao === 'outro' && outroSomenteConclusao && (
               <p className="text-xs text-slate-600 mb-2 leading-relaxed">
-                O texto abaixo entra no laudo como conclusão, sem selo OUTRO.
+                O texto abaixo é a única parte da secção 4 no laudo (sem classificação).
               </p>
             )}
             <textarea
@@ -693,8 +747,8 @@ const InspectionReview = () => {
               placeholder={
                 classificacao === 'outro'
                   ? outroSomenteConclusao
-                    ? 'Informe a justificativa técnica e as condições observadas (conclusão sem selo OUTRO).'
-                    : 'Descreva tecnicamente a classificação e as condições observadas (opcional).'
+                    ? 'Informe a conclusão técnica da vistoria.'
+                    : 'Observações e conclusão complementar (opcional).'
                   : 'Digite suas observações finais sobre a vistoria...'
               }
               className={`w-full p-4 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
