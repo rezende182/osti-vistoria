@@ -1,0 +1,145 @@
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  .shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+  }
+}
+
+/* Painel de marca — desktop */
+.brand {
+  position: relative;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 2.75rem 2.5rem;
+  color: #f8fafc;
+  background: linear-gradient(145deg, #0f172a 0%, #1e293b 42%, #0c4a6e 100%);
+}
+
+@media (min-width: 1024px) {
+  .brand {
+    display: flex;
+  }
+}
+
+.brandGlow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 100% 0%, rgba(56, 189, 248, 0.22), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 0% 100%, rgba(99, 102, 241, 0.18), transparent 50%);
+  pointer-events: none;
+}
+
+.brandGrid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.brandInner {
+  position: relative;
+  z-index: 1;
+}
+
+.logo {
+  height: 2.75rem;
+  width: auto;
+  opacity: 0.96;
+}
+
+.headline {
+  margin: 2.5rem 0 0;
+  max-width: 22rem;
+  font-size: clamp(1.75rem, 2.4vw, 2.125rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.lead {
+  margin: 1rem 0 0;
+  max-width: 20rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: rgba(226, 232, 240, 0.88);
+}
+
+.brandFooter {
+  position: relative;
+  z-index: 1;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.75);
+}
+
+/* Área do formulário */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2.5rem 1rem 2rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 55%, #eef2f6 100%);
+}
+
+@media (min-width: 640px) {
+  .main {
+    padding: 2.5rem 2rem 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .main {
+    padding: 3rem 3rem 2.5rem;
+  }
+}
+
+.mainInner {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 26rem;
+}
+
+@media (min-width: 1024px) {
+  .mainInner {
+    max-width: 22.5rem;
+  }
+}
+
+.mobileBrand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+@media (min-width: 1024px) {
+  .mobileBrand {
+    display: none;
+  }
+}
+
+.mobileLogo {
+  height: 2.5rem;
+  width: auto;
+}
+
+.mobileTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #334155;
+}
