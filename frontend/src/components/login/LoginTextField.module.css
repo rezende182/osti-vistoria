@@ -65,6 +65,32 @@
   padding-left: 1rem;
 }
 
+.inputInvalid {
+  border-color: #f87171;
+  background: #fff;
+}
+
+.inputInvalid:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.supportNeutral,
+.supportError {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  min-height: 1.1em;
+}
+
+.supportNeutral {
+  color: #64748b;
+}
+
+.supportError {
+  color: #b91c1c;
+  font-weight: 500;
+}
+
 .input:disabled {
   opacity: 0.65;
   cursor: not-allowed;

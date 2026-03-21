@@ -12,7 +12,7 @@ from typing import List, Literal, Optional
 
 from fastapi import APIRouter, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -156,11 +156,35 @@ class Inspection(BaseModel):
     status: Literal["em_andamento", "concluida"] = "em_andamento"
 
 
-class FirebaseUserRegister(BaseModel):
-    """Registo opcional após signUp no cliente (uid + email do Firebase)."""
+class UserRegisterBody(BaseModel):
+    """Perfil após cadastro no Firebase Auth — upsert por userId (sem duplicar)."""
 
-    uid: str = Field(..., min_length=1)
-    email: str = Field(..., min_length=3)
+    model_config = ConfigDict(extra="ignore")
+
+    userId: str = Field(..., min_length=1, max_length=128)
+    nome: str = Field(..., min_length=1, max_length=200)
+    email: str = Field(..., min_length=3, max_length=320)
+    telefone: Optional[str] = None
+
+    @field_validator("userId", "nome")
+    @classmethod
+    def strip_strings(cls, v: str) -> str:
+        return v.strip()
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.strip().lower()
+
+    @field_validator("telefone", mode="before")
+    @classmethod
+    def normalize_phone(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            return s if s else None
+        return v
 
 
 class IdentificationUpdate(BaseModel):
@@ -198,18 +222,21 @@ async def root():
 
 
 @api_router.post("/users/register")
-async def register_firebase_user_profile(body: FirebaseUserRegister):
-    """Guarda uid/email no Mongo após criação na Firebase Auth (opcional para o cliente)."""
+async def register_user_profile(body: UserRegisterBody):
+    """Guarda perfil no Mongo após signUp Firebase — idempotente (mesmo userId atualiza)."""
     database = require_database()
     now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "userId": body.userId,
+        "nome": body.nome,
+        "email": body.email,
+        "telefone": body.telefone,
+        "updated_at": now,
+    }
     await database.user_profiles.update_one(
-        {"uid": body.uid},
+        {"userId": body.userId},
         {
-            "$set": {
-                "uid": body.uid,
-                "email": body.email.strip().lower(),
-                "updated_at": now,
-            },
+            "$set": doc,
             "$setOnInsert": {"created_at": now},
         },
         upsert=True,
