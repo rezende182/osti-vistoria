@@ -44,14 +44,20 @@ export function AuthProvider({ children }) {
     if (!auth) {
       throw new Error('Firebase Auth não está configurado.');
     }
-    return signInWithEmailAndPassword(auth, email, password);
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    // Evita corrida com onAuthStateChanged: RequireAuth pode redirecionar antes do listener atualizar o estado.
+    setUser(credential.user);
+    return credential;
   }, []);
 
-  const register = useCallback(async (email, password) => {
+  /** Cadastro Firebase (Email/Password). Atualiza estado local logo após sucesso. */
+  const signUp = useCallback(async (email, password) => {
     if (!auth) {
       throw new Error('Firebase Auth não está configurado.');
     }
-    return createUserWithEmailAndPassword(auth, email, password);
+    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    setUser(credential.user);
+    return credential;
   }, []);
 
   const logout = useCallback(async () => {
@@ -73,11 +79,13 @@ export function AuthProvider({ children }) {
       loading: !authReady,
       isAuthenticated: Boolean(user),
       login,
-      register,
+      signUp,
+      /** @deprecated use signUp */
+      register: signUp,
       logout,
       getIdToken,
     }),
-    [user, authReady, login, register, logout, getIdToken]
+    [user, authReady, login, signUp, logout, getIdToken]
   );
 
   return (

@@ -59,6 +59,14 @@ function rejectNoUser() {
   return Promise.resolve({ ok: false, data: null, error: AUTH_REQUIRED_MSG });
 }
 
+/**
+ * Perfil pós-cadastro Firebase (opcional). Falha silenciosa no cliente se API estiver indisponível.
+ */
+export const usersApi = {
+  registerProfile: (body) =>
+    wrap(client.post('/users/register', body).then((r) => r.data)),
+};
+
 export const inspectionsApi = {
   list: (userId) => {
     const q = userQuery(userId);

@@ -156,6 +156,13 @@ class Inspection(BaseModel):
     status: Literal["em_andamento", "concluida"] = "em_andamento"
 
 
+class FirebaseUserRegister(BaseModel):
+    """Registo opcional após signUp no cliente (uid + email do Firebase)."""
+
+    uid: str = Field(..., min_length=1)
+    email: str = Field(..., min_length=3)
+
+
 class IdentificationUpdate(BaseModel):
     cliente: Optional[str] = None
     data: Optional[str] = None
@@ -188,6 +195,26 @@ def _assert_inspection_owner(inspection: dict, user_id: str) -> None:
 @api_router.get("/")
 async def root():
     return {"message": "OSTI Engenharia - Vistoria de Recebimento de Imóvel API"}
+
+
+@api_router.post("/users/register")
+async def register_firebase_user_profile(body: FirebaseUserRegister):
+    """Guarda uid/email no Mongo após criação na Firebase Auth (opcional para o cliente)."""
+    database = require_database()
+    now = datetime.now(timezone.utc).isoformat()
+    await database.user_profiles.update_one(
+        {"uid": body.uid},
+        {
+            "$set": {
+                "uid": body.uid,
+                "email": body.email.strip().lower(),
+                "updated_at": now,
+            },
+            "$setOnInsert": {"created_at": now},
+        },
+        upsert=True,
+    )
+    return {"ok": True}
 
 
 @api_router.get("/health")

@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Loader2, Lock, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth';
 import styles from '@/components/auth/AuthFormLayout.module.css';
 import LoginTextField from '@/components/login/LoginTextField';
 import { isFirebaseAuthAvailable } from '@/firebase';
+import { usersApi } from '@/services/api';
 import { mapSignupError } from './mapSignupError';
 
 const MIN_PASSWORD = 6;
 
 function RegisterPage() {
-  const { register } = useAuth();
-  const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -40,9 +40,15 @@ function RegisterPage() {
     }
     setSubmitting(true);
     try {
-      await register(trimmed, password);
+      const credential = await signUp(trimmed, password);
       toast.success('Conta criada com sucesso.');
-      navigate('/', { replace: true });
+      const u = credential?.user;
+      if (u?.uid) {
+        usersApi
+          .registerProfile({ uid: u.uid, email: u.email || trimmed })
+          .catch(() => {});
+      }
+      /* Redirecionamento: RegisterRoute deteta user e envia para / (igual ao login). */
     } catch (err) {
       setFormError(mapSignupError(err));
     } finally {
