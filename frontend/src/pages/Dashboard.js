@@ -103,7 +103,7 @@ const Dashboard = () => {
     { id: 'aprovado', label: 'APROVADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'aprovado').length },
     { id: 'ressalvas', label: 'CONDICIONADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'ressalvas').length },
     { id: 'reprovado', label: 'REPROVADOS', count: inspections.filter(i => getStatusInfo(i).tab === 'reprovado').length },
-    { id: 'outro', label: 'OUTRA', count: inspections.filter(i => getStatusInfo(i).tab === 'outro').length },
+    { id: 'outro', label: 'OUTROS', count: inspections.filter(i => getStatusInfo(i).tab === 'outro').length },
   ];
 
   return (

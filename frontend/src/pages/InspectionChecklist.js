@@ -433,7 +433,7 @@ const InspectionChecklist = () => {
   const selectedRoomIndex = roomsData.findIndex((room) => room.room_id === selectedRoomId);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
+    <div className="min-h-screen bg-slate-50 pb-40">
       {/* Header */}
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white py-6 px-4">
         <div className="max-w-md mx-auto md:max-w-2xl">
@@ -448,7 +448,7 @@ const InspectionChecklist = () => {
           <div className="flex items-center gap-4">
             <img src={LOGO_URL} alt="OSTI Engenharia" className="h-10 w-auto" />
             <h1 className="text-2xl font-bold tracking-tight font-secondary uppercase">
-              Checklist da Vistoria
+              Inspeção Técnica e Checklist de Verificação
             </h1>
           </div>
         </div>
@@ -529,9 +529,9 @@ const InspectionChecklist = () => {
         )}
       </div>
 
-      {/* Fixed Bottom Button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4">
-        <div className="max-w-md mx-auto md:max-w-2xl">
+      {/* Fixed Bottom Buttons */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe">
+        <div className="max-w-md mx-auto md:max-w-2xl space-y-3">
           <button
             data-testid="save-and-continue-button"
             onClick={handleSaveAndContinue}
@@ -539,6 +539,15 @@ const InspectionChecklist = () => {
           >
             Salvar e Continuar
             <ArrowRight size={20} />
+          </button>
+          <button
+            type="button"
+            data-testid="continue-add-room-button"
+            onClick={() => setShowAddRoom(true)}
+            className="w-full bg-slate-100 text-slate-800 py-3 rounded-lg font-semibold text-sm border border-slate-200 transition-all duration-200 hover:bg-slate-200 active:scale-[0.99] flex items-center justify-center gap-2"
+          >
+            <Plus size={18} />
+            Continuar adicionando cômodo
           </button>
         </div>
       </div>

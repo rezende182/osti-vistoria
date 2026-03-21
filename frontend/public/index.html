@@ -15,7 +15,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />
         <title>OSTI Engenharia - Vistoria</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
-        <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
+        <script async src="https://assets.emergent.sh/scripts/emergent-main.js" onerror="console.warn('[emergent] script opcional falhou ao carregar')"></script>
     </head>
     <body>
         <noscript>Você precisa habilitar JavaScript para usar este aplicativo.</noscript>
@@ -142,14 +142,18 @@
                     }),
                     (e.__SV = 1));
             })(document, window.posthog || []);
-            posthog.init("phc_xAvL2Iq4tFmANRE7kzbKwaSqp1HJjN7x48s3vr0CMjs", {
-                api_host: "https://us.i.posthog.com",
-                person_profiles: "identified_only", // or 'always' to create profiles for anonymous users as well,
-                session_recording: {
-                    recordCrossOriginIframes: true,
-                    capturePerformance: false,
-                },
-            });
+            try {
+                posthog.init("phc_xAvL2Iq4tFmANRE7kzbKwaSqp1HJjN7x48s3vr0CMjs", {
+                    api_host: "https://us.i.posthog.com",
+                    person_profiles: "identified_only",
+                    session_recording: {
+                        recordCrossOriginIframes: true,
+                        capturePerformance: false,
+                    },
+                });
+            } catch (e) {
+                console.warn("[posthog] init opcional falhou", e);
+            }
         </script>
     </body>
 </html>

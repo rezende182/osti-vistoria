@@ -39,7 +39,6 @@ const NewInspection = () => {
     'Manual de uso e manutenção',
     'Memorial descritivo',
     'Projeto arquitetônico',
-    'Chaves da unidade'
   ];
 
   const handleChange = (e) => {
@@ -121,7 +120,7 @@ const NewInspection = () => {
           <div className="flex items-center gap-4">
             <img src={LOGO_URL} alt="OSTI Engenharia" className="h-12 w-auto" />
             <h1 className="text-2xl font-bold tracking-tight font-secondary uppercase">
-              Identificação da Vistoria
+              Identificação da Vistoria Técnica
             </h1>
           </div>
         </div>
@@ -190,7 +189,6 @@ const NewInspection = () => {
                 name="cidade"
                 value={formData.cidade}
                 onChange={handleChange}
-                placeholder="Ex.: Santos"
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

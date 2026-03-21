@@ -6,7 +6,7 @@ import {
 } from '../constants/inspectionClassificacao';
 import {
   drawBodyParagraphs,
-  drawClassificationBadge,
+  drawClassificationFinalPlain,
   drawResponsavelAssinaturaSection,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
@@ -21,17 +21,6 @@ const LOGO_URL = '/logo-osti.png';
 const LEGAL_TEXT =
   'A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes.\n\n' +
   'Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.';
-
-// Cores
-const COLORS = {
-  black: [0, 0, 0],
-  white: [255, 255, 255],
-  gray: [205, 205, 204],
-  grayLight: [245, 245, 245],
-  green: [34, 139, 34],
-  yellow: [218, 165, 32],
-  red: [178, 34, 34]
-};
 
 // Carregar imagem como base64 com retry
 const loadImageAsBase64 = async (url, retries = 3) => {
@@ -67,6 +56,19 @@ const formatDate = (dateString) => {
   }
   return dateString;
 };
+
+/** Títulos longos de secção quebram em várias linhas dentro da margem */
+function drawSectionTitle(doc, margin, contentWidth, yPos, title, gapAfter = 8) {
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  const lines = doc.splitTextToSize(title, contentWidth);
+  const lineStep = 7;
+  lines.forEach((ln, i) => {
+    doc.text(ln, margin, yPos + i * lineStep);
+  });
+  return yPos + lines.length * lineStep + gapAfter;
+}
 
 // Gerar PDF
 export const generateInspectionPDF = async (inspection, forPreview = false) => {
@@ -122,13 +124,16 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += 35;
 
   // ============================================================
-  // 1. IDENTIFICAÇÃO DA VISTORIA
+  // 1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA
   // ============================================================
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('1. IDENTIFICAÇÃO DA VISTORIA', margin, yPos);
-  yPos += 8;
+  yPos = drawSectionTitle(
+    doc,
+    margin,
+    contentWidth,
+    yPos,
+    '1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA',
+    6
+  );
 
   const identificacaoData = [
     ['Cliente', inspection.cliente || '-'],
@@ -169,12 +174,16 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos = doc.lastAutoTable.finalY + 10;
 
   // ============================================================
-  // 2. DOCUMENTOS RECEBIDOS
+  // 2. DOCUMENTOS RECEBIDOS E ANALISADOS
   // ============================================================
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('2. DOCUMENTOS RECEBIDOS', margin, yPos);
-  yPos += 8;
+  yPos = drawSectionTitle(
+    doc,
+    margin,
+    contentWidth,
+    yPos,
+    '2. DOCUMENTOS RECEBIDOS E ANALISADOS',
+    6
+  );
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(PDF_BODY_PT);
@@ -195,13 +204,16 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos = margin;
 
   // ============================================================
-  // 3. CHECKLIST DA VISTORIA
+  // 3. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO
   // ============================================================
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('3. CHECKLIST DA VISTORIA', margin, yPos);
-  yPos += 10;
+  yPos = drawSectionTitle(
+    doc,
+    margin,
+    contentWidth,
+    yPos,
+    '3. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO',
+    8
+  );
 
   if (inspection.rooms_checklist && inspection.rooms_checklist.length > 0) {
     let roomNumber = 1;
@@ -349,11 +361,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   doc.addPage();
   yPos = margin;
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('4. CONCLUSÃO', margin, yPos);
-  yPos += 10;
+  yPos = drawSectionTitle(doc, margin, contentWidth, yPos, '4. CONCLUSÃO', 10);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(PDF_BODY_PT);
@@ -367,45 +375,18 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const hideClassificacaoBlock =
     cf === 'outro' && (outroSomente || !rotuloEscolhaTrim);
 
-  if (!hideClassificacaoBlock) {
-    doc.text('Classificação Final do Imóvel:', margin, yPos);
-    yPos += 8;
-
-    if (cf) {
-      let bgColor;
-      let darkOnYellow = false;
-      switch (cf) {
-        case 'aprovado':
-          bgColor = COLORS.green;
-          break;
-        case 'aprovado_com_ressalvas':
-          bgColor = COLORS.yellow;
-          darkOnYellow = true;
-          break;
-        case 'reprovado':
-          bgColor = COLORS.red;
-          break;
-        case 'outro':
-          bgColor = COLORS.gray;
-          darkOnYellow = true;
-          break;
-        default:
-          bgColor = COLORS.gray;
-      }
-      const labelText =
-        cf === 'outro'
-          ? rotuloEscolhaTrim
-          : CLASSIFICACAO_FINAL_LABELS[cf] || 'PENDENTE';
-      yPos = drawClassificationBadge(
-        doc,
-        labelText,
-        margin,
-        contentWidth,
-        yPos,
-        bgColor,
-        darkOnYellow
-      );
-    }
+  if (!hideClassificacaoBlock && cf) {
+    const labelText =
+      cf === 'outro'
+        ? rotuloEscolhaTrim
+        : CLASSIFICACAO_FINAL_LABELS[cf] || 'PENDENTE';
+    yPos = drawClassificationFinalPlain(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      labelText
+    );
   }
 
   const textoConclusao =
@@ -430,13 +411,17 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += 12;
 
   // ============================================================
-  // 5. ASSINATURA DO RESPONSÁVEL
+  // 5. RESPONSÁVEL TÉCNICO / ASSINATURA
   // ============================================================
   checkNewPage(36);
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('5. ASSINATURA DO RESPONSÁVEL', margin, yPos);
-  yPos += 12;
+  yPos = drawSectionTitle(
+    doc,
+    margin,
+    contentWidth,
+    yPos,
+    '5. RESPONSÁVEL TÉCNICO / ASSINATURA',
+    12
+  );
 
   const responsavel = inspection.responsavel_final || inspection.responsavel_tecnico || '-';
   const crea = inspection.crea_final || inspection.crea || '-';
@@ -462,14 +447,18 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   );
 
   // ============================================================
-  // 6. OBSERVAÇÕES LEGAIS
+  // 6. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS
   // ============================================================
   yPos += 8;
   checkNewPage(28);
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('6. OBSERVAÇÕES LEGAIS', margin, yPos);
-  yPos += 10;
+  yPos = drawSectionTitle(
+    doc,
+    margin,
+    contentWidth,
+    yPos,
+    '6. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS',
+    10
+  );
 
   yPos = drawBodyParagraphs(
     doc,

@@ -185,6 +185,48 @@ export function drawClassificationBadge(
 }
 
 /**
+ * Classificação final em texto corrido: prefixo normal + rótulo em negrito (sem faixa colorida).
+ */
+export function drawClassificationFinalPlain(
+  doc,
+  margin,
+  contentWidth,
+  yPos,
+  labelBold
+) {
+  const prefix = 'Classificação Final do Imóvel: ';
+  const label = String(labelBold || '—').trim();
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+
+  doc.setFont(PDF_FONT, 'normal');
+  const wPrefix = doc.getTextWidth(prefix);
+  doc.setFont(PDF_FONT, 'bold');
+  const wLabel = doc.getTextWidth(label);
+  doc.setFont(PDF_FONT, 'normal');
+
+  if (wPrefix + wLabel <= contentWidth) {
+    doc.text(prefix, margin, yPos);
+    doc.setFont(PDF_FONT, 'bold');
+    doc.text(label, margin + wPrefix, yPos);
+    doc.setFont(PDF_FONT, 'normal');
+    return yPos + PDF_BODY_LINE_MM + 4;
+  }
+
+  doc.text(prefix, margin, yPos);
+  yPos += PDF_BODY_LINE_MM;
+  doc.setFont(PDF_FONT, 'bold');
+  const lines = doc.splitTextToSize(label, contentWidth);
+  lines.forEach((ln) => {
+    doc.text(ln, margin, yPos);
+    yPos += PDF_BODY_LINE_MM;
+  });
+  doc.setFont(PDF_FONT, 'normal');
+  return yPos + 4;
+}
+
+/**
  * Secção 5: data à direita (texto livre), espaço para assinatura, linha centralizada;
  * abaixo da linha: “Responsável Técnico: (nome)” e “CREA: (número)”, centralizados.
  */

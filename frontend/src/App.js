@@ -2,6 +2,7 @@ import "@/index.css";
 import { useEffect } from 'react';
 import { HashRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from '@/components/ui/sonner';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import NewInspection from './pages/NewInspection';
 import EditInspection from './pages/EditInspection';
@@ -18,21 +19,23 @@ function App() {
   }, []);
 
   return (
-    <div className="App">
-      <OfflineIndicator />
-      <HashRouter>
-        <SyncIdListener />
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/new-inspection" element={<NewInspection />} />
-          <Route path="/inspection/:id" element={<InspectionDetail />} />
-          <Route path="/inspection/:id/edit" element={<EditInspection />} />
-          <Route path="/inspection/:id/checklist" element={<InspectionChecklist />} />
-          <Route path="/inspection/:id/review" element={<InspectionReview />} />
-        </Routes>
-      </HashRouter>
-      <Toaster />
-    </div>
+    <ErrorBoundary>
+      <div className="App">
+        <OfflineIndicator />
+        <HashRouter>
+          <SyncIdListener />
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/new-inspection" element={<NewInspection />} />
+            <Route path="/inspection/:id" element={<InspectionDetail />} />
+            <Route path="/inspection/:id/edit" element={<EditInspection />} />
+            <Route path="/inspection/:id/checklist" element={<InspectionChecklist />} />
+            <Route path="/inspection/:id/review" element={<InspectionReview />} />
+          </Routes>
+        </HashRouter>
+        <Toaster />
+      </div>
+    </ErrorBoundary>
   );
 }
 

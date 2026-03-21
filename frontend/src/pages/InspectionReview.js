@@ -3,8 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Edit, Share2, X, MessageCircle, Mail } from 'lucide-react';
 import TimePickerField from '../components/TimePickerField';
 import { toast } from 'sonner';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { inspectionsApi } from '../services/api';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import {
@@ -18,12 +16,7 @@ import {
   CLASSIFICACAO_FINAL_LABELS,
   conclusaoPareceAutomatica,
 } from '../constants/inspectionClassificacao';
-import {
-  drawBodyParagraphs,
-  drawClassificationBadge,
-  drawResponsavelAssinaturaSection,
-} from '../utils/pdfLayout';
-import { formatPdfAssinaturaDataLine } from '../utils/pdfAssinaturaFormat';
+import { generateInspectionPDF } from '../utils/pdfGenerator';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
@@ -96,7 +89,7 @@ const InspectionReview = () => {
       !String(classificacaoEscolhaRotulo).trim()
     ) {
       toast.error(
-        'Em Outra classificação, preencha a classificação personalizada ou selecione “não quero nenhuma definição”.'
+        'Em Outros, preencha a classificação personalizada ou selecione “não quero nenhuma definição”.'
       );
       return;
     }
@@ -214,350 +207,59 @@ const InspectionReview = () => {
     navigate(`/inspection/${id}/checklist`);
   };
 
-  const generatePDF = async (forPreview = false) => {
+  const buildInspectionSnapshotForPdf = useCallback(() => {
     if (!inspection) return null;
-
-    const doc = new jsPDF();
-    let yPos = 15;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentWidth = pageWidth - (margin * 2);
-
-    const checkNewPage = (neededSpace) => {
-      if (yPos + neededSpace > pageHeight - 30) {
-        doc.addPage();
-        yPos = 20;
-        return true;
-      }
-      return false;
+    return {
+      ...inspection,
+      classificacao_final: classificacao,
+      conclusao,
+      responsavel_final: responsavelFinal,
+      crea_final: creaFinal,
+      horario_termino: horarioTermino,
+      outro_somente_conclusao:
+        classificacao === 'outro' ? outroSomenteConclusao : false,
+      classificacao_escolha_rotulo:
+        classificacao === 'outro' && !outroSomenteConclusao
+          ? classificacaoEscolhaRotulo
+          : '',
     };
-
-    // ============ CAPA ============
-    doc.setDrawColor(0, 51, 102);
-    doc.setLineWidth(2);
-    doc.line(margin, 15, pageWidth - margin, 15);
-
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 51, 102);
-    doc.text('RELATÓRIO DE VISTORIA', pageWidth / 2, 35, { align: 'center' });
-    
-    doc.setFontSize(16);
-    doc.text('RECEBIMENTO DE IMÓVEL', pageWidth / 2, 45, { align: 'center' });
-
-    doc.setLineWidth(0.5);
-    doc.line(60, 52, pageWidth - 60, 52);
-
-    doc.setFontSize(14);
-    doc.setTextColor(51, 51, 51);
-    doc.text('OSTI ENGENHARIA', pageWidth / 2, 65, { align: 'center' });
-
-    // ============ IDENTIFICAÇÃO ============
-    yPos = 80;
-    doc.setFillColor(0, 51, 102);
-    doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(255, 255, 255);
-    doc.text('IDENTIFICAÇÃO', margin + 5, yPos + 2);
-    yPos += 15;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(51, 51, 51);
-
-    const infoData = [
-      ['Cliente:', inspection.cliente],
-      ['Data:', inspection.data],
-      ['Endereço:', inspection.endereco],
-      ['Apartamento:', inspection.unidade],
-      ['Empreendimento:', inspection.empreendimento || '-'],
-      ['Construtora:', inspection.construtora || '-'],
-      ['Responsável Técnico:', responsavelFinal || inspection.responsavel_tecnico || '-'],
-      ['CREA:', creaFinal || inspection.crea || '-'],
-      ['Tipo do Imóvel:', inspection.tipo_imovel?.toUpperCase() || '-'],
-      ['Energia Disponível:', inspection.energia_disponivel === 'sim' ? 'Sim' : 'Não'],
-      ['Horário de Início:', inspection.horario_inicio || '-'],
-      ['Horário de Término:', horarioTermino || '-']
-    ];
-
-    infoData.forEach(([label, value]) => {
-      doc.setFont('helvetica', 'bold');
-      doc.text(label, margin, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.text(String(value), margin + 50, yPos);
-      yPos += 7;
-    });
-
-    // ============ DOCUMENTOS RECEBIDOS ============
-    yPos += 5;
-    checkNewPage(40);
-    doc.setFillColor(0, 51, 102);
-    doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(255, 255, 255);
-    doc.text('DOCUMENTOS RECEBIDOS', margin + 5, yPos + 2);
-    yPos += 15;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(51, 51, 51);
-
-    if (inspection.documentos_recebidos?.length > 0) {
-      inspection.documentos_recebidos.forEach((doc_item) => {
-        doc.text(`• ${doc_item}`, margin + 5, yPos);
-        yPos += 6;
-      });
-    } else {
-      doc.text('Nenhum documento recebido', margin + 5, yPos);
-      yPos += 6;
-    }
-
-    // ============ CHECKLIST POR CÔMODOS ============
-    doc.addPage();
-    yPos = 20;
-
-    doc.setFillColor(0, 51, 102);
-    doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(255, 255, 255);
-    doc.text('CHECKLIST DA VISTORIA', margin + 5, yPos + 2);
-    yPos += 15;
-
-    for (const room of (inspection.rooms_checklist || [])) {
-      checkNewPage(50);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(0, 51, 102);
-      doc.text(room.room_name.toUpperCase(), margin, yPos);
-      yPos += 8;
-
-      const tableData = room.items.map((item) => {
-        const photos = item.photos || [];
-        const photoCount = photos.length;
-        return [
-          item.name,
-          item.exists === 'sim' ? 'SIM' : item.exists === 'nao' ? 'NÃO' : '-',
-          item.condition === 'aprovado' ? 'APROVADO' : item.condition === 'reprovado' ? 'REPROVADO' : '-',
-          item.observations || '-'
-        ];
-      });
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Item', 'Existe', 'Condição', 'Observações']],
-        body: tableData,
-        theme: 'grid',
-        styles: { 
-          fontSize: 8,
-          cellPadding: 2,
-          textColor: [51, 51, 51]
-        },
-        headStyles: { 
-          fillColor: [240, 240, 240],
-          textColor: [0, 51, 102],
-          fontStyle: 'bold'
-        },
-        columnStyles: {
-          0: { cellWidth: 55 },
-          1: { cellWidth: 20, halign: 'center' },
-          2: { cellWidth: 30, halign: 'center' },
-          3: { cellWidth: 65 }
-        },
-        margin: { left: margin, right: margin }
-      });
-
-      yPos = doc.lastAutoTable.finalY + 10;
-
-      // Adicionar fotos do cômodo
-      let hasPhotos = false;
-      for (const item of room.items) {
-        const photos = item.photos || [];
-        if (photos.length > 0) {
-          hasPhotos = true;
-          break;
-        }
-      }
-
-      if (hasPhotos) {
-        checkNewPage(80);
-        
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(0, 51, 102);
-        doc.text(`Registro Fotográfico - ${room.room_name}`, margin, yPos);
-        yPos += 8;
-
-        for (const item of room.items) {
-          const photos = item.photos || [];
-          for (let i = 0; i < photos.length; i++) {
-            const photo = photos[i];
-            const photoUrl = typeof photo === 'string' ? photo : photo.url;
-            const caption = typeof photo === 'string' ? `Foto ${i + 1}` : (photo.caption || `Foto ${i + 1}`);
-
-            checkNewPage(60);
-
-            try {
-              doc.addImage(photoUrl, 'JPEG', margin, yPos, 50, 40);
-              
-              doc.setFont('helvetica', 'bold');
-              doc.setFontSize(9);
-              doc.setTextColor(51, 51, 51);
-              doc.text(`${item.name}`, margin + 55, yPos + 10);
-              
-              doc.setFont('helvetica', 'normal');
-              doc.setFontSize(8);
-              doc.text(caption, margin + 55, yPos + 18);
-              
-              yPos += 50;
-            } catch (e) {
-              console.error('Erro ao adicionar imagem:', e);
-            }
-          }
-        }
-      }
-    }
-
-    // ============ CLASSIFICAÇÃO FINAL / CONCLUSÃO (pré-visualização) ============
-    doc.addPage();
-    yPos = 20;
-
-    const rotuloEscolhaTrim = String(classificacaoEscolhaRotulo || '').trim();
-    const hideBadgePreview =
-      classificacao === 'outro' &&
-      (outroSomenteConclusao || !rotuloEscolhaTrim);
-
-    if (!hideBadgePreview) {
-      doc.setFillColor(0, 51, 102);
-      doc.rect(margin, yPos - 5, contentWidth, 10, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(255, 255, 255);
-      doc.text('CLASSIFICAÇÃO FINAL', margin + 5, yPos + 2);
-      yPos += 20;
-
-      const classificacaoText =
-        classificacao === 'outro'
-          ? rotuloEscolhaTrim
-          : CLASSIFICACAO_FINAL_LABELS[classificacao] || 'CLASSIFICAÇÃO PENDENTE';
-
-      let badgeBg = [205, 205, 204];
-      let darkOnYellow = false;
-      if (classificacao === 'aprovado') badgeBg = [34, 139, 34];
-      else if (classificacao === 'aprovado_com_ressalvas') {
-        badgeBg = [218, 165, 32];
-        darkOnYellow = true;
-      } else if (classificacao === 'reprovado') badgeBg = [178, 34, 34];
-      else if (classificacao === 'outro') {
-        badgeBg = [205, 205, 204];
-        darkOnYellow = true;
-      }
-
-      yPos = drawClassificationBadge(
-        doc,
-        classificacaoText,
-        margin,
-        contentWidth,
-        yPos,
-        badgeBg,
-        darkOnYellow
-      );
-    } else {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.setTextColor(0, 51, 102);
-      doc.text('CONCLUSÃO', margin, yPos);
-      yPos += 14;
-    }
-
-    // ============ CONCLUSÃO ============
-    const textoCorpoPdf =
-      classificacao === 'outro'
-        ? (conclusao?.trim() ? conclusao : null)
-        : conclusao ||
-          (classificacao ? TEXTOS_CONCLUSAO[classificacao] : null);
-    if (textoCorpoPdf) {
-      yPos += 4;
-      yPos = drawBodyParagraphs(
-        doc,
-        textoCorpoPdf,
-        margin,
-        contentWidth,
-        yPos,
-        checkNewPage
-      );
-    }
-
-    yPos += 12;
-
-    checkNewPage(60);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 51, 102);
-    doc.text('ASSINATURA DO RESPONSÁVEL', margin, yPos);
-    yPos += 12;
-    doc.setTextColor(51, 51, 51);
-    yPos = drawResponsavelAssinaturaSection(
-      doc,
-      margin,
-      pageWidth,
-      contentWidth,
-      yPos,
-      checkNewPage,
-      {
-        localTexto: formatPdfAssinaturaDataLine(
-          inspection?.cidade,
-          inspection?.uf,
-          inspection?.data
-        ),
-        responsavel: responsavelFinal || inspection?.responsavel_tecnico || '',
-        crea: creaFinal || inspection?.crea || '',
-        signatureAreaMm: 26,
-      }
-    );
-
-    // ============ TEXTO LEGAL ============
-    yPos += 8;
-    checkNewPage(50);
-    yPos = drawBodyParagraphs(
-      doc,
-      LEGAL_TEXT,
-      margin,
-      contentWidth,
-      yPos,
-      checkNewPage
-    );
-
-    // Rodapé
-    doc.setFontSize(8);
-    doc.setTextColor(128, 128, 128);
-    doc.text('Documento gerado eletronicamente por OSTI Engenharia', pageWidth / 2, pageHeight - 10, { align: 'center' });
-
-    if (forPreview) {
-      const blob = doc.output('blob');
-      return blob;
-    } else {
-      doc.save(`Relatorio_Vistoria_${inspection.cliente}_${inspection.data}.pdf`);
-      toast.success('PDF gerado com sucesso!');
-      return null;
-    }
-  };
+  }, [
+    inspection,
+    classificacao,
+    conclusao,
+    responsavelFinal,
+    creaFinal,
+    horarioTermino,
+    outroSomenteConclusao,
+    classificacaoEscolhaRotulo,
+  ]);
 
   const handlePreviewPDF = async () => {
-    const blob = await generatePDF(true);
-    if (blob) {
-      setPdfBlob(blob);
-      setShowPdfPreview(true);
+    const data = buildInspectionSnapshotForPdf();
+    if (!data) return;
+    try {
+      const result = await generateInspectionPDF(data, true);
+      if (result?.blob) {
+        setPdfBlob(result.blob);
+        setShowPdfPreview(true);
+      }
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar pré-visualização do PDF');
     }
   };
 
-  const handleDownloadPDF = () => {
-    generatePDF(false);
-    setShowPdfPreview(false);
+  const handleDownloadPDF = async () => {
+    const data = buildInspectionSnapshotForPdf();
+    if (!data) return;
+    try {
+      await generateInspectionPDF(data, false);
+      toast.success('PDF gerado com sucesso!');
+      setShowPdfPreview(false);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar PDF');
+    }
   };
 
   const handleShareWhatsApp = () => {
@@ -609,9 +311,13 @@ const InspectionReview = () => {
         <div className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6">
           {/* Classificação Final */}
           <div className="mb-6">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-3 block">
+            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
               Classificação Final do Imóvel *
             </label>
+            <p className="text-sm text-slate-600 mb-3 leading-relaxed">
+              Selecione a classificação final com base nas condições técnicas observadas durante a
+              vistoria.
+            </p>
             <div className="space-y-2">
               {CLASSIFICACAO_OPTIONS.map((option) => (
                 <button
@@ -657,7 +363,7 @@ const InspectionReview = () => {
           {classificacao === 'outro' && (
             <div className="mb-4">
               <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                OUTRA CLASSIFICAÇÃO
+                OUTROS
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
@@ -672,7 +378,7 @@ const InspectionReview = () => {
                       : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  Definir classificação personalizada
+                  Utilize quando a análise do imóvel não se enquadrar nas classificações pré-definidas.
                 </button>
                 <button
                   type="button"
@@ -765,8 +471,11 @@ const InspectionReview = () => {
             </button>
           </div>
 
-          {/* Texto Legal */}
+          {/* Considerações finais e aspectos legais */}
           <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <p className="text-xs font-bold tracking-wider text-slate-500 mb-2">
+              CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS
+            </p>
             <p className="text-xs text-slate-600 italic leading-relaxed">{LEGAL_TEXT}</p>
           </div>
 
@@ -825,11 +534,19 @@ const InspectionReview = () => {
           </div>
 
           <p className="mb-6 text-xs text-slate-500">
-            Cidade, UF e data do laudo vêm da identificação da vistoria; a linha por extenso na assinatura do PDF é gerada automaticamente.
+            Cidade, UF e data do laudo vêm da identificação da vistoria técnica; a linha por extenso na assinatura do PDF é gerada automaticamente.
           </p>
 
           {/* Buttons */}
           <div className="space-y-3">
+            <button
+              type="button"
+              data-testid="preview-pdf-button"
+              onClick={handlePreviewPDF}
+              className="w-full bg-slate-100 text-slate-800 py-3 rounded-lg font-semibold text-sm border border-slate-200 transition-all duration-200 hover:bg-slate-200"
+            >
+              Pré-visualizar PDF
+            </button>
             <button
               data-testid="finalize-button"
               onClick={handleFinalize}

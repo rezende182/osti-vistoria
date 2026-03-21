@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, MessageSquare, X, Image, FolderOpen, Smartphone, Info } from 'lucide-react';
+import { Camera, MessageSquare, X, Image, FolderOpen, Smartphone } from 'lucide-react';
 import InspectionOrientationModal from './InspectionOrientationModal';
 import { getOrientationForItemName } from '../constants/itemOrientations';
 import { compressImage, formatFileSize, getDataUrlSize } from '../utils/imageCompressor';
@@ -154,10 +154,10 @@ const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoC
           type="button"
           data-testid={`orientation-info-${item.name}`}
           onClick={() => setShowOrientationModal(true)}
-          className="shrink-0 p-2 rounded-full text-slate-500 hover:bg-slate-200/80 hover:text-slate-900 transition-colors"
-          aria-label="Orientações de inspeção"
+          className="shrink-0 px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
+          aria-label="Dicas de inspeção"
         >
-          <Info size={20} strokeWidth={2.25} />
+          Dicas
         </button>
       </div>
 

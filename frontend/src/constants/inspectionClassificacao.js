@@ -2,11 +2,11 @@
  * Textos automáticos de conclusão (valores de API: aprovado | aprovado_com_ressalvas | reprovado).
  */
 export const TEXTOS_CONCLUSAO = {
-  aprovado: `O imóvel vistoriado encontra-se em conformidade com as condições esperadas para recebimento, não sendo identificadas anomalias ou vícios construtivos aparentes que comprometam seu uso, segurança ou desempenho.
+  aprovado: `O imóvel vistoriado encontra-se em condições técnicas compatíveis com o padrão de entrega previsto, não tendo sido identificadas patologias, vícios construtivos aparentes ou não conformidades relevantes que comprometam seu uso, segurança ou desempenho.
 
-Os sistemas, elementos construtivos e acabamentos avaliados apresentam funcionamento adequado, estando aptos para utilização imediata.
+Os sistemas construtivos, instalações e acabamentos avaliados apresentaram funcionamento adequado no momento da inspeção, não sendo constatadas irregularidades que inviabilizem sua utilização.
 
-Dessa forma, o imóvel é considerado em conformidade técnica, podendo ser recebido sem ressalvas.`,
+Dessa forma, conclui-se que o imóvel se encontra em conformidade técnica para recebimento.`,
 
   aprovado_com_ressalvas: `Foram identificadas não conformidades de natureza executiva, as quais, embora não comprometam a habitabilidade imediata do imóvel, configuram desvios em relação aos padrões construtivos e de acabamento esperados. Recomenda-se a devida regularização por parte da construtora, em conformidade com os prazos de garantia e normativas técnicas vigentes.`,
 
@@ -20,7 +20,7 @@ export const CLASSIFICACAO_FINAL_LABELS = {
   aprovado: 'APTO AO RECEBIMENTO',
   aprovado_com_ressalvas: 'RECEBIMENTO CONDICIONADO',
   reprovado: 'REPROVADO',
-  outro: 'OUTRA CLASSIFICAÇÃO',
+  outro: 'OUTROS',
 };
 
 /** Versões curtas para cartões e detalhe (abas do dashboard usam rótulos próprios) */
@@ -28,7 +28,7 @@ export const CLASSIFICACAO_BADGE_SHORT = {
   aprovado: 'APTO',
   aprovado_com_ressalvas: 'CONDICIONADO',
   reprovado: 'REPROVADO',
-  outro: 'OUTRA',
+  outro: 'OUTROS',
 };
 
 /** Textos automáticos legados (para detectar se a conclusão ainda é “padrão” e pode ser substituída) */
