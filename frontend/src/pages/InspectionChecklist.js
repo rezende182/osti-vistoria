@@ -361,6 +361,29 @@ const InspectionChecklist = () => {
     return missingItems;
   };
 
+  const pendingChecklistItems = validateChecklist();
+  const canAddAnotherRoom =
+    roomsData.length === 0 || pendingChecklistItems.length === 0;
+
+  const handleOpenAddRoomModal = () => {
+    if (roomsData.length > 0) {
+      const missing = validateChecklist();
+      if (missing.length > 0) {
+        const displayItems = missing.slice(0, 5);
+        const remaining = missing.length - 5;
+        let message =
+          '⚠️ Preencha todos os campos de Existência e Condição antes de adicionar outro cômodo.\n\nItens pendentes:\n' +
+          displayItems.join('\n');
+        if (remaining > 0) {
+          message += `\n\n... e mais ${remaining} item(s) faltando`;
+        }
+        toast.error(message, { duration: 8000 });
+        return;
+      }
+    }
+    setShowAddRoom(true);
+  };
+
   const handleSaveAndContinue = async () => {
     // Verificar se há pelo menos um cômodo
     if (roomsData.length === 0) {
@@ -460,7 +483,8 @@ const InspectionChecklist = () => {
         selectedRoomId={selectedRoomId}
         onSelectRoom={handleRoomSelect}
         roomsProgress={getRoomsProgress()}
-        onAddRoom={() => setShowAddRoom(true)}
+        onAddRoom={handleOpenAddRoomModal}
+        canAddRoom={canAddAnotherRoom}
         onDeleteRoom={deleteRoom}
       />
 
@@ -540,15 +564,27 @@ const InspectionChecklist = () => {
             Salvar e Continuar
             <ArrowRight size={20} />
           </button>
-          <button
-            type="button"
-            data-testid="continue-add-room-button"
-            onClick={() => setShowAddRoom(true)}
-            className="w-full bg-slate-100 text-slate-800 py-3 rounded-lg font-semibold text-sm border border-slate-200 transition-all duration-200 hover:bg-slate-200 active:scale-[0.99] flex items-center justify-center gap-2"
-          >
-            <Plus size={18} />
-            Continuar adicionando cômodo
-          </button>
+          {roomsList.length > 0 && (
+            <button
+              type="button"
+              data-testid="continue-add-room-button"
+              disabled={!canAddAnotherRoom}
+              title={
+                !canAddAnotherRoom
+                  ? 'Preencha Existência e Condição em todos os itens de todos os cômodos antes de adicionar outro'
+                  : undefined
+              }
+              onClick={handleOpenAddRoomModal}
+              className={`w-full py-3 rounded-lg font-semibold text-sm border transition-all duration-200 flex items-center justify-center gap-2 ${
+                canAddAnotherRoom
+                  ? 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200 active:scale-[0.99]'
+                  : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+              }`}
+            >
+              <Plus size={18} />
+              Continuar adicionando cômodo
+            </button>
+          )}
         </div>
       </div>
     </div>

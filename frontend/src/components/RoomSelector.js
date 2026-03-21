@@ -1,7 +1,16 @@
 import React from 'react';
 import { Check, Plus, X } from 'lucide-react';
 
-const RoomSelector = ({ rooms, selectedRoomId, onSelectRoom, roomsProgress, onAddRoom, onDeleteRoom }) => {
+const RoomSelector = ({
+  rooms,
+  selectedRoomId,
+  onSelectRoom,
+  roomsProgress,
+  onAddRoom,
+  onDeleteRoom,
+  /** Quando false, o botão “Adicionar” fica desabilitado (ex.: checklist incompleto). */
+  canAddRoom = true,
+}) => {
   return (
     <div className="sticky top-0 z-40 bg-white border-b border-slate-200 py-3 px-4">
       <div className="flex gap-2 overflow-x-auto room-selector-scroll pb-2">
@@ -51,12 +60,21 @@ const RoomSelector = ({ rooms, selectedRoomId, onSelectRoom, roomsProgress, onAd
         {/* Botão para adicionar cômodo - sempre visível */}
         {onAddRoom && (
           <button
+            type="button"
             data-testid="add-room-button"
+            disabled={!canAddRoom && rooms.length > 0}
+            title={
+              !canAddRoom && rooms.length > 0
+                ? 'Preencha Existência e Condição em todos os itens antes de adicionar outro cômodo'
+                : undefined
+            }
             onClick={onAddRoom}
             className={`flex-shrink-0 px-4 py-2 rounded-lg font-bold text-sm transition-all duration-200 flex items-center gap-2 ${
-              rooms.length === 0 
-                ? 'bg-blue-600 text-white hover:bg-blue-700 animate-pulse-slow'
-                : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+              !canAddRoom && rooms.length > 0
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                : rooms.length === 0
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 animate-pulse-slow'
+                  : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
             }`}
           >
             <Plus size={16} />

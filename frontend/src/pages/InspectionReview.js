@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Edit, Share2, X, MessageCircle, Mail } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import TimePickerField from '../components/TimePickerField';
 import { toast } from 'sonner';
 import { inspectionsApi } from '../services/api';
@@ -16,8 +16,6 @@ import {
   CLASSIFICACAO_FINAL_LABELS,
   conclusaoPareceAutomatica,
 } from '../constants/inspectionClassificacao';
-import { generateInspectionPDF } from '../utils/pdfGenerator';
-
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
 const LEGAL_TEXT =
@@ -43,9 +41,6 @@ const InspectionReview = () => {
   const [horarioTermino, setHorarioTermino] = useState('');
   const [outroSomenteConclusao, setOutroSomenteConclusao] = useState(false);
   const [classificacaoEscolhaRotulo, setClassificacaoEscolhaRotulo] = useState('');
-  const [showPdfPreview, setShowPdfPreview] = useState(false);
-  const [pdfBlob, setPdfBlob] = useState(null);
-  const [showShareModal, setShowShareModal] = useState(false);
 
   const loadInspection = useCallback(async () => {
     try {
@@ -205,76 +200,6 @@ const InspectionReview = () => {
       console.error('Erro ao salvar dados parciais:', error);
     }
     navigate(`/inspection/${id}/checklist`);
-  };
-
-  const buildInspectionSnapshotForPdf = useCallback(() => {
-    if (!inspection) return null;
-    return {
-      ...inspection,
-      classificacao_final: classificacao,
-      conclusao,
-      responsavel_final: responsavelFinal,
-      crea_final: creaFinal,
-      horario_termino: horarioTermino,
-      outro_somente_conclusao:
-        classificacao === 'outro' ? outroSomenteConclusao : false,
-      classificacao_escolha_rotulo:
-        classificacao === 'outro' && !outroSomenteConclusao
-          ? classificacaoEscolhaRotulo
-          : '',
-    };
-  }, [
-    inspection,
-    classificacao,
-    conclusao,
-    responsavelFinal,
-    creaFinal,
-    horarioTermino,
-    outroSomenteConclusao,
-    classificacaoEscolhaRotulo,
-  ]);
-
-  const handlePreviewPDF = async () => {
-    const data = buildInspectionSnapshotForPdf();
-    if (!data) return;
-    try {
-      const result = await generateInspectionPDF(data, true);
-      if (result?.blob) {
-        setPdfBlob(result.blob);
-        setShowPdfPreview(true);
-      }
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      toast.error('Erro ao gerar pré-visualização do PDF');
-    }
-  };
-
-  const handleDownloadPDF = async () => {
-    const data = buildInspectionSnapshotForPdf();
-    if (!data) return;
-    try {
-      await generateInspectionPDF(data, false);
-      toast.success('PDF gerado com sucesso!');
-      setShowPdfPreview(false);
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      toast.error('Erro ao gerar PDF');
-    }
-  };
-
-  const handleShareWhatsApp = () => {
-    const text = `Relatório de Vistoria - ${inspection?.cliente} - ${inspection?.data}`;
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
-    setShowShareModal(false);
-  };
-
-  const handleShareEmail = () => {
-    const subject = `Relatório de Vistoria - ${inspection?.cliente}`;
-    const body = `Segue em anexo o relatório de vistoria do imóvel.\n\nCliente: ${inspection?.cliente}\nData: ${inspection?.data}\nEndereço: ${inspection?.endereco}`;
-    const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.open(url, '_blank');
-    setShowShareModal(false);
   };
 
   if (loading) {
@@ -540,14 +465,6 @@ const InspectionReview = () => {
           {/* Buttons */}
           <div className="space-y-3">
             <button
-              type="button"
-              data-testid="preview-pdf-button"
-              onClick={handlePreviewPDF}
-              className="w-full bg-slate-100 text-slate-800 py-3 rounded-lg font-semibold text-sm border border-slate-200 transition-all duration-200 hover:bg-slate-200"
-            >
-              Pré-visualizar PDF
-            </button>
-            <button
               data-testid="finalize-button"
               onClick={handleFinalize}
               className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95"
@@ -558,71 +475,6 @@ const InspectionReview = () => {
         </div>
       </div>
 
-      {/* PDF Preview Modal */}
-      {showPdfPreview && pdfBlob && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
-          <div className="bg-white p-4 flex items-center justify-between">
-            <h3 className="text-lg font-bold">Pré-visualização do PDF</h3>
-            <button onClick={() => setShowPdfPreview(false)} className="p-2">
-              <X size={24} />
-            </button>
-          </div>
-          <div className="flex-1 overflow-auto bg-slate-200 p-4">
-            <iframe
-              src={URL.createObjectURL(pdfBlob)}
-              className="w-full h-full min-h-[600px] bg-white"
-              title="PDF Preview"
-            />
-          </div>
-          <div className="bg-white p-4 flex gap-3">
-            <button
-              onClick={handleDownloadPDF}
-              className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
-            >
-              <Download size={20} />
-              Baixar PDF
-            </button>
-            <button
-              onClick={() => setShowShareModal(true)}
-              className="flex-1 bg-slate-900 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2"
-            >
-              <Share2 size={20} />
-              Compartilhar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <h3 className="text-xl font-bold text-slate-900 mb-4">Compartilhar</h3>
-            <div className="space-y-3">
-              <button
-                onClick={handleShareWhatsApp}
-                className="w-full py-3 px-4 bg-green-500 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-              >
-                <MessageCircle size={20} />
-                WhatsApp
-              </button>
-              <button
-                onClick={handleShareEmail}
-                className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2"
-              >
-                <Mail size={20} />
-                E-mail
-              </button>
-            </div>
-            <button
-              onClick={() => setShowShareModal(false)}
-              className="w-full mt-4 py-3 px-4 bg-slate-100 text-slate-700 rounded-lg font-semibold"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
