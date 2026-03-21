@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth';
+import { isFirebaseAuthAvailable } from '@/firebase';
 
 const Login = () => {
-  const { initializing, login } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,16 +39,18 @@ const Login = () => {
     }
   };
 
-  if (initializing) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
-      </div>
-    );
-  }
-
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm sm:p-10">
+      {!isFirebaseAuthAvailable() ? (
+        <div
+          className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          role="alert"
+        >
+          Firebase não está configurado. Defina as variáveis{' '}
+          <code className="rounded bg-amber-100/80 px-1">REACT_APP_FIREBASE_*</code> na Vercel ou em{' '}
+          <code className="rounded bg-amber-100/80 px-1">.env.local</code> e faça novo deploy.
+        </div>
+      ) : null}
       <div className="mb-8 text-center lg:text-left">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Entrar na conta
@@ -96,7 +99,7 @@ const Login = () => {
         </div>
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || !isFirebaseAuthAvailable()}
           className="w-full rounded-xl bg-blue-600 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-60"
         >
           {submitting ? 'A entrar…' : 'Entrar'}

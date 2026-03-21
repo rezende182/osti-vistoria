@@ -6,8 +6,9 @@ const LOGO_URL =
 
 /**
  * Layout público (login): painel de marca + área do formulário — padrão SaaS.
+ * Aceita `children` (composto) ou `<Outlet />` (rotas aninhadas).
  */
-const AuthLayout = () => (
+const AuthLayout = ({ children }) => (
   <div className="min-h-dvh bg-slate-50 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
     <aside className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-10 py-12 text-white lg:flex">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-600/20 via-transparent to-transparent" />
@@ -29,7 +30,7 @@ const AuthLayout = () => (
           <img src={LOGO_URL} alt="OSTI Engenharia" className="h-10 w-auto" />
           <span className="text-sm font-semibold text-slate-700">OSTI Vistoria</span>
         </div>
-        <Outlet />
+        {children ?? <Outlet />}
       </div>
     </main>
   </div>

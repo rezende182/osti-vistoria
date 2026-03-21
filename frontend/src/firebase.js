@@ -2,8 +2,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 
 /**
- * Configuração via variáveis de ambiente (Create React App: REACT_APP_*).
- * Copie .env.example para .env.local e preencha com os dados do projeto Firebase.
+ * Configuração via REACT_APP_* (Create React App / Vercel).
+ * Inicialização defensiva: falha de config não derruba a app inteira.
  */
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -14,7 +14,33 @@ const firebaseConfig = {
   appId: process.env.REACT_APP_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+let app = null;
+/** null se a config estiver incompleta ou se initializeApp falhar */
+let auth = null;
 
-export const auth = getAuth(app);
+const hasRequiredKeys =
+  Boolean(firebaseConfig.apiKey) &&
+  Boolean(firebaseConfig.projectId) &&
+  Boolean(firebaseConfig.appId);
+
+try {
+  if (hasRequiredKeys) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+  } else {
+    console.warn(
+      '[firebase] Variáveis REACT_APP_FIREBASE_* em falta — defina-as na Vercel / .env.local.'
+    );
+  }
+} catch (e) {
+  console.error('[firebase] Erro ao inicializar:', e);
+  app = null;
+  auth = null;
+}
+
+export { auth };
 export default app;
+
+export function isFirebaseAuthAvailable() {
+  return Boolean(auth);
+}

@@ -1,9 +1,9 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { GuestRoute, ProtectedRoute } from '@/auth';
+import PageLoader from '@/components/PageLoader';
+import { useAuth } from '@/auth';
+import { RequireAuth, LoginRoute } from '@/auth/routeGuards';
 import AppShell from '@/layouts/AppShell';
-import AuthLayout from '@/layouts/AuthLayout';
-import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import NewInspection from '@/pages/NewInspection';
 import EditInspection from '@/pages/EditInspection';
@@ -12,18 +12,20 @@ import InspectionReview from '@/pages/InspectionReview';
 import InspectionDetail from '@/pages/InspectionDetail';
 
 /**
- * Definição central das rotas: área pública (login) vs área autenticada (shell + páginas).
+ * Enquanto Firebase não resolve a sessão inicial, não montamos `<Routes>` — evita loops / ↔ /login.
  */
 export function AppRoutes() {
+  const { authReady } = useAuth();
+
+  if (!authReady) {
+    return <PageLoader label="A preparar sessão…" />;
+  }
+
   return (
     <Routes>
-      <Route element={<GuestRoute />}>
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Login />} />
-        </Route>
-      </Route>
+      <Route path="/login" element={<LoginRoute />} />
 
-      <Route element={<ProtectedRoute />}>
+      <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/new-inspection" element={<NewInspection />} />
