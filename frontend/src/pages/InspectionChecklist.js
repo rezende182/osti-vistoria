@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-react';
 import RoomSelector from '../components/RoomSelector';
 import ChecklistItem from '../components/ChecklistItem';
 import { toast } from 'sonner';
@@ -132,6 +132,8 @@ const InspectionChecklist = () => {
   const [roomsList, setRoomsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddRoom, setShowAddRoom] = useState(false);
+  /** Confirmação antes de excluir cômodo (mobile + desktop) */
+  const [deleteRoomTarget, setDeleteRoomTarget] = useState(null);
   const contentRef = useRef(null);
 
   const loadInspection = useCallback(async () => {
@@ -314,19 +316,22 @@ const InspectionChecklist = () => {
     toast.success(`${newName} adicionado!`);
   };
 
-  // Função para excluir um cômodo
-  const deleteRoom = (roomId) => {
-    const roomToDelete = roomsList.find(r => r.id === roomId);
+  const requestDeleteRoom = (roomId) => {
+    const roomToDelete = roomsList.find((r) => r.id === roomId);
+    if (!roomToDelete) return;
+    setDeleteRoomTarget({ id: roomToDelete.id, name: roomToDelete.name });
+  };
+
+  const removeRoomConfirmed = (roomId) => {
+    const roomToDelete = roomsList.find((r) => r.id === roomId);
     if (!roomToDelete) return;
 
-    // Remover da lista de cômodos
-    const newRoomsList = roomsList.filter(r => r.id !== roomId);
-    const newRoomsData = roomsData.filter(r => r.room_id !== roomId);
+    const newRoomsList = roomsList.filter((r) => r.id !== roomId);
+    const newRoomsData = roomsData.filter((r) => r.room_id !== roomId);
 
     setRoomsList(newRoomsList);
     setRoomsData(newRoomsData);
 
-    // Se o cômodo excluído era o selecionado, selecionar outro
     if (selectedRoomId === roomId) {
       if (newRoomsList.length > 0) {
         setSelectedRoomId(newRoomsList[0].id);
@@ -335,13 +340,18 @@ const InspectionChecklist = () => {
       }
     }
 
-    // Renumerar fotos após exclusão
     if (newRoomsData.length > 0) {
       const renumberedData = renumberAllPhotos(newRoomsData);
       setRoomsData(renumberedData);
     }
 
     toast.success(`${roomToDelete.name} removido!`);
+  };
+
+  const confirmDeleteRoom = () => {
+    if (!deleteRoomTarget) return;
+    removeRoomConfirmed(deleteRoomTarget.id);
+    setDeleteRoomTarget(null);
   };
 
   // Validar se todos os itens estão preenchidos
@@ -456,21 +466,26 @@ const InspectionChecklist = () => {
   const selectedRoomIndex = roomsData.findIndex((room) => room.room_id === selectedRoomId);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-40">
+    <div className="min-h-dvh bg-slate-50 pb-44 sm:pb-40">
       {/* Header */}
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white py-6 px-4">
-        <div className="max-w-md mx-auto md:max-w-2xl">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-4 py-5 text-white sm:py-6">
+        <div className="mx-auto w-full max-w-app-readable xl:max-w-app-wide">
           <button
+            type="button"
             data-testid="back-to-identification-button"
             onClick={() => navigate(`/inspection/${id}/edit`)}
-            className="flex items-center gap-2 text-slate-300 hover:text-white mb-4 transition-colors"
+            className="mb-4 flex min-h-touch items-center gap-2 text-slate-300 transition-colors hover:text-white sm:min-h-0"
           >
-            <ArrowLeft size={20} />
-            Voltar para Identificação
+            <ArrowLeft size={20} className="shrink-0" />
+            <span className="text-left text-sm sm:text-base">Voltar para Identificação</span>
           </button>
-          <div className="flex items-center gap-4">
-            <img src={LOGO_URL} alt="OSTI Engenharia" className="h-10 w-auto" />
-            <h1 className="text-2xl font-bold tracking-tight font-secondary uppercase">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <img
+              src={LOGO_URL}
+              alt="OSTI Engenharia"
+              className="h-9 w-auto shrink-0 sm:h-10"
+            />
+            <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl lg:text-[1.65rem]">
               Inspeção Técnica e Checklist de Verificação
             </h1>
           </div>
@@ -485,13 +500,52 @@ const InspectionChecklist = () => {
         roomsProgress={getRoomsProgress()}
         onAddRoom={handleOpenAddRoomModal}
         canAddRoom={canAddAnotherRoom}
-        onDeleteRoom={deleteRoom}
+        onDeleteRoom={requestDeleteRoom}
       />
 
       {/* Add Room Modal */}
+      {deleteRoomTarget && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-room-title"
+            className="w-full max-w-md rounded-t-xl bg-white p-6 shadow-xl sm:rounded-xl"
+          >
+            <h3
+              id="delete-room-title"
+              className="mb-2 text-lg font-bold text-slate-900 font-secondary uppercase"
+            >
+              Excluir cômodo?
+            </h3>
+            <p className="mb-6 text-sm leading-relaxed text-slate-600">
+              O cômodo <strong className="text-slate-900">{deleteRoomTarget.name}</strong> e todos
+              os itens, fotos e respostas serão removidos. Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteRoomTarget(null)}
+                className="min-h-touch w-full rounded-lg border-2 border-slate-200 px-4 py-3 font-semibold text-slate-700 transition-colors hover:bg-slate-50 sm:min-h-0 sm:w-auto"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                data-testid="confirm-delete-room-button"
+                onClick={confirmDeleteRoom}
+                className="min-h-touch w-full rounded-lg bg-red-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-red-700 sm:min-h-0 sm:w-auto"
+              >
+                Excluir cômodo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAddRoom && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div className="w-full max-w-md rounded-t-xl bg-white p-6 shadow-xl sm:rounded-lg">
             <h3 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">
               Adicionar Cômodo
             </h3>
@@ -499,17 +553,19 @@ const InspectionChecklist = () => {
               {Object.keys(ROOM_TEMPLATES).map((type) => (
                 <button
                   key={type}
+                  type="button"
                   data-testid={`add-room-${type}`}
                   onClick={() => addRoom(type)}
-                  className="w-full py-3 px-4 bg-slate-100 text-slate-700 rounded-lg font-semibold text-left hover:bg-slate-200 transition-colors"
+                  className="min-h-touch w-full rounded-lg bg-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition-colors hover:bg-slate-200 sm:min-h-0"
                 >
                   {ROOM_TEMPLATES[type].name}
                 </button>
               ))}
             </div>
             <button
+              type="button"
               onClick={() => setShowAddRoom(false)}
-              className="w-full mt-4 py-3 px-4 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors"
+              className="mt-4 min-h-touch w-full rounded-lg bg-slate-900 px-4 py-3 font-semibold text-white transition-colors hover:bg-slate-800 sm:min-h-0"
             >
               Cancelar
             </button>
@@ -518,7 +574,10 @@ const InspectionChecklist = () => {
       )}
 
       {/* Checklist Items */}
-      <div ref={contentRef} className="max-w-md mx-auto md:max-w-2xl px-4 py-6">
+      <div
+        ref={contentRef}
+        className="mx-auto w-full max-w-app-readable px-4 py-6 sm:px-6 xl:max-w-app-wide"
+      >
         {roomsList.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -527,17 +586,31 @@ const InspectionChecklist = () => {
             <h2 className="text-xl font-bold text-slate-900 mb-2">Nenhum cômodo adicionado</h2>
             <p className="text-slate-500 mb-6">Clique no botão "Adicionar" acima para incluir os cômodos do imóvel</p>
             <button
+              type="button"
               onClick={() => setShowAddRoom(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              className="min-h-touch rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-blue-700 sm:min-h-0"
             >
               + Adicionar Cômodo
             </button>
           </div>
         ) : (
           <>
-            <h2 className="text-2xl font-bold text-slate-900 font-secondary uppercase mb-4">
-              {selectedRoom?.room_name}
-            </h2>
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <h2 className="text-balance text-xl font-bold font-secondary uppercase text-slate-900 sm:text-2xl lg:pr-4">
+                {selectedRoom?.room_name}
+              </h2>
+              {selectedRoom && (
+                <button
+                  type="button"
+                  data-testid="delete-current-room-button"
+                  onClick={() => requestDeleteRoom(selectedRoom.room_id)}
+                  className="inline-flex min-h-touch w-full shrink-0 items-center justify-center gap-2 rounded-lg border-2 border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 transition-colors hover:border-red-300 hover:bg-red-100 active:bg-red-100 sm:min-h-0 sm:w-auto sm:py-2.5"
+                >
+                  <Trash2 size={18} className="shrink-0" aria-hidden />
+                  Excluir cômodo
+                </button>
+              )}
+            </div>
 
             {selectedRoom?.items.map((item, itemIndex) => (
               <ChecklistItem
@@ -554,12 +627,13 @@ const InspectionChecklist = () => {
       </div>
 
       {/* Fixed Bottom Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 pb-safe">
-        <div className="max-w-md mx-auto md:max-w-2xl space-y-3">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 p-4 pb-bottom-safe backdrop-blur-sm supports-[backdrop-filter]:bg-white/80">
+        <div className="mx-auto w-full max-w-app-readable space-y-3 sm:px-2 xl:max-w-app-wide">
           <button
+            type="button"
             data-testid="save-and-continue-button"
             onClick={handleSaveAndContinue}
-            className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 flex items-center justify-center gap-2"
+            className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 text-base font-bold font-secondary uppercase text-white transition-all duration-200 hover:bg-blue-700 active:scale-[0.99] sm:min-h-0 sm:text-lg"
           >
             Salvar e Continuar
             <ArrowRight size={20} />
@@ -575,10 +649,10 @@ const InspectionChecklist = () => {
                   : undefined
               }
               onClick={handleOpenAddRoomModal}
-              className={`w-full py-3 rounded-lg font-semibold text-sm border transition-all duration-200 flex items-center justify-center gap-2 ${
+              className={`flex min-h-touch w-full items-center justify-center gap-2 rounded-lg border py-3 text-sm font-semibold transition-all duration-200 sm:min-h-0 ${
                 canAddAnotherRoom
-                  ? 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200 active:scale-[0.99]'
-                  : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                  ? 'border-slate-200 bg-slate-100 text-slate-800 hover:bg-slate-200 active:scale-[0.99]'
+                  : 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
               }`}
             >
               <Plus size={18} />

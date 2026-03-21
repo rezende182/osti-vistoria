@@ -7,6 +7,20 @@ module.exports = {
   ],
   theme: {
   	extend: {
+  		screens: {
+  			/** Telas com ponteiro fino (mouse) — hover fica disponível */
+  			fine: { raw: '(hover: hover) and (pointer: fine)' },
+  		},
+  		minHeight: {
+  			touch: '44px',
+  		},
+  		padding: {
+  			'bottom-safe': 'max(1rem, env(safe-area-inset-bottom, 0px))',
+  		},
+  		maxWidth: {
+  			'app-readable': '42rem',
+  			'app-wide': '56rem',
+  		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',

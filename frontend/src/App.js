@@ -20,7 +20,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <div className="App">
+      <div className="App min-h-dvh">
         <OfflineIndicator />
         <HashRouter>
           <SyncIdListener />
