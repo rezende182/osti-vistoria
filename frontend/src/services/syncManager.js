@@ -76,14 +76,16 @@ export async function syncPendingInspections() {
         const path = itemPath(item);
         const uid =
           item.userId && String(item.userId).trim() ? String(item.userId).trim() : '';
+        if (!uid) {
+          console.warn('[Sync] Item sem userId — ignorado (multiusuário)', item.queueId);
+          continue;
+        }
         const config = {
           method: item.method,
           url: path,
           validateStatus: (s) => s >= 200 && s < 300,
+          params: { userId: uid },
         };
-        if (uid) {
-          config.params = { userId: uid };
-        }
         if (
           item.payload !== null &&
           item.payload !== undefined &&

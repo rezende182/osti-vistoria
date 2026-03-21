@@ -2,11 +2,8 @@ import { inspectionsApi } from '../services/api';
 import { getInspectionLocally, initDB } from './offlineStorage';
 
 function canUseLocalFallback(local, userId) {
-  if (!local) return false;
-  if (!userId) return false;
-  if (local.userId === userId) return true;
-  if (local.userId == null || local.userId === '') return true;
-  return false;
+  if (!local || !userId) return false;
+  return local.userId === userId;
 }
 
 /**

@@ -37,9 +37,7 @@ const Dashboard = () => {
       }
       console.warn('API lista:', result.error);
       const local = await getAllInspectionsLocally();
-      const mine = local.filter(
-        (row) => row.userId === uid || row.userId == null || row.userId === ''
-      );
+      const mine = local.filter((row) => row.userId === uid);
       if (mine.length) {
         setInspections(mine);
         toast.info('Sem conexão com o servidor — mostrando dados salvos neste dispositivo.');
