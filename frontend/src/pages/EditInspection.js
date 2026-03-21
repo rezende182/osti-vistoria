@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Home, ArrowRight } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
+import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
 import { inspectionsApi } from '../services/api';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
@@ -137,11 +138,14 @@ const EditInspection = () => {
             <Home size={20} />
             Página Inicial
           </button>
-          <div className="flex items-center gap-4">
-            <img src={LOGO_URL} alt="OSTI Engenharia" className="h-12 w-auto" />
-            <h1 className="text-2xl font-bold tracking-tight font-secondary uppercase">
-              Identificação da Vistoria Técnica
-            </h1>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <img src={LOGO_URL} alt="OSTI Engenharia" className="h-12 w-auto shrink-0" />
+              <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
+                Identificação da Vistoria Técnica
+              </h1>
+            </div>
+            <LogoutHeaderButton />
           </div>
         </div>
       </div>

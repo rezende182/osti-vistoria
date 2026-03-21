@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle, FileText } from 'lucide-react';
+import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import FAB from '../components/FAB';
 import ConfirmModal from '../components/ConfirmModal';
 import { toast } from 'sonner';
@@ -111,13 +112,14 @@ const Dashboard = () => {
       {/* Header */}
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white py-6 px-4">
         <div className="max-w-md mx-auto md:max-w-2xl lg:max-w-4xl">
-          <div className="flex items-center gap-4 mb-2">
-            <img src={LOGO_URL} alt="OSTI Engenharia" className="h-16 w-auto" />
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight font-secondary uppercase">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <img src={LOGO_URL} alt="OSTI Engenharia" className="h-14 w-auto shrink-0 sm:h-16" />
+              <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight md:text-2xl">
                 Vistoria de Recebimento de Imóvel
               </h1>
             </div>
+            <LogoutHeaderButton />
           </div>
         </div>
       </div>

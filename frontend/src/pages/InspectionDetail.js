@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Home, Download, CheckCircle2, AlertCircle, Clock, Edit, FileText, XCircle, Share2, MessageCircle, Mail, Eye, X, Layers } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
+import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
 import { generateInspectionPDF } from '../utils/pdfGenerator';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
@@ -169,19 +170,22 @@ const InspectionDetail = () => {
             <Home size={20} />
             Página Inicial
           </button>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <img src={LOGO_URL} alt="OSTI Engenharia" className="h-10 w-auto" />
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight font-secondary uppercase mb-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
+              <img src={LOGO_URL} alt="OSTI Engenharia" className="h-10 w-auto shrink-0" />
+              <div className="min-w-0">
+                <h1 className="mb-1 text-2xl font-bold font-secondary uppercase tracking-tight">
                   {inspection.cliente}
                 </h1>
                 <p className="text-sm text-slate-300">{inspection.data}</p>
               </div>
             </div>
-            <div className={`flex items-center gap-1 px-3 py-2 rounded-lg ${statusInfo.bg}`}>
-              <StatusIcon size={18} className={statusInfo.color} />
-              <span className={`text-xs font-bold ${statusInfo.color}`}>{statusInfo.label}</span>
+            <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+              <LogoutHeaderButton />
+              <div className={`flex items-center justify-center gap-1 self-start rounded-lg px-3 py-2 sm:self-end ${statusInfo.bg}`}>
+                <StatusIcon size={18} className={statusInfo.color} />
+                <span className={`text-xs font-bold ${statusInfo.color}`}>{statusInfo.label}</span>
+              </div>
             </div>
           </div>
         </div>

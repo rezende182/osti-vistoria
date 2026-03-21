@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-react';
 import RoomSelector from '../components/RoomSelector';
 import ChecklistItem from '../components/ChecklistItem';
+import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
 import { inspectionsApi } from '../services/api';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
@@ -479,15 +480,18 @@ const InspectionChecklist = () => {
             <ArrowLeft size={20} className="shrink-0" />
             <span className="text-left text-sm sm:text-base">Voltar para Identificação</span>
           </button>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <img
-              src={LOGO_URL}
-              alt="OSTI Engenharia"
-              className="h-9 w-auto shrink-0 sm:h-10"
-            />
-            <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl lg:text-[1.65rem]">
-              Inspeção Técnica e Checklist de Verificação
-            </h1>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <img
+                src={LOGO_URL}
+                alt="OSTI Engenharia"
+                className="h-9 w-auto shrink-0 sm:h-10"
+              />
+              <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl lg:text-[1.65rem]">
+                Inspeção Técnica e Checklist de Verificação
+              </h1>
+            </div>
+            <LogoutHeaderButton />
           </div>
         </div>
       </div>
