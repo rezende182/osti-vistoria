@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
@@ -46,6 +47,13 @@ export function AuthProvider({ children }) {
     return signInWithEmailAndPassword(auth, email, password);
   }, []);
 
+  const register = useCallback(async (email, password) => {
+    if (!auth) {
+      throw new Error('Firebase Auth não está configurado.');
+    }
+    return createUserWithEmailAndPassword(auth, email, password);
+  }, []);
+
   const logout = useCallback(async () => {
     if (!auth) return;
     return signOut(auth);
@@ -65,10 +73,11 @@ export function AuthProvider({ children }) {
       loading: !authReady,
       isAuthenticated: Boolean(user),
       login,
+      register,
       logout,
       getIdToken,
     }),
-    [user, authReady, login, logout, getIdToken]
+    [user, authReady, login, register, logout, getIdToken]
   );
 
   return (

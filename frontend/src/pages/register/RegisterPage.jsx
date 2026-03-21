@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Lock, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth';
 import styles from '@/components/auth/AuthFormLayout.module.css';
 import LoginTextField from '@/components/login/LoginTextField';
 import { isFirebaseAuthAvailable } from '@/firebase';
-import { mapAuthErrorToMessage } from './mapAuthErrorToMessage';
+import { mapSignupError } from './mapSignupError';
 
-function LoginPage() {
-  const { login } = useAuth();
+const MIN_PASSWORD = 6;
+
+function RegisterPage() {
+  const { register } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -21,16 +25,26 @@ function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     clearFormError();
-    if (!email.trim() || !password) {
-      setFormError('Preencha e-mail e senha.');
+    const trimmed = email.trim();
+    if (!trimmed || !password || !confirm) {
+      setFormError('Preencha todos os campos.');
+      return;
+    }
+    if (password.length < MIN_PASSWORD) {
+      setFormError('Senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+    if (password !== confirm) {
+      setFormError('As senhas não coincidem.');
       return;
     }
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
-      toast.success('Sessão iniciada.');
+      await register(trimmed, password);
+      toast.success('Conta criada com sucesso.');
+      navigate('/', { replace: true });
     } catch (err) {
-      setFormError(mapAuthErrorToMessage(err));
+      setFormError(mapSignupError(err));
     } finally {
       setSubmitting(false);
     }
@@ -47,15 +61,15 @@ function LoginPage() {
       ) : null}
 
       <header className={styles.header}>
-        <h1 className={styles.title}>Entrar no sistema</h1>
+        <h1 className={styles.title}>Criar conta</h1>
         <p className={styles.subtitle}>
-          Use o e-mail e a senha da sua organização para continuar.
+          Cadastre-se com e-mail e senha para começar a usar o sistema.
         </p>
       </header>
 
       <form onSubmit={handleSubmit} className={styles.form} noValidate>
         <LoginTextField
-          id="login-email"
+          id="register-email"
           label="E-mail"
           type="email"
           name="email"
@@ -71,26 +85,36 @@ function LoginPage() {
         />
 
         <LoginTextField
-          id="login-password"
+          id="register-password"
           label="Senha"
           type="password"
           name="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
           value={password}
           onChange={(e) => {
             clearFormError();
             setPassword(e.target.value);
           }}
-          placeholder="••••••••"
+          placeholder="Mínimo 6 caracteres"
           icon={Lock}
           disabled={submitting}
         />
 
-        <div className={styles.forgotRow}>
-          <Link to="/forgot-password" className={styles.forgotLink}>
-            Esqueci minha senha
-          </Link>
-        </div>
+        <LoginTextField
+          id="register-confirm"
+          label="Confirmar senha"
+          type="password"
+          name="confirmPassword"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => {
+            clearFormError();
+            setConfirm(e.target.value);
+          }}
+          placeholder="Repita a senha"
+          icon={Lock}
+          disabled={submitting}
+        />
 
         <button
           type="submit"
@@ -100,10 +124,10 @@ function LoginPage() {
           {submitting ? (
             <>
               <Loader2 className={styles.spinner} size={18} aria-hidden />
-              Entrando…
+              Criando conta...
             </>
           ) : (
-            'Entrar no sistema'
+            'Criar conta'
           )}
         </button>
       </form>
@@ -115,10 +139,10 @@ function LoginPage() {
       ) : null}
 
       <p className={styles.bottomNote}>
-        Não tem uma conta? <Link to="/register">Criar conta</Link>
+        Já tem uma conta? <Link to="/login">Entrar</Link>
       </p>
     </div>
   );
 }
 
-export default LoginPage;
+export default RegisterPage;

@@ -1,7 +1,9 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import AuthLayout from '@/layouts/AuthLayout';
+import ForgotPassword from '@/pages/ForgotPassword';
 import Login from '@/pages/Login';
+import Register from '@/pages/Register';
 import { getPostLoginRedirect } from './redirect';
 import { useAuth } from './AuthProvider';
 
@@ -36,6 +38,42 @@ export function LoginRoute() {
   return (
     <AuthLayout>
       <Login />
+    </AuthLayout>
+  );
+}
+
+/**
+ * Rota /register: visitantes; utilizador autenticado vai para o destino pós-login.
+ */
+export function RegisterRoute() {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (user) {
+    return <Navigate to={getPostLoginRedirect(location.state)} replace />;
+  }
+
+  return (
+    <AuthLayout>
+      <Register />
+    </AuthLayout>
+  );
+}
+
+/**
+ * Rota /forgot-password: visitantes; sessão ativa redireciona (evita confusão).
+ */
+export function ForgotPasswordRoute() {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  if (user) {
+    return <Navigate to={getPostLoginRedirect(location.state)} replace />;
+  }
+
+  return (
+    <AuthLayout>
+      <ForgotPassword />
     </AuthLayout>
   );
 }

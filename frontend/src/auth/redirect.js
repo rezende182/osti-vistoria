@@ -5,7 +5,13 @@ export function getPostLoginRedirect(navigationState) {
   const from = navigationState?.from;
   if (from && typeof from.pathname === 'string' && from.pathname.startsWith('/')) {
     const path = `${from.pathname}${from.search || ''}${from.hash || ''}`;
-    if (path.startsWith('/login')) return '/';
+    if (
+      path.startsWith('/login') ||
+      path.startsWith('/register') ||
+      path.startsWith('/forgot-password')
+    ) {
+      return '/';
+    }
     return path;
   }
   return '/';

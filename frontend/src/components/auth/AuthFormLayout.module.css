@@ -67,6 +67,7 @@
 }
 
 .forgotLink {
+  display: inline-block;
   background: none;
   border: none;
   padding: 0;
@@ -154,6 +155,25 @@
   }
 }
 
+.success {
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  text-align: center;
+}
+
+@media (min-width: 1024px) {
+  .success {
+    text-align: left;
+  }
+}
+
 .firebaseWarn {
   margin-bottom: 1.25rem;
   padding: 0.875rem 1rem;
@@ -170,4 +190,28 @@
   padding: 0.125rem 0.35rem;
   border-radius: 0.25rem;
   background: rgba(251, 191, 36, 0.25);
+}
+
+.bottomNote {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+@media (min-width: 1024px) {
+  .bottomNote {
+    text-align: left;
+  }
+}
+
+.bottomNote a {
+  font-weight: 600;
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.bottomNote a:hover {
+  text-decoration: underline;
+  color: #2563eb;
 }

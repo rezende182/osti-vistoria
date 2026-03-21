@@ -1,36 +1,48 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Lock, Mail } from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '@/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { Loader2, Mail } from 'lucide-react';
 import styles from '@/components/auth/AuthFormLayout.module.css';
 import LoginTextField from '@/components/login/LoginTextField';
-import { isFirebaseAuthAvailable } from '@/firebase';
-import { mapAuthErrorToMessage } from './mapAuthErrorToMessage';
+import { auth, isFirebaseAuthAvailable } from '@/firebase';
 
-function LoginPage() {
-  const { login } = useAuth();
+const SUCCESS_SENT = 'Enviamos um link de recuperação para seu e-mail';
+const SUCCESS_GENERIC = 'Se o e-mail existir, você receberá um link';
+
+function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  const clearFormError = () => setFormError(null);
   const firebaseOk = isFirebaseAuthAvailable();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    clearFormError();
-    if (!email.trim() || !password) {
-      setFormError('Preencha e-mail e senha.');
+    setFormError(null);
+    setSuccessMessage(null);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setFormError('Informe seu e-mail.');
+      return;
+    }
+    if (!firebaseOk || !auth) {
+      setFormError('Firebase não está configurado.');
       return;
     }
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
-      toast.success('Sessão iniciada.');
+      await sendPasswordResetEmail(auth, trimmed);
+      setSuccessMessage(SUCCESS_SENT);
     } catch (err) {
-      setFormError(mapAuthErrorToMessage(err));
+      const code = err?.code || '';
+      if (code === 'auth/invalid-email') {
+        setFormError('Digite um e-mail válido');
+      } else if (code === 'auth/user-not-found') {
+        setSuccessMessage(SUCCESS_GENERIC);
+      } else {
+        setFormError('Não foi possível enviar o e-mail. Tente novamente.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -47,50 +59,29 @@ function LoginPage() {
       ) : null}
 
       <header className={styles.header}>
-        <h1 className={styles.title}>Entrar no sistema</h1>
+        <h1 className={styles.title}>Recuperar senha</h1>
         <p className={styles.subtitle}>
-          Use o e-mail e a senha da sua organização para continuar.
+          Informe o e-mail da sua conta. Enviaremos um link para redefinir a senha.
         </p>
       </header>
 
       <form onSubmit={handleSubmit} className={styles.form} noValidate>
         <LoginTextField
-          id="login-email"
+          id="forgot-email"
           label="E-mail"
           type="email"
           name="email"
           autoComplete="email"
           value={email}
           onChange={(e) => {
-            clearFormError();
+            setFormError(null);
+            setSuccessMessage(null);
             setEmail(e.target.value);
           }}
           placeholder="seu@email.com"
           icon={Mail}
           disabled={submitting}
         />
-
-        <LoginTextField
-          id="login-password"
-          label="Senha"
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => {
-            clearFormError();
-            setPassword(e.target.value);
-          }}
-          placeholder="••••••••"
-          icon={Lock}
-          disabled={submitting}
-        />
-
-        <div className={styles.forgotRow}>
-          <Link to="/forgot-password" className={styles.forgotLink}>
-            Esqueci minha senha
-          </Link>
-        </div>
 
         <button
           type="submit"
@@ -100,10 +91,10 @@ function LoginPage() {
           {submitting ? (
             <>
               <Loader2 className={styles.spinner} size={18} aria-hidden />
-              Entrando…
+              Enviando...
             </>
           ) : (
-            'Entrar no sistema'
+            'Enviar link de recuperação'
           )}
         </button>
       </form>
@@ -114,11 +105,17 @@ function LoginPage() {
         </p>
       ) : null}
 
+      {successMessage ? (
+        <p className={styles.success} role="status" aria-live="polite">
+          {successMessage}
+        </p>
+      ) : null}
+
       <p className={styles.bottomNote}>
-        Não tem uma conta? <Link to="/register">Criar conta</Link>
+        <Link to="/login">Voltar ao login</Link>
       </p>
     </div>
   );
 }
 
-export default LoginPage;
+export default ForgotPasswordPage;

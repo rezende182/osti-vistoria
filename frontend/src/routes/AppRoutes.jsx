@@ -2,7 +2,12 @@ import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import PageLoader from '@/components/PageLoader';
 import { useAuth } from '@/auth';
-import { RequireAuth, LoginRoute } from '@/auth/routeGuards';
+import {
+  RequireAuth,
+  LoginRoute,
+  RegisterRoute,
+  ForgotPasswordRoute,
+} from '@/auth/routeGuards';
 import AppShell from '@/layouts/AppShell';
 import Dashboard from '@/pages/Dashboard';
 import NewInspection from '@/pages/NewInspection';
@@ -24,6 +29,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginRoute />} />
+      <Route path="/register" element={<RegisterRoute />} />
+      <Route path="/forgot-password" element={<ForgotPasswordRoute />} />
 
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
