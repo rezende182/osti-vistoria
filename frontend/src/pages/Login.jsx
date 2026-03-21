@@ -56,7 +56,7 @@ const Login = () => {
           Entrar na conta
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          Introduza o e-mail e a palavra-passe associados à sua conta.
+          Informe seu e-mail e senha para acessar o sistema.
         </p>
       </div>
 

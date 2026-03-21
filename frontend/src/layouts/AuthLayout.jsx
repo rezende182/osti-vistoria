@@ -18,7 +18,8 @@ const AuthLayout = ({ children }) => (
           Vistoria de recebimento de imóvel
         </h1>
         <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-300">
-          Aceda à sua conta para gerir vistorias, relatórios e equipa em qualquer dispositivo.
+          Transforme a gestão de vistorias em um processo simples, rápido e 100% digital. Tudo na
+          palma da sua mão.
         </p>
       </div>
       <p className="relative z-10 text-xs text-slate-500">OSTI Engenharia</p>
