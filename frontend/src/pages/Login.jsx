@@ -3,16 +3,38 @@ import { toast } from 'sonner';
 import { useAuth } from '@/auth';
 import { isFirebaseAuthAvailable } from '@/firebase';
 
+const CREDENTIAL_MSG = 'E-mail ou senha incorretos';
+const NETWORK_MSG = 'Erro de conexão. Verifique sua internet';
+const GENERIC_MSG = 'Erro ao fazer login. Tente novamente';
+
+function mapAuthErrorToMessage(code) {
+  if (
+    code === 'auth/invalid-credential' ||
+    code === 'auth/wrong-password' ||
+    code === 'auth/user-not-found'
+  ) {
+    return CREDENTIAL_MSG;
+  }
+  if (code === 'auth/network-request-failed') {
+    return NETWORK_MSG;
+  }
+  return GENERIC_MSG;
+}
+
 const Login = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState(null);
+
+  const clearFormError = () => setFormError(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    clearFormError();
     if (!email.trim() || !password) {
-      toast.error('Preencha e-mail e senha.');
+      setFormError('Preencha e-mail e senha.');
       return;
     }
     setSubmitting(true);
@@ -21,19 +43,7 @@ const Login = () => {
       toast.success('Sessão iniciada.');
     } catch (err) {
       const code = err?.code || '';
-      if (
-        code === 'auth/invalid-credential' ||
-        code === 'auth/wrong-password' ||
-        code === 'auth/user-not-found'
-      ) {
-        toast.error('E-mail ou senha incorretos.');
-      } else if (code === 'auth/invalid-email') {
-        toast.error('E-mail inválido.');
-      } else if (code === 'auth/too-many-requests') {
-        toast.error('Muitas tentativas. Tente mais tarde.');
-      } else {
-        toast.error(err?.message || 'Não foi possível entrar.');
-      }
+      setFormError(mapAuthErrorToMessage(code));
     } finally {
       setSubmitting(false);
     }
@@ -60,7 +70,7 @@ const Login = () => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5" noValidate>
         <div>
           <label
             htmlFor="login-email"
@@ -74,7 +84,10 @@ const Login = () => {
             name="email"
             autoComplete="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              clearFormError();
+              setEmail(e.target.value);
+            }}
             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-slate-900 outline-none transition-shadow placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             placeholder="nome@empresa.pt"
           />
@@ -92,7 +105,10 @@ const Login = () => {
             name="password"
             autoComplete="current-password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              clearFormError();
+              setPassword(e.target.value);
+            }}
             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-slate-900 outline-none transition-shadow focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             placeholder="••••••••"
           />
@@ -105,6 +121,16 @@ const Login = () => {
           {submitting ? 'A entrar…' : 'Entrar'}
         </button>
       </form>
+
+      {formError ? (
+        <p
+          className="mt-4 text-center text-sm font-medium text-red-600 lg:text-left"
+          role="alert"
+          aria-live="polite"
+        >
+          {formError}
+        </p>
+      ) : null}
     </div>
   );
 };
