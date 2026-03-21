@@ -4,6 +4,7 @@ import { Home, ArrowRight } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
+import { useAuth } from '@/auth';
 import { inspectionsApi } from '../services/api';
 import {
   saveInspectionLocally,
@@ -17,6 +18,8 @@ const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-
 
 const NewInspection = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const uid = user?.uid;
   const [showExitModal, setShowExitModal] = useState(false);
   const [formData, setFormData] = useState({
     cliente: '',
@@ -65,9 +68,14 @@ const NewInspection = () => {
       return;
     }
 
+    if (!uid) {
+      toast.error('Sessão inválida. Inicie sessão novamente.');
+      return;
+    }
+
     try {
       await initDB().catch(() => {});
-      const result = await inspectionsApi.create(formData);
+      const result = await inspectionsApi.create(formData, uid);
       if (result.ok) {
         toast.success('Vistoria criada com sucesso!');
         navigate(`/inspection/${result.data.id}/checklist`);
@@ -80,6 +88,7 @@ const NewInspection = () => {
           : `local-${Date.now()}`;
       const offlineInspection = {
         id,
+        userId: uid,
         ...formData,
         horario_termino: '',
         rooms_checklist: [],
@@ -91,9 +100,10 @@ const NewInspection = () => {
       await enqueueSyncOperation({
         method: 'POST',
         path: '/inspections',
-        payload: formData,
+        payload: { ...formData, userId: uid },
         dedupKey: `POST:/inspections:local:${id}`,
         localInspectionId: id,
+        userId: uid,
       });
       toast.warning(
         `Servidor indisponível: ${result.error || 'erro'}. Rascunho guardado neste dispositivo.`

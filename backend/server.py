@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
 
-from fastapi import APIRouter, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -84,6 +84,7 @@ class RoomChecklist(BaseModel):
 
 
 class InspectionCreate(BaseModel):
+    userId: str = Field(..., min_length=1)
     cliente: str
     data: str
     endereco: str
@@ -123,6 +124,7 @@ class Inspection(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    userId: Optional[str] = None
     cliente: str
     data: str
     endereco: str
@@ -174,6 +176,15 @@ class IdentificationUpdate(BaseModel):
 # --- Rotas /api ---
 
 
+def _assert_inspection_owner(inspection: dict, user_id: str) -> None:
+    """Garante que a vistoria pertence ao utilizador (Firebase uid)."""
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Autenticação necessária")
+    doc_uid = inspection.get("userId")
+    if doc_uid != user_id:
+        raise HTTPException(status_code=404, detail="Vistoria não encontrada")
+
+
 @api_router.get("/")
 async def root():
     return {"message": "OSTI Engenharia - Vistoria de Recebimento de Imóvel API"}
@@ -202,10 +213,10 @@ async def create_inspection(input: InspectionCreate):
 
 
 @api_router.get("/inspections", response_model=List[Inspection])
-async def get_inspections():
+async def get_inspections(userId: str = Query(..., min_length=1)):
     database = require_database()
     inspections = (
-        await database.inspections.find({}, {"_id": 0})
+        await database.inspections.find({"userId": userId}, {"_id": 0})
         .sort("created_at", -1)
         .to_list(1000)
     )
@@ -218,12 +229,16 @@ async def get_inspections():
 
 
 @api_router.get("/inspections/{inspection_id}", response_model=Inspection)
-async def get_inspection(inspection_id: str):
+async def get_inspection(
+    inspection_id: str, userId: str = Query(..., min_length=1)
+):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
 
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
+
+    _assert_inspection_owner(inspection, userId)
 
     if isinstance(inspection["created_at"], str):
         inspection["created_at"] = datetime.fromisoformat(inspection["created_at"])
@@ -232,12 +247,18 @@ async def get_inspection(inspection_id: str):
 
 
 @api_router.put("/inspections/{inspection_id}", response_model=Inspection)
-async def update_inspection(inspection_id: str, update_data: InspectionUpdate):
+async def update_inspection(
+    inspection_id: str,
+    update_data: InspectionUpdate,
+    userId: str = Query(..., min_length=1),
+):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
 
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
+
+    _assert_inspection_owner(inspection, userId)
 
     update_dict = update_data.model_dump(exclude_unset=True)
 
@@ -264,13 +285,17 @@ async def update_inspection(inspection_id: str, update_data: InspectionUpdate):
 
 @api_router.put("/inspections/{inspection_id}/identification", response_model=Inspection)
 async def update_identification(
-    inspection_id: str, update_data: IdentificationUpdate
+    inspection_id: str,
+    update_data: IdentificationUpdate,
+    userId: str = Query(..., min_length=1),
 ):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
 
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
+
+    _assert_inspection_owner(inspection, userId)
 
     update_dict = update_data.model_dump(exclude_unset=True)
 
@@ -293,12 +318,16 @@ async def update_identification(
 
 
 @api_router.delete("/inspections/{inspection_id}")
-async def delete_inspection(inspection_id: str):
+async def delete_inspection(
+    inspection_id: str, userId: str = Query(..., min_length=1)
+):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
 
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
+
+    _assert_inspection_owner(inspection, userId)
 
     await database.inspections.delete_one({"id": inspection_id})
 
@@ -306,12 +335,18 @@ async def delete_inspection(inspection_id: str):
 
 
 @api_router.post("/inspections/{inspection_id}/upload-photo")
-async def upload_photo(inspection_id: str, file: UploadFile = File(...)):
+async def upload_photo(
+    inspection_id: str,
+    file: UploadFile = File(...),
+    userId: str = Query(..., min_length=1),
+):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
 
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
+
+    _assert_inspection_owner(inspection, userId)
 
     contents = await file.read()
     base64_image = base64.b64encode(contents).decode("utf-8")

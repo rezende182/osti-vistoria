@@ -5,6 +5,7 @@ import RoomSelector from '../components/RoomSelector';
 import ChecklistItem from '../components/ChecklistItem';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
+import { useAuth } from '@/auth';
 import { inspectionsApi } from '../services/api';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import {
@@ -128,6 +129,8 @@ const DEFAULT_ROOMS = [];
 const InspectionChecklist = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const uid = user?.uid;
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [roomsData, setRoomsData] = useState([]);
   const [roomsList, setRoomsList] = useState([]);
@@ -139,7 +142,7 @@ const InspectionChecklist = () => {
 
   const loadInspection = useCallback(async () => {
     try {
-      const res = await loadInspectionWithFallback(id);
+      const res = await loadInspectionWithFallback(id, uid);
       if (!res.ok) {
         toast.error(res.error || 'Erro ao carregar vistoria');
         return;
@@ -173,7 +176,7 @@ const InspectionChecklist = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, uid]);
 
   useEffect(() => {
     loadInspection();
@@ -419,11 +422,20 @@ const InspectionChecklist = () => {
       return; // Permanece na página
     }
 
+    if (!uid) {
+      toast.error('Sessão inválida. Inicie sessão novamente.');
+      return;
+    }
+
     try {
       await initDB().catch(() => {});
-      const result = await inspectionsApi.update(id, {
-        rooms_checklist: roomsData,
-      });
+      const result = await inspectionsApi.update(
+        id,
+        {
+          rooms_checklist: roomsData,
+        },
+        uid
+      );
       if (result.ok) {
         toast.success('Checklist salvo com sucesso!');
         navigate(`/inspection/${id}/review`);
@@ -441,6 +453,7 @@ const InspectionChecklist = () => {
           payload: { rooms_checklist: roomsData },
           dedupKey: `PUT:/inspections/${id}:checklist`,
           inspectionId: id,
+          userId: uid,
         });
         toast.warning(
           'Servidor indisponível — checklist guardado só neste dispositivo.'

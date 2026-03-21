@@ -4,6 +4,8 @@
  *
  * CORS: o backend deve incluir a origem do app (Electron dev: http://localhost:3000)
  * ou CORS_ORIGINS=* no Render. Origem file:// no .exe pode exigir * no servidor.
+ *
+ * Vistorias são isoladas por Firebase `user.uid` (query `userId` + corpo em POST).
  */
 import axios from 'axios';
 import { API_BASE } from '../config/api';
@@ -16,6 +18,20 @@ const client = axios.create({
 
 /** Cliente axios base (usado pelo syncManager) */
 export const apiClient = client;
+
+const AUTH_REQUIRED_MSG = 'Sessão inválida. Inicie sessão novamente.';
+
+function normalizeUserId(userId) {
+  if (userId === undefined || userId === null) return '';
+  const s = String(userId).trim();
+  return s;
+}
+
+function userQuery(userId) {
+  const uid = normalizeUserId(userId);
+  if (!uid) return null;
+  return { userId: uid };
+}
 
 /** Mensagem legível a partir de erro Axios ou rede */
 export function getErrorMessage(error) {
@@ -39,32 +55,65 @@ function wrap(promise) {
     .catch((e) => ({ ok: false, data: null, error: getErrorMessage(e) }));
 }
 
+function rejectNoUser() {
+  return Promise.resolve({ ok: false, data: null, error: AUTH_REQUIRED_MSG });
+}
+
 export const inspectionsApi = {
-  list: () => wrap(client.get('/inspections').then((r) => r.data)),
+  list: (userId) => {
+    const q = userQuery(userId);
+    if (!q) return rejectNoUser();
+    return wrap(client.get('/inspections', { params: q }).then((r) => r.data));
+  },
 
-  get: (id) => wrap(client.get(`/inspections/${id}`).then((r) => r.data)),
+  get: (id, userId) => {
+    const q = userQuery(userId);
+    if (!q) return rejectNoUser();
+    return wrap(client.get(`/inspections/${id}`, { params: q }).then((r) => r.data));
+  },
 
-  create: (payload) =>
-    wrap(client.post('/inspections', payload).then((r) => r.data)),
+  create: (payload, userId) => {
+    const q = userQuery(userId);
+    if (!q) return rejectNoUser();
+    const body = {
+      ...payload,
+      userId: q.userId,
+    };
+    return wrap(client.post('/inspections', body).then((r) => r.data));
+  },
 
-  update: (id, payload) =>
-    wrap(client.put(`/inspections/${id}`, payload).then((r) => r.data)),
+  update: (id, payload, userId) => {
+    const q = userQuery(userId);
+    if (!q) return rejectNoUser();
+    return wrap(
+      client.put(`/inspections/${id}`, payload, { params: q }).then((r) => r.data)
+    );
+  },
 
-  updateIdentification: (id, payload) =>
-    wrap(
+  updateIdentification: (id, payload, userId) => {
+    const q = userQuery(userId);
+    if (!q) return rejectNoUser();
+    return wrap(
       client
-        .put(`/inspections/${id}/identification`, payload)
+        .put(`/inspections/${id}/identification`, payload, { params: q })
         .then((r) => r.data)
-    ),
+    );
+  },
 
-  remove: (id) => wrap(client.delete(`/inspections/${id}`).then((r) => r.data)),
+  remove: (id, userId) => {
+    const q = userQuery(userId);
+    if (!q) return rejectNoUser();
+    return wrap(client.delete(`/inspections/${id}`, { params: q }).then((r) => r.data));
+  },
 
   /** Upload de foto (multipart) */
-  uploadPhoto: (id, file) => {
+  uploadPhoto: (id, file, userId) => {
+    const q = userQuery(userId);
+    if (!q) return rejectNoUser();
     const form = new FormData();
     form.append('file', file);
     return wrap(
-      client.post(`/inspections/${id}/upload-photo`, form).then((r) => r.data)
+      client.post(`/inspections/${id}/upload-photo`, form, { params: q }).then((r) => r.data)
     );
   },
 };

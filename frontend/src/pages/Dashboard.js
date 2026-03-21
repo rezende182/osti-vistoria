@@ -5,6 +5,7 @@ import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import FAB from '../components/FAB';
 import ConfirmModal from '../components/ConfirmModal';
 import { toast } from 'sonner';
+import { useAuth } from '@/auth';
 import { inspectionsApi } from '../services/api';
 import { getAllInspectionsLocally, initDB } from '../utils/offlineStorage';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
@@ -13,6 +14,8 @@ const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const uid = user?.uid;
   const [inspections, setInspections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,15 +25,23 @@ const Dashboard = () => {
   const fetchInspections = useCallback(async () => {
     try {
       await initDB().catch(() => {});
-      const result = await inspectionsApi.list();
+      if (!uid) {
+        setInspections([]);
+        toast.error('Sessão inválida. Inicie sessão novamente.');
+        return;
+      }
+      const result = await inspectionsApi.list(uid);
       if (result.ok) {
         setInspections(result.data);
         return;
       }
       console.warn('API lista:', result.error);
       const local = await getAllInspectionsLocally();
-      if (local.length) {
-        setInspections(local);
+      const mine = local.filter(
+        (row) => row.userId === uid || row.userId == null || row.userId === ''
+      );
+      if (mine.length) {
+        setInspections(mine);
         toast.info('Sem conexão com o servidor — mostrando dados salvos neste dispositivo.');
       } else {
         toast.error(result.error || 'Não foi possível carregar as vistorias.');
@@ -41,7 +52,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [uid]);
 
   useEffect(() => {
     fetchInspections();
@@ -57,8 +68,13 @@ const Dashboard = () => {
   };
 
   const confirmDelete = async () => {
+    if (!uid) {
+      toast.error('Sessão inválida. Inicie sessão novamente.');
+      closeDeleteModal();
+      return;
+    }
     try {
-      const result = await inspectionsApi.remove(deleteModal.inspectionId);
+      const result = await inspectionsApi.remove(deleteModal.inspectionId, uid);
       if (result.ok) {
         toast.success('Vistoria excluída com sucesso!');
         fetchInspections();

@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import TimePickerField from '../components/TimePickerField';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
+import { useAuth } from '@/auth';
 import { inspectionsApi } from '../services/api';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import {
@@ -33,6 +34,8 @@ const CLASSIFICACAO_OPTIONS = [
 const InspectionReview = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const uid = user?.uid;
   const [inspection, setInspection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [classificacao, setClassificacao] = useState('');
@@ -45,7 +48,7 @@ const InspectionReview = () => {
 
   const loadInspection = useCallback(async () => {
     try {
-      const res = await loadInspectionWithFallback(id);
+      const res = await loadInspectionWithFallback(id, uid);
       if (!res.ok) {
         toast.error(res.error || 'Erro ao carregar vistoria');
         return;
@@ -68,7 +71,7 @@ const InspectionReview = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, uid]);
 
   useEffect(() => {
     loadInspection();
@@ -106,7 +109,12 @@ const InspectionReview = () => {
             ? classificacaoEscolhaRotulo
             : '',
       };
-      const result = await inspectionsApi.update(id, payload);
+      if (!uid) {
+        toast.error('Sessão inválida. Inicie sessão novamente.');
+        return;
+      }
+
+      const result = await inspectionsApi.update(id, payload, uid);
       if (result.ok) {
         toast.success('Vistoria finalizada com sucesso!');
         navigate(`/inspection/${id}`);
@@ -125,6 +133,7 @@ const InspectionReview = () => {
           payload: { ...payload, status: 'concluida' },
           dedupKey: `PUT:/inspections/${id}:finalize`,
           inspectionId: id,
+          userId: uid,
         });
         toast.warning(
           'Servidor indisponível — finalização guardada só neste dispositivo.'
@@ -143,7 +152,7 @@ const InspectionReview = () => {
   const handleBackToChecklist = async () => {
     try {
       await initDB().catch(() => {});
-      const result = await inspectionsApi.update(id, {
+      const partialPayload = {
         classificacao_final: classificacao || null,
         conclusao: conclusao || '',
         assinatura: '',
@@ -156,44 +165,26 @@ const InspectionReview = () => {
           classificacao === 'outro' && !outroSomenteConclusao
             ? classificacaoEscolhaRotulo
             : '',
-      });
+      };
+      if (!uid) {
+        navigate(`/inspection/${id}/checklist`);
+        return;
+      }
+      const result = await inspectionsApi.update(id, partialPayload, uid);
       if (!result.ok) {
         const local = await getInspectionLocally(id);
         if (local) {
           await saveInspectionLocally({
             ...local,
-            classificacao_final: classificacao || null,
-            conclusao: conclusao || '',
-            assinatura: '',
-            responsavel_final: responsavelFinal || '',
-            crea_final: creaFinal || '',
-            horario_termino: horarioTermino || '',
-            outro_somente_conclusao:
-              classificacao === 'outro' ? outroSomenteConclusao : false,
-            classificacao_escolha_rotulo:
-              classificacao === 'outro' && !outroSomenteConclusao
-                ? classificacaoEscolhaRotulo
-                : '',
+            ...partialPayload,
           });
           await enqueueSyncOperation({
             method: 'PUT',
             path: `/inspections/${id}`,
-            payload: {
-              classificacao_final: classificacao || null,
-              conclusao: conclusao || '',
-              assinatura: '',
-              responsavel_final: responsavelFinal || '',
-              crea_final: creaFinal || '',
-              horario_termino: horarioTermino || '',
-              outro_somente_conclusao:
-                classificacao === 'outro' ? outroSomenteConclusao : false,
-              classificacao_escolha_rotulo:
-                classificacao === 'outro' && !outroSomenteConclusao
-                  ? classificacaoEscolhaRotulo
-                  : '',
-            },
+            payload: partialPayload,
             dedupKey: `PUT:/inspections/${id}:review_partial`,
             inspectionId: id,
+            userId: uid,
           });
         }
       }

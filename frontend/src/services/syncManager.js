@@ -74,11 +74,16 @@ export async function syncPendingInspections() {
 
       try {
         const path = itemPath(item);
+        const uid =
+          item.userId && String(item.userId).trim() ? String(item.userId).trim() : '';
         const config = {
           method: item.method,
           url: path,
           validateStatus: (s) => s >= 200 && s < 300,
         };
+        if (uid) {
+          config.params = { userId: uid };
+        }
         if (
           item.payload !== null &&
           item.payload !== undefined &&

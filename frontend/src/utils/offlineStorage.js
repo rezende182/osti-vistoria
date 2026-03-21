@@ -152,6 +152,8 @@ export async function enqueueSyncOperation({
   dedupKey,
   localInspectionId,
   inspectionId,
+  /** Firebase uid — enviado como query `userId` na sincronização */
+  userId,
 }) {
   const database = await initDB();
   const existing = await getPendingSyncQueue();
@@ -181,6 +183,7 @@ export async function enqueueSyncOperation({
     nextRetryAt: null,
     localInspectionId: localInspectionId || null,
     inspectionId: inspectionId || null,
+    userId: userId ? String(userId).trim() : null,
   };
 
   return new Promise((resolve, reject) => {

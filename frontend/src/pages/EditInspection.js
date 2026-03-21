@@ -4,6 +4,7 @@ import { Home, ArrowRight } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
+import { useAuth } from '@/auth';
 import { inspectionsApi } from '../services/api';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import TimePickerField from '../components/TimePickerField';
@@ -14,6 +15,8 @@ const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-
 const EditInspection = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const uid = user?.uid;
   const [showExitModal, setShowExitModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -43,7 +46,7 @@ const EditInspection = () => {
 
   const loadInspection = useCallback(async () => {
     try {
-      const res = await loadInspectionWithFallback(id);
+      const res = await loadInspectionWithFallback(id, uid);
       if (!res.ok) {
         toast.error(res.error || 'Erro ao carregar vistoria');
         return;
@@ -74,7 +77,7 @@ const EditInspection = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, uid]);
 
   useEffect(() => {
     loadInspection();
@@ -103,8 +106,13 @@ const EditInspection = () => {
       return;
     }
 
+    if (!uid) {
+      toast.error('Sessão inválida. Inicie sessão novamente.');
+      return;
+    }
+
     try {
-      const result = await inspectionsApi.updateIdentification(id, formData);
+      const result = await inspectionsApi.updateIdentification(id, formData, uid);
       if (result.ok) {
         toast.success('Informações atualizadas!');
         navigate(`/inspection/${id}/checklist`);

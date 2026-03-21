@@ -10,6 +10,8 @@ from datetime import datetime
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://vistoria-imovel-1.preview.emergentagent.com')
 
+TEST_USER_ID = "pytest-api-user"
+
 @pytest.fixture
 def api_client():
     """Shared requests session"""
@@ -22,6 +24,7 @@ def test_inspection_data():
     """Generate unique test inspection data"""
     unique_id = str(uuid.uuid4())[:8]
     return {
+        "userId": TEST_USER_ID,
         "cliente": f"TEST_Cliente_{unique_id}",
         "data": datetime.now().strftime("%Y-%m-%d"),
         "endereco": f"TEST_Endereço {unique_id}",
@@ -68,11 +71,16 @@ class TestInspectionsCRUD:
         print(f"✓ Created inspection with ID: {data['id']}")
         
         # Clean up
-        api_client.delete(f"{BASE_URL}/api/inspections/{data['id']}")
+        api_client.delete(
+            f"{BASE_URL}/api/inspections/{data['id']}",
+            params={"userId": TEST_USER_ID},
+        )
     
     def test_get_all_inspections(self, api_client):
         """Test getting all inspections"""
-        response = api_client.get(f"{BASE_URL}/api/inspections")
+        response = api_client.get(
+            f"{BASE_URL}/api/inspections", params={"userId": TEST_USER_ID}
+        )
         assert response.status_code == 200
         
         data = response.json()
@@ -86,7 +94,10 @@ class TestInspectionsCRUD:
         inspection_id = create_response.json()["id"]
         
         # Get by ID
-        response = api_client.get(f"{BASE_URL}/api/inspections/{inspection_id}")
+        response = api_client.get(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
         assert response.status_code == 200
         
         data = response.json()
@@ -95,12 +106,18 @@ class TestInspectionsCRUD:
         print(f"✓ Got inspection {inspection_id}")
         
         # Clean up
-        api_client.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+        api_client.delete(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
     
     def test_get_nonexistent_inspection(self, api_client):
         """Test getting a non-existent inspection returns 404"""
         fake_id = str(uuid.uuid4())
-        response = api_client.get(f"{BASE_URL}/api/inspections/{fake_id}")
+        response = api_client.get(
+            f"{BASE_URL}/api/inspections/{fake_id}",
+            params={"userId": TEST_USER_ID},
+        )
         assert response.status_code == 404
         print("✓ Non-existent inspection returns 404")
     
@@ -137,7 +154,11 @@ class TestInspectionsCRUD:
             ]
         }
         
-        response = api_client.put(f"{BASE_URL}/api/inspections/{inspection_id}", json=update_data)
+        response = api_client.put(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            json=update_data,
+            params={"userId": TEST_USER_ID},
+        )
         assert response.status_code == 200
         
         data = response.json()
@@ -146,14 +167,20 @@ class TestInspectionsCRUD:
         print(f"✓ Updated inspection checklist")
         
         # Verify persistence with GET
-        get_response = api_client.get(f"{BASE_URL}/api/inspections/{inspection_id}")
+        get_response = api_client.get(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
         assert get_response.status_code == 200
         persisted_data = get_response.json()
         assert len(persisted_data["rooms_checklist"]) == 1
         print("✓ Checklist update persisted correctly")
         
         # Clean up
-        api_client.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+        api_client.delete(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
     
     def test_finalize_inspection(self, api_client, test_inspection_data):
         """Test finalizing inspection with classification"""
@@ -170,7 +197,11 @@ class TestInspectionsCRUD:
             "data_final": datetime.now().strftime("%Y-%m-%d")
         }
         
-        response = api_client.put(f"{BASE_URL}/api/inspections/{inspection_id}", json=update_data)
+        response = api_client.put(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            json=update_data,
+            params={"userId": TEST_USER_ID},
+        )
         assert response.status_code == 200
         
         data = response.json()
@@ -179,7 +210,10 @@ class TestInspectionsCRUD:
         print(f"✓ Finalized inspection with status: {data['status']}")
         
         # Clean up
-        api_client.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+        api_client.delete(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
     
     def test_update_identification(self, api_client, test_inspection_data):
         """Test updating inspection identification info"""
@@ -193,7 +227,11 @@ class TestInspectionsCRUD:
             "endereco": "TEST_Novo Endereço 123"
         }
         
-        response = api_client.put(f"{BASE_URL}/api/inspections/{inspection_id}/identification", json=update_data)
+        response = api_client.put(
+            f"{BASE_URL}/api/inspections/{inspection_id}/identification",
+            json=update_data,
+            params={"userId": TEST_USER_ID},
+        )
         assert response.status_code == 200
         
         data = response.json()
@@ -202,13 +240,19 @@ class TestInspectionsCRUD:
         print("✓ Updated identification info")
         
         # Verify persistence
-        get_response = api_client.get(f"{BASE_URL}/api/inspections/{inspection_id}")
+        get_response = api_client.get(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
         persisted = get_response.json()
         assert persisted["cliente"] == "TEST_Cliente_Atualizado"
         print("✓ Identification update persisted")
         
         # Clean up
-        api_client.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+        api_client.delete(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
     
     def test_delete_inspection(self, api_client, test_inspection_data):
         """Test deleting an inspection"""
@@ -217,11 +261,17 @@ class TestInspectionsCRUD:
         inspection_id = create_response.json()["id"]
         
         # Delete
-        response = api_client.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+        response = api_client.delete(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
         assert response.status_code == 200
         
         # Verify deletion
-        get_response = api_client.get(f"{BASE_URL}/api/inspections/{inspection_id}")
+        get_response = api_client.get(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
         assert get_response.status_code == 404
         print(f"✓ Deleted inspection {inspection_id}")
 
@@ -241,7 +291,8 @@ class TestInspectionValidation:
             # Finalize with classification
             update_response = api_client.put(
                 f"{BASE_URL}/api/inspections/{inspection_id}",
-                json={"classificacao_final": classificacao, "assinatura": "data:image/png;base64,test"}
+                json={"classificacao_final": classificacao, "assinatura": "data:image/png;base64,test"},
+                params={"userId": TEST_USER_ID},
             )
             assert update_response.status_code == 200
             data = update_response.json()
@@ -249,7 +300,10 @@ class TestInspectionValidation:
             assert data["status"] == "concluida"
             
             # Clean up
-            api_client.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+            api_client.delete(
+                f"{BASE_URL}/api/inspections/{inspection_id}",
+                params={"userId": TEST_USER_ID},
+            )
             print(f"✓ Classification '{classificacao}' works correctly")
     
     def test_tipo_imovel_options(self, api_client):
@@ -258,6 +312,7 @@ class TestInspectionValidation:
         
         for tipo in tipos:
             data = {
+                "userId": TEST_USER_ID,
                 "cliente": f"TEST_Cliente_{tipo}",
                 "data": "2025-01-15",
                 "endereco": "Test Address",
@@ -278,8 +333,31 @@ class TestInspectionValidation:
             assert response.json()["tipo_imovel"] == tipo
             
             # Clean up
-            api_client.delete(f"{BASE_URL}/api/inspections/{response.json()['id']}")
+            api_client.delete(
+                f"{BASE_URL}/api/inspections/{response.json()['id']}",
+                params={"userId": TEST_USER_ID},
+            )
             print(f"✓ Property type '{tipo}' accepted")
+
+    def test_other_user_cannot_access_inspection(self, api_client, test_inspection_data):
+        """Vistoria só é visível ao dono (userId)."""
+        create_response = api_client.post(
+            f"{BASE_URL}/api/inspections", json=test_inspection_data
+        )
+        assert create_response.status_code == 200
+        inspection_id = create_response.json()["id"]
+
+        other = api_client.get(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": "outro-utilizador-xyz"},
+        )
+        assert other.status_code == 404
+
+        api_client.delete(
+            f"{BASE_URL}/api/inspections/{inspection_id}",
+            params={"userId": TEST_USER_ID},
+        )
+        print("✓ Cross-user access returns 404")
 
 
 class TestExistingInspection:
@@ -290,7 +368,10 @@ class TestExistingInspection:
         # ID from agent context
         existing_id = "0e0539e2-9f73-49f7-90bd-cc5060ac5bac"
         
-        response = api_client.get(f"{BASE_URL}/api/inspections/{existing_id}")
+        response = api_client.get(
+            f"{BASE_URL}/api/inspections/{existing_id}",
+            params={"userId": TEST_USER_ID},
+        )
         
         if response.status_code == 200:
             data = response.json()

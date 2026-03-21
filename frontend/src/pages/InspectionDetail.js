@@ -4,6 +4,7 @@ import { Home, Download, CheckCircle2, AlertCircle, Clock, Edit, FileText, XCirc
 import NavigationModal from '../components/NavigationModal';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
+import { useAuth } from '@/auth';
 import { generateInspectionPDF } from '../utils/pdfGenerator';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
@@ -19,6 +20,8 @@ function formatInspectionDate(iso) {
 const InspectionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const uid = user?.uid;
   const [inspection, setInspection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showExitModal, setShowExitModal] = useState(false);
@@ -29,7 +32,7 @@ const InspectionDetail = () => {
 
   const loadInspection = useCallback(async () => {
     try {
-      const res = await loadInspectionWithFallback(id);
+      const res = await loadInspectionWithFallback(id, uid);
       if (!res.ok) {
         toast.error(res.error || 'Erro ao carregar vistoria');
         return;
@@ -44,7 +47,7 @@ const InspectionDetail = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, uid]);
 
   useEffect(() => {
     loadInspection();
