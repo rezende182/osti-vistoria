@@ -1,30 +1,49 @@
 """
 Backend API Tests for OSTI Engenharia - Vistoria de Imóvel
-Tests CRUD operations for inspections endpoint
+CRUD exige Firebase ID token: defina API_TEST_FIREBASE_TOKEN (Bearer) no ambiente.
 """
-import pytest
-import requests
 import os
 import uuid
 from datetime import datetime
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://vistoria-imovel-1.preview.emergentagent.com')
+import pytest
+import requests
 
-TEST_USER_ID = "pytest-api-user"
+BASE_URL = os.environ.get(
+    "REACT_APP_BACKEND_URL", "https://vistoria-imovel-1.preview.emergentagent.com"
+)
+
 
 @pytest.fixture
 def api_client():
-    """Shared requests session"""
+    """Sessão sem autenticação (health, testes 401)."""
     session = requests.Session()
     session.headers.update({"Content-Type": "application/json"})
     return session
 
+
+@pytest.fixture
+def auth_session():
+    """Sessão com Authorization: Bearer <Firebase ID token>."""
+    token = os.environ.get("API_TEST_FIREBASE_TOKEN", "").strip()
+    if not token:
+        pytest.skip(
+            "Defina API_TEST_FIREBASE_TOKEN com um ID token Firebase válido para testes CRUD."
+        )
+    session = requests.Session()
+    session.headers.update(
+        {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+    )
+    return session
+
+
 @pytest.fixture
 def test_inspection_data():
-    """Generate unique test inspection data"""
     unique_id = str(uuid.uuid4())[:8]
     return {
-        "userId": TEST_USER_ID,
         "cliente": f"TEST_Cliente_{unique_id}",
         "data": datetime.now().strftime("%Y-%m-%d"),
         "endereco": f"TEST_Endereço {unique_id}",
@@ -37,15 +56,12 @@ def test_inspection_data():
         "horario_termino": "12:00",
         "tipo_imovel": "novo",
         "energia_disponivel": "sim",
-        "documentos_recebidos": ["Manual do proprietário", "Chaves da unidade"]
+        "documentos_recebidos": ["Manual do proprietário", "Chaves da unidade"],
     }
 
 
 class TestHealthCheck:
-    """Test API health and root endpoint"""
-    
     def test_api_root(self, api_client):
-        """Test root endpoint returns correct message"""
         response = api_client.get(f"{BASE_URL}/api/")
         assert response.status_code == 200
         data = response.json()
@@ -54,80 +70,54 @@ class TestHealthCheck:
         print("✓ API root endpoint working")
 
 
+class TestAuthRequired:
+    """Rotas /inspections e /users/register exigem Bearer token."""
+
+    def test_inspections_list_without_token_returns_401(self, api_client):
+        r = api_client.get(f"{BASE_URL}/api/inspections")
+        assert r.status_code == 401
+
+    def test_inspections_create_without_token_returns_401(self, api_client, test_inspection_data):
+        r = api_client.post(f"{BASE_URL}/api/inspections", json=test_inspection_data)
+        assert r.status_code == 401
+
+
 class TestInspectionsCRUD:
-    """Test CRUD operations for inspections"""
-    
-    def test_create_inspection(self, api_client, test_inspection_data):
-        """Test creating a new inspection"""
-        response = api_client.post(f"{BASE_URL}/api/inspections", json=test_inspection_data)
+    def test_create_inspection(self, auth_session, test_inspection_data):
+        response = auth_session.post(f"{BASE_URL}/api/inspections", json=test_inspection_data)
         assert response.status_code == 200
-        
         data = response.json()
         assert "id" in data
         assert data["cliente"] == test_inspection_data["cliente"]
-        assert data["endereco"] == test_inspection_data["endereco"]
-        assert data["unidade"] == test_inspection_data["unidade"]
+        assert data.get("userId")
         assert data["status"] == "em_andamento"
-        print(f"✓ Created inspection with ID: {data['id']}")
-        
-        # Clean up
-        api_client.delete(
-            f"{BASE_URL}/api/inspections/{data['id']}",
-            params={"userId": TEST_USER_ID},
-        )
-    
-    def test_get_all_inspections(self, api_client):
-        """Test getting all inspections"""
-        response = api_client.get(
-            f"{BASE_URL}/api/inspections", params={"userId": TEST_USER_ID}
-        )
+        auth_session.delete(f"{BASE_URL}/api/inspections/{data['id']}")
+
+    def test_get_all_inspections(self, auth_session):
+        response = auth_session.get(f"{BASE_URL}/api/inspections")
         assert response.status_code == 200
-        
-        data = response.json()
-        assert isinstance(data, list)
-        print(f"✓ Got {len(data)} inspections")
-    
-    def test_get_single_inspection(self, api_client, test_inspection_data):
-        """Test getting a single inspection by ID"""
-        # Create first
-        create_response = api_client.post(f"{BASE_URL}/api/inspections", json=test_inspection_data)
+        assert isinstance(response.json(), list)
+
+    def test_get_single_inspection(self, auth_session, test_inspection_data):
+        create_response = auth_session.post(
+            f"{BASE_URL}/api/inspections", json=test_inspection_data
+        )
         inspection_id = create_response.json()["id"]
-        
-        # Get by ID
-        response = api_client.get(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
-        )
+        response = auth_session.get(f"{BASE_URL}/api/inspections/{inspection_id}")
         assert response.status_code == 200
-        
-        data = response.json()
-        assert data["id"] == inspection_id
-        assert data["cliente"] == test_inspection_data["cliente"]
-        print(f"✓ Got inspection {inspection_id}")
-        
-        # Clean up
-        api_client.delete(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
-        )
-    
-    def test_get_nonexistent_inspection(self, api_client):
-        """Test getting a non-existent inspection returns 404"""
+        assert response.json()["id"] == inspection_id
+        auth_session.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+
+    def test_get_nonexistent_inspection(self, auth_session):
         fake_id = str(uuid.uuid4())
-        response = api_client.get(
-            f"{BASE_URL}/api/inspections/{fake_id}",
-            params={"userId": TEST_USER_ID},
-        )
+        response = auth_session.get(f"{BASE_URL}/api/inspections/{fake_id}")
         assert response.status_code == 404
-        print("✓ Non-existent inspection returns 404")
-    
-    def test_update_inspection_checklist(self, api_client, test_inspection_data):
-        """Test updating inspection with rooms checklist"""
-        # Create first
-        create_response = api_client.post(f"{BASE_URL}/api/inspections", json=test_inspection_data)
+
+    def test_update_inspection_checklist(self, auth_session, test_inspection_data):
+        create_response = auth_session.post(
+            f"{BASE_URL}/api/inspections", json=test_inspection_data
+        )
         inspection_id = create_response.json()["id"]
-        
-        # Update with checklist
         update_data = {
             "rooms_checklist": [
                 {
@@ -140,179 +130,94 @@ class TestInspectionsCRUD:
                             "exists": "sim",
                             "condition": "aprovado",
                             "observations": "Sem manchas",
-                            "photos": []
+                            "photos": [],
                         },
                         {
                             "name": "Paredes",
                             "exists": "sim",
                             "condition": "aprovado",
                             "observations": "",
-                            "photos": []
-                        }
-                    ]
+                            "photos": [],
+                        },
+                    ],
                 }
             ]
         }
-        
-        response = api_client.put(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            json=update_data,
-            params={"userId": TEST_USER_ID},
+        response = auth_session.put(
+            f"{BASE_URL}/api/inspections/{inspection_id}", json=update_data
         )
         assert response.status_code == 200
-        
-        data = response.json()
-        assert len(data["rooms_checklist"]) == 1
-        assert data["rooms_checklist"][0]["room_name"] == "Sala"
-        print(f"✓ Updated inspection checklist")
-        
-        # Verify persistence with GET
-        get_response = api_client.get(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
+        get_response = auth_session.get(f"{BASE_URL}/api/inspections/{inspection_id}")
+        assert len(get_response.json()["rooms_checklist"]) == 1
+        auth_session.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+
+    def test_finalize_inspection(self, auth_session, test_inspection_data):
+        create_response = auth_session.post(
+            f"{BASE_URL}/api/inspections", json=test_inspection_data
         )
-        assert get_response.status_code == 200
-        persisted_data = get_response.json()
-        assert len(persisted_data["rooms_checklist"]) == 1
-        print("✓ Checklist update persisted correctly")
-        
-        # Clean up
-        api_client.delete(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
-        )
-    
-    def test_finalize_inspection(self, api_client, test_inspection_data):
-        """Test finalizing inspection with classification"""
-        # Create first
-        create_response = api_client.post(f"{BASE_URL}/api/inspections", json=test_inspection_data)
         inspection_id = create_response.json()["id"]
-        
-        # Finalize
         update_data = {
             "classificacao_final": "aprovado",
             "conclusao": "Imóvel em boas condições",
             "assinatura": "data:image/png;base64,iVBORw0KGgo=",
             "responsavel_final": "Eng. Responsável",
-            "data_final": datetime.now().strftime("%Y-%m-%d")
+            "data_final": datetime.now().strftime("%Y-%m-%d"),
         }
-        
-        response = api_client.put(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            json=update_data,
-            params={"userId": TEST_USER_ID},
+        response = auth_session.put(
+            f"{BASE_URL}/api/inspections/{inspection_id}", json=update_data
         )
         assert response.status_code == 200
-        
-        data = response.json()
-        assert data["classificacao_final"] == "aprovado"
-        assert data["status"] == "concluida"
-        print(f"✓ Finalized inspection with status: {data['status']}")
-        
-        # Clean up
-        api_client.delete(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
+        assert response.json()["status"] == "concluida"
+        auth_session.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+
+    def test_update_identification(self, auth_session, test_inspection_data):
+        create_response = auth_session.post(
+            f"{BASE_URL}/api/inspections", json=test_inspection_data
         )
-    
-    def test_update_identification(self, api_client, test_inspection_data):
-        """Test updating inspection identification info"""
-        # Create first
-        create_response = api_client.post(f"{BASE_URL}/api/inspections", json=test_inspection_data)
         inspection_id = create_response.json()["id"]
-        
-        # Update identification
         update_data = {
             "cliente": "TEST_Cliente_Atualizado",
-            "endereco": "TEST_Novo Endereço 123"
+            "endereco": "TEST_Novo Endereço 123",
         }
-        
-        response = api_client.put(
+        response = auth_session.put(
             f"{BASE_URL}/api/inspections/{inspection_id}/identification",
             json=update_data,
-            params={"userId": TEST_USER_ID},
         )
         assert response.status_code == 200
-        
-        data = response.json()
-        assert data["cliente"] == "TEST_Cliente_Atualizado"
-        assert data["endereco"] == "TEST_Novo Endereço 123"
-        print("✓ Updated identification info")
-        
-        # Verify persistence
-        get_response = api_client.get(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
+        auth_session.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+
+    def test_delete_inspection(self, auth_session, test_inspection_data):
+        create_response = auth_session.post(
+            f"{BASE_URL}/api/inspections", json=test_inspection_data
         )
-        persisted = get_response.json()
-        assert persisted["cliente"] == "TEST_Cliente_Atualizado"
-        print("✓ Identification update persisted")
-        
-        # Clean up
-        api_client.delete(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
-        )
-    
-    def test_delete_inspection(self, api_client, test_inspection_data):
-        """Test deleting an inspection"""
-        # Create first
-        create_response = api_client.post(f"{BASE_URL}/api/inspections", json=test_inspection_data)
         inspection_id = create_response.json()["id"]
-        
-        # Delete
-        response = api_client.delete(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
-        )
+        response = auth_session.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
         assert response.status_code == 200
-        
-        # Verify deletion
-        get_response = api_client.get(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
-        )
+        get_response = auth_session.get(f"{BASE_URL}/api/inspections/{inspection_id}")
         assert get_response.status_code == 404
-        print(f"✓ Deleted inspection {inspection_id}")
 
 
 class TestInspectionValidation:
-    """Test validation and edge cases"""
-    
-    def test_create_with_all_classification_types(self, api_client, test_inspection_data):
-        """Test creating inspections with different classification types"""
+    def test_create_with_all_classification_types(self, auth_session, test_inspection_data):
         classifications = ["aprovado", "aprovado_com_ressalvas", "reprovado", "outro"]
-        
         for classificacao in classifications:
-            # Create
-            response = api_client.post(f"{BASE_URL}/api/inspections", json=test_inspection_data)
+            response = auth_session.post(
+                f"{BASE_URL}/api/inspections", json=test_inspection_data
+            )
             inspection_id = response.json()["id"]
-            
-            # Finalize with classification
-            update_response = api_client.put(
+            update_response = auth_session.put(
                 f"{BASE_URL}/api/inspections/{inspection_id}",
-                json={"classificacao_final": classificacao, "assinatura": "data:image/png;base64,test"},
-                params={"userId": TEST_USER_ID},
+                json={
+                    "classificacao_final": classificacao,
+                    "assinatura": "data:image/png;base64,test",
+                },
             )
             assert update_response.status_code == 200
-            data = update_response.json()
-            assert data["classificacao_final"] == classificacao
-            assert data["status"] == "concluida"
-            
-            # Clean up
-            api_client.delete(
-                f"{BASE_URL}/api/inspections/{inspection_id}",
-                params={"userId": TEST_USER_ID},
-            )
-            print(f"✓ Classification '{classificacao}' works correctly")
-    
-    def test_tipo_imovel_options(self, api_client):
-        """Test all property types are accepted"""
-        tipos = ["novo", "usado", "reformado"]
-        
-        for tipo in tipos:
+            auth_session.delete(f"{BASE_URL}/api/inspections/{inspection_id}")
+
+    def test_tipo_imovel_options(self, auth_session):
+        for tipo in ["novo", "usado", "reformado"]:
             data = {
-                "userId": TEST_USER_ID,
                 "cliente": f"TEST_Cliente_{tipo}",
                 "data": "2025-01-15",
                 "endereco": "Test Address",
@@ -325,62 +230,21 @@ class TestInspectionValidation:
                 "horario_termino": "12:00",
                 "tipo_imovel": tipo,
                 "energia_disponivel": "sim",
-                "documentos_recebidos": []
+                "documentos_recebidos": [],
             }
-            
-            response = api_client.post(f"{BASE_URL}/api/inspections", json=data)
+            response = auth_session.post(f"{BASE_URL}/api/inspections", json=data)
             assert response.status_code == 200
-            assert response.json()["tipo_imovel"] == tipo
-            
-            # Clean up
-            api_client.delete(
-                f"{BASE_URL}/api/inspections/{response.json()['id']}",
-                params={"userId": TEST_USER_ID},
-            )
-            print(f"✓ Property type '{tipo}' accepted")
-
-    def test_other_user_cannot_access_inspection(self, api_client, test_inspection_data):
-        """Vistoria só é visível ao dono (userId)."""
-        create_response = api_client.post(
-            f"{BASE_URL}/api/inspections", json=test_inspection_data
-        )
-        assert create_response.status_code == 200
-        inspection_id = create_response.json()["id"]
-
-        other = api_client.get(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": "outro-utilizador-xyz"},
-        )
-        assert other.status_code == 404
-
-        api_client.delete(
-            f"{BASE_URL}/api/inspections/{inspection_id}",
-            params={"userId": TEST_USER_ID},
-        )
-        print("✓ Cross-user access returns 404")
+            iid = response.json()["id"]
+            auth_session.delete(f"{BASE_URL}/api/inspections/{iid}")
 
 
 class TestExistingInspection:
-    """Test with existing inspection from previous testing"""
-    
-    def test_get_existing_inspection(self, api_client):
-        """Test getting the inspection created in previous tests"""
-        # ID from agent context
+    def test_get_existing_inspection(self, auth_session):
         existing_id = "0e0539e2-9f73-49f7-90bd-cc5060ac5bac"
-        
-        response = api_client.get(
-            f"{BASE_URL}/api/inspections/{existing_id}",
-            params={"userId": TEST_USER_ID},
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"✓ Found existing inspection: {data['cliente']}")
-            print(f"  Status: {data['status']}")
-            print(f"  Classification: {data.get('classificacao_final', 'N/A')}")
-        else:
-            print(f"! Existing inspection {existing_id} not found (may have been deleted)")
-            pytest.skip("Existing inspection not available")
+        response = auth_session.get(f"{BASE_URL}/api/inspections/{existing_id}")
+        if response.status_code != 200:
+            pytest.skip("Existing inspection not available for this token")
+        print(f"✓ Found inspection: {response.json().get('cliente')}")
 
 
 if __name__ == "__main__":

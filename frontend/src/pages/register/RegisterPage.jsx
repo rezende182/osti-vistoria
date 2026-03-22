@@ -86,7 +86,6 @@ function RegisterPage() {
       const u = credential?.user;
       if (u?.uid) {
         void syncProfileAfterSignUp({
-          userId: u.uid,
           nome: nomeTrim,
           email: u.email || emailTrim,
           telefone: telefone.trim() || null,

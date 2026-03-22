@@ -2,10 +2,8 @@
  * Cliente HTTP central para a API FastAPI (Render).
  * Base: {BACKEND_URL}/api — ex.: https://osti-vistoria.onrender.com/api
  *
- * CORS: o backend deve incluir a origem do app (Electron dev: http://localhost:3000)
- * ou CORS_ORIGINS=* no Render. Origem file:// no .exe pode exigir * no servidor.
- *
- * Vistorias são isoladas por Firebase `user.uid` (query `userId` + corpo em POST).
+ * Rotas protegidas (vistorias, registo de perfil): Authorization: Bearer <Firebase ID token>.
+ * O backend extrai o uid do token (não confia em userId enviado pelo cliente).
  */
 import axios from 'axios';
 import { API_BASE } from '../config/api';
@@ -14,6 +12,34 @@ const client = axios.create({
   baseURL: API_BASE,
   timeout: 120000,
   headers: { 'Content-Type': 'application/json' },
+});
+
+/** Obtém o ID token do utilizador Firebase (definido pelo AuthProvider). */
+let getIdTokenFn = async () => null;
+
+/**
+ * @param {null | (() => Promise<string|null>)} fn
+ */
+export function setApiAuthTokenGetter(fn) {
+  getIdTokenFn =
+    typeof fn === 'function'
+      ? fn
+      : async () => null;
+}
+
+client.interceptors.request.use(async (config) => {
+  if (config.headers.Authorization) {
+    return config;
+  }
+  try {
+    const token = await getIdTokenFn();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {
+    /* sem token — pedidos públicos ou 401 nas rotas protegidas */
+  }
+  return config;
 });
 
 /** Cliente axios base (usado pelo syncManager) */
@@ -25,12 +51,6 @@ function normalizeUserId(userId) {
   if (userId === undefined || userId === null) return '';
   const s = String(userId).trim();
   return s;
-}
-
-function userQuery(userId) {
-  const uid = normalizeUserId(userId);
-  if (!uid) return null;
-  return { userId: uid };
 }
 
 /** Mensagem legível a partir de erro Axios ou rede */
@@ -59,61 +79,54 @@ function rejectNoUser() {
   return Promise.resolve({ ok: false, data: null, error: AUTH_REQUIRED_MSG });
 }
 
+/** Corpo sem userId — o servidor define o dono pelo token. */
+function stripUserId(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const { userId: _removed, ...rest } = payload;
+  return rest;
+}
+
 export const inspectionsApi = {
   list: (userId) => {
-    const q = userQuery(userId);
-    if (!q) return rejectNoUser();
-    return wrap(client.get('/inspections', { params: q }).then((r) => r.data));
+    if (!normalizeUserId(userId)) return rejectNoUser();
+    return wrap(client.get('/inspections').then((r) => r.data));
   },
 
   get: (id, userId) => {
-    const q = userQuery(userId);
-    if (!q) return rejectNoUser();
-    return wrap(client.get(`/inspections/${id}`, { params: q }).then((r) => r.data));
+    if (!normalizeUserId(userId)) return rejectNoUser();
+    return wrap(client.get(`/inspections/${id}`).then((r) => r.data));
   },
 
   create: (payload, userId) => {
-    const q = userQuery(userId);
-    if (!q) return rejectNoUser();
-    const body = {
-      ...payload,
-      userId: q.userId,
-    };
-    return wrap(client.post('/inspections', body).then((r) => r.data));
-  },
-
-  update: (id, payload, userId) => {
-    const q = userQuery(userId);
-    if (!q) return rejectNoUser();
+    if (!normalizeUserId(userId)) return rejectNoUser();
     return wrap(
-      client.put(`/inspections/${id}`, payload, { params: q }).then((r) => r.data)
+      client.post('/inspections', stripUserId(payload)).then((r) => r.data)
     );
   },
 
+  update: (id, payload, userId) => {
+    if (!normalizeUserId(userId)) return rejectNoUser();
+    return wrap(client.put(`/inspections/${id}`, payload).then((r) => r.data));
+  },
+
   updateIdentification: (id, payload, userId) => {
-    const q = userQuery(userId);
-    if (!q) return rejectNoUser();
+    if (!normalizeUserId(userId)) return rejectNoUser();
     return wrap(
-      client
-        .put(`/inspections/${id}/identification`, payload, { params: q })
-        .then((r) => r.data)
+      client.put(`/inspections/${id}/identification`, payload).then((r) => r.data)
     );
   },
 
   remove: (id, userId) => {
-    const q = userQuery(userId);
-    if (!q) return rejectNoUser();
-    return wrap(client.delete(`/inspections/${id}`, { params: q }).then((r) => r.data));
+    if (!normalizeUserId(userId)) return rejectNoUser();
+    return wrap(client.delete(`/inspections/${id}`).then((r) => r.data));
   },
 
-  /** Upload de foto (multipart) */
   uploadPhoto: (id, file, userId) => {
-    const q = userQuery(userId);
-    if (!q) return rejectNoUser();
+    if (!normalizeUserId(userId)) return rejectNoUser();
     const form = new FormData();
     form.append('file', file);
     return wrap(
-      client.post(`/inspections/${id}/upload-photo`, form, { params: q }).then((r) => r.data)
+      client.post(`/inspections/${id}/upload-photo`, form).then((r) => r.data)
     );
   },
 };

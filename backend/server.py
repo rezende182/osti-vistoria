@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
 
-from fastapi import APIRouter, FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -24,6 +24,7 @@ from database import (
     is_mongo_ready,
     require_database,
 )
+from firebase_auth import get_current_uid, init_firebase_admin
 from settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -83,8 +84,11 @@ class RoomChecklist(BaseModel):
     items: List[ChecklistItemData]
 
 
-class InspectionCreate(BaseModel):
-    userId: str = Field(..., min_length=1)
+class InspectionCreateIn(BaseModel):
+    """Payload de criação (sem userId — vem do token Firebase)."""
+
+    model_config = ConfigDict(extra="ignore")
+
     cliente: str
     data: str
     endereco: str
@@ -157,18 +161,17 @@ class Inspection(BaseModel):
 
 
 class UserRegisterBody(BaseModel):
-    """Perfil após cadastro no Firebase Auth — upsert por userId (sem duplicar)."""
+    """Perfil após cadastro no Firebase Auth — uid vem só do token."""
 
     model_config = ConfigDict(extra="ignore")
 
-    userId: str = Field(..., min_length=1, max_length=128)
     nome: str = Field(..., min_length=1, max_length=200)
     email: str = Field(..., min_length=3, max_length=320)
     telefone: Optional[str] = None
 
-    @field_validator("userId", "nome")
+    @field_validator("nome")
     @classmethod
-    def strip_strings(cls, v: str) -> str:
+    def strip_nome(cls, v: str) -> str:
         return v.strip()
 
     @field_validator("email")
@@ -222,19 +225,22 @@ async def root():
 
 
 @api_router.post("/users/register")
-async def register_user_profile(body: UserRegisterBody):
+async def register_user_profile(
+    body: UserRegisterBody,
+    uid: str = Depends(get_current_uid),
+):
     """Guarda perfil no Mongo após signUp Firebase — idempotente (mesmo userId atualiza)."""
     database = require_database()
     now = datetime.now(timezone.utc).isoformat()
     doc = {
-        "userId": body.userId,
+        "userId": uid,
         "nome": body.nome,
         "email": body.email,
         "telefone": body.telefone,
         "updated_at": now,
     }
     await database.user_profiles.update_one(
-        {"userId": body.userId},
+        {"userId": uid},
         {
             "$set": doc,
             "$setOnInsert": {"created_at": now},
@@ -254,9 +260,12 @@ async def health():
 
 
 @api_router.post("/inspections", response_model=Inspection)
-async def create_inspection(input: InspectionCreate):
+async def create_inspection(
+    input: InspectionCreateIn,
+    uid: str = Depends(get_current_uid),
+):
     database = require_database()
-    inspection_dict = input.model_dump()
+    inspection_dict = {**input.model_dump(), "userId": uid}
     inspection_obj = Inspection(**inspection_dict)
 
     doc = inspection_obj.model_dump()
@@ -267,10 +276,10 @@ async def create_inspection(input: InspectionCreate):
 
 
 @api_router.get("/inspections", response_model=List[Inspection])
-async def get_inspections(userId: str = Query(..., min_length=1)):
+async def get_inspections(uid: str = Depends(get_current_uid)):
     database = require_database()
     inspections = (
-        await database.inspections.find({"userId": userId}, {"_id": 0})
+        await database.inspections.find({"userId": uid}, {"_id": 0})
         .sort("created_at", -1)
         .to_list(1000)
     )
@@ -284,7 +293,8 @@ async def get_inspections(userId: str = Query(..., min_length=1)):
 
 @api_router.get("/inspections/{inspection_id}", response_model=Inspection)
 async def get_inspection(
-    inspection_id: str, userId: str = Query(..., min_length=1)
+    inspection_id: str,
+    uid: str = Depends(get_current_uid),
 ):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
@@ -292,7 +302,7 @@ async def get_inspection(
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
 
-    _assert_inspection_owner(inspection, userId)
+    _assert_inspection_owner(inspection, uid)
 
     if isinstance(inspection["created_at"], str):
         inspection["created_at"] = datetime.fromisoformat(inspection["created_at"])
@@ -304,7 +314,7 @@ async def get_inspection(
 async def update_inspection(
     inspection_id: str,
     update_data: InspectionUpdate,
-    userId: str = Query(..., min_length=1),
+    uid: str = Depends(get_current_uid),
 ):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
@@ -312,7 +322,7 @@ async def update_inspection(
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
 
-    _assert_inspection_owner(inspection, userId)
+    _assert_inspection_owner(inspection, uid)
 
     update_dict = update_data.model_dump(exclude_unset=True)
 
@@ -341,7 +351,7 @@ async def update_inspection(
 async def update_identification(
     inspection_id: str,
     update_data: IdentificationUpdate,
-    userId: str = Query(..., min_length=1),
+    uid: str = Depends(get_current_uid),
 ):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
@@ -349,7 +359,7 @@ async def update_identification(
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
 
-    _assert_inspection_owner(inspection, userId)
+    _assert_inspection_owner(inspection, uid)
 
     update_dict = update_data.model_dump(exclude_unset=True)
 
@@ -373,7 +383,8 @@ async def update_identification(
 
 @api_router.delete("/inspections/{inspection_id}")
 async def delete_inspection(
-    inspection_id: str, userId: str = Query(..., min_length=1)
+    inspection_id: str,
+    uid: str = Depends(get_current_uid),
 ):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
@@ -381,7 +392,7 @@ async def delete_inspection(
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
 
-    _assert_inspection_owner(inspection, userId)
+    _assert_inspection_owner(inspection, uid)
 
     await database.inspections.delete_one({"id": inspection_id})
 
@@ -392,7 +403,7 @@ async def delete_inspection(
 async def upload_photo(
     inspection_id: str,
     file: UploadFile = File(...),
-    userId: str = Query(..., min_length=1),
+    uid: str = Depends(get_current_uid),
 ):
     database = require_database()
     inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
@@ -400,7 +411,7 @@ async def upload_photo(
     if not inspection:
         raise HTTPException(status_code=404, detail="Vistoria não encontrada")
 
-    _assert_inspection_owner(inspection, userId)
+    _assert_inspection_owner(inspection, uid)
 
     contents = await file.read()
     base64_image = base64.b64encode(contents).decode("utf-8")
@@ -422,6 +433,7 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         await connect_mongodb()
+        init_firebase_admin()
         yield
         close_mongodb()
 

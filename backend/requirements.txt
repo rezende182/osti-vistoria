@@ -1,6 +1,7 @@
 # FastAPI (ASGI) — deploy Render: build = pip install -r requirements.txt
 # Python: ver runtime.txt (3.12.x)
 fastapi==0.110.1
+firebase-admin==6.6.0
 uvicorn[standard]==0.25.0
 motor==3.6.1
 pymongo==4.9.2

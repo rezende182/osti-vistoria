@@ -12,7 +12,6 @@ function wrap(promise) {
 
 /**
  * @typedef {Object} UserRegisterProfilePayload
- * @property {string} userId - Firebase uid
  * @property {string} nome
  * @property {string} email
  * @property {string|null} [telefone]
@@ -20,10 +19,19 @@ function wrap(promise) {
 
 export const usersApi = {
   /**
-   * POST /api/users/register — upsert por `userId` (idempotente).
+   * POST /api/users/register — uid vem do Bearer token (Firebase).
    * @param {UserRegisterProfilePayload} payload
+   * @param {string|null} [idTokenOverride] — logo após signUp, antes do interceptor atualizar
    * @returns {Promise<{ ok: boolean, data?: any, error?: string }>}
    */
-  registerProfile: (payload) =>
-    wrap(apiClient.post('/users/register', payload).then((r) => r.data)),
+  registerProfile: (payload, idTokenOverride = null) =>
+    wrap(
+      apiClient
+        .post('/users/register', payload, {
+          headers: idTokenOverride
+            ? { Authorization: `Bearer ${idTokenOverride}` }
+            : {},
+        })
+        .then((r) => r.data)
+    ),
 };

@@ -13,6 +13,7 @@ import {
   signOut,
 } from 'firebase/auth';
 import { auth } from '@/firebase';
+import { setApiAuthTokenGetter } from '@/services/api';
 
 const AuthContext = createContext(null);
 
@@ -39,6 +40,14 @@ export function AuthProvider({ children }) {
 
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    setApiAuthTokenGetter(async () => {
+      if (!user) return null;
+      return user.getIdToken();
+    });
+    return () => setApiAuthTokenGetter(null);
+  }, [user]);
 
   const login = useCallback(async (email, password) => {
     if (!auth) {
