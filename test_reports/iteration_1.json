@@ -10,7 +10,7 @@
     "ui_bugs": [
       {
         "component": "FAB Button",
-        "issue": "FAB button click blocked by Emergent badge overlay on some screens",
+        "issue": "FAB button click blocked by fixed corner badge overlay on some screens",
         "selector": "[data-testid='fab-new-inspection']",
         "fix_priority": "LOW",
         "workaround": "Can navigate directly via URL or use force click"
@@ -48,7 +48,7 @@
 
   "updated_files": ["/app/backend_test.py"],
 
-  "action_item_for_main_agent": "Fix minor FAB button overlay issue with Emergent badge. All core functionality is working perfectly.",
+  "action_item_for_main_agent": "Fix minor FAB button overlay issue with fixed corner badge. All core functionality is working perfectly.",
 
   "should_call_test_agent_after_fix": "false",
   "should_main_agent_test_itself": "true"
