@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, Lock, Mail, Phone, User } from 'lucide-react';
+import { ArrowLeft, Loader2, Lock, Mail, Phone, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth';
 import styles from '@/components/auth/AuthFormLayout.module.css';
@@ -8,6 +8,7 @@ import LoginTextField from '@/components/login/LoginTextField';
 import { isFirebaseAuthAvailable } from '@/firebase';
 import { mapSignupError } from './mapSignupError';
 import {
+  getConfirmEmailMessage,
   getConfirmMessage,
   getEmailMessage,
   getNomeMessage,
@@ -15,12 +16,14 @@ import {
   getPhoneMessage,
   registerFormIsValid,
 } from './registerValidation';
+import { maskBrazilPhoneInput } from './phoneMask';
 import { syncProfileAfterSignUp } from './syncProfileAfterSignUp';
 
 function RegisterPage() {
   const { signUp } = useAuth();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -29,6 +32,7 @@ function RegisterPage() {
   const [touched, setTouched] = useState({
     nome: false,
     email: false,
+    confirmEmail: false,
     telefone: false,
     password: false,
     confirm: false,
@@ -42,6 +46,7 @@ function RegisterPage() {
     () => ({
       nome: touched.nome || attemptedSubmit,
       email: touched.email || attemptedSubmit,
+      confirmEmail: touched.confirmEmail || attemptedSubmit,
       telefone: touched.telefone || attemptedSubmit,
       password: touched.password || attemptedSubmit,
       confirm: touched.confirm || attemptedSubmit,
@@ -51,6 +56,9 @@ function RegisterPage() {
 
   const nomeMsg = getNomeMessage(nome, { show: show.nome });
   const emailMsg = getEmailMessage(email, { show: show.email });
+  const confirmEmailMsg = getConfirmEmailMessage(email, confirmEmail, {
+    show: show.confirmEmail,
+  });
   const phoneMsg = getPhoneMessage(telefone, { show: show.telefone });
   const passwordMsg = getPasswordMessage(password, { show: show.password });
   const confirmMsg = getConfirmMessage(password, confirm, { show: show.confirm });
@@ -67,6 +75,7 @@ function RegisterPage() {
       !registerFormIsValid({
         nome,
         email,
+        confirmEmail,
         password,
         confirm,
         telefone,
@@ -129,7 +138,7 @@ function RegisterPage() {
             setNome(e.target.value);
           }}
           onBlur={touch('nome')}
-          placeholder="Seu nome e sobrenome"
+          placeholder="Ex: João Silva"
           icon={User}
           disabled={submitting}
           supportText={
@@ -154,12 +163,37 @@ function RegisterPage() {
             setEmail(e.target.value);
           }}
           onBlur={touch('email')}
-          placeholder="nome@empresa.com"
+          placeholder="Ex: joao@email.com"
           icon={Mail}
           disabled={submitting}
-          supportText={show.email ? emailMsg : 'Utilizado para entrar na conta'}
+          supportText={emailMsg || 'Este e-mail será usado para login'}
           supportTone={emailMsg ? 'error' : 'neutral'}
           invalid={Boolean(emailMsg)}
+        />
+
+        <LoginTextField
+          id="register-confirm-email"
+          label="Confirmar e-mail"
+          type="email"
+          name="confirmEmail"
+          autoComplete="off"
+          value={confirmEmail}
+          onChange={(e) => {
+            clearFormError();
+            setTouched((p) => ({ ...p, confirmEmail: true }));
+            setConfirmEmail(e.target.value);
+          }}
+          onBlur={touch('confirmEmail')}
+          placeholder="Repita seu e-mail"
+          icon={Mail}
+          disabled={submitting}
+          supportText={
+            show.confirmEmail
+              ? confirmEmailMsg || 'Deve ser igual ao e-mail acima'
+              : 'Deve ser igual ao e-mail acima'
+          }
+          supportTone={confirmEmailMsg ? 'error' : 'neutral'}
+          invalid={Boolean(confirmEmailMsg)}
         />
 
         <LoginTextField
@@ -172,10 +206,10 @@ function RegisterPage() {
           onChange={(e) => {
             clearFormError();
             setTouched((p) => ({ ...p, telefone: true }));
-            setTelefone(e.target.value);
+            setTelefone(maskBrazilPhoneInput(e.target.value));
           }}
           onBlur={touch('telefone')}
-          placeholder="(11) 98765-4321"
+          placeholder="Ex: (11) 98765-4321"
           icon={Phone}
           disabled={submitting}
           supportText={
@@ -200,7 +234,7 @@ function RegisterPage() {
             setPassword(e.target.value);
           }}
           onBlur={touch('password')}
-          placeholder="Mínimo 6 caracteres"
+          placeholder="Mínimo de 6 caracteres"
           icon={Lock}
           disabled={submitting}
           supportText={show.password ? passwordMsg : 'Mínimo de 6 caracteres'}
@@ -221,7 +255,7 @@ function RegisterPage() {
             setConfirm(e.target.value);
           }}
           onBlur={touch('confirm')}
-          placeholder="Repita a mesma senha"
+          placeholder="Digite a senha novamente"
           icon={Lock}
           disabled={submitting}
           supportText={show.confirm ? confirmMsg : 'Deve coincidir com o campo acima'}
@@ -243,6 +277,11 @@ function RegisterPage() {
             'Criar conta'
           )}
         </button>
+
+        <Link to="/login" className={styles.secondaryAction}>
+          <ArrowLeft size={18} strokeWidth={2} aria-hidden />
+          Voltar para o login
+        </Link>
       </form>
 
       {formError ? (

@@ -126,6 +126,42 @@
   box-shadow: none;
 }
 
+/** Botão secundário (ex.: voltar ao login na criação de conta) */
+.secondaryAction {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.25;
+  color: #475569;
+  background: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.secondaryAction:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.secondaryAction:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .spinner {
   animation: spin 0.7s linear infinite;
 }
