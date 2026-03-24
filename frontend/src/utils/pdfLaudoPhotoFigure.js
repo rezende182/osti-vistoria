@@ -1,6 +1,6 @@
 /**
- * Bloco figura para fotos do laudo (jsPDF): legenda acima, moldura padrão 10×15 cm (2:3), contain.
- * Container (legenda + moldura) centrado na página e limitado às margens.
+ * Bloco figura para fotos do laudo (jsPDF): título “Foto:” + descrição (acima), moldura 10×15 cm, contain.
+ * Bloco indivisível: reserva-se altura total antes de desenhar (sem quebra entre legenda e imagem).
  */
 import {
   ensureVerticalSpace,
@@ -12,8 +12,6 @@ import {
 export const PDF_LAUDO_PHOTO_WIDTH_MM = 100;
 /** Altura padrão da foto 15 cm (formato 10×15) */
 export const PDF_LAUDO_PHOTO_HEIGHT_MM = 150;
-/** Recuo interno da legenda vs. borda da moldura (evita tocar no traço / medidas de fonte) */
-export const PDF_LAUDO_PHOTO_CAPTION_INSET_MM = 2;
 
 export const PDF_LAUDO_PHOTO_CAPTION_PT = 10;
 export const PDF_LAUDO_PHOTO_CAPTION_LINE_MM = 4.2;
@@ -21,6 +19,8 @@ export const PDF_LAUDO_PHOTO_CAPTION_LINE_MM = 4.2;
 export const PDF_LAUDO_PHOTO_CAPTION_GAP_MM = 3;
 /** Margem inferior entre blocos de fotos */
 export const PDF_LAUDO_PHOTO_BLOCK_GAP_MM = 12;
+/** Colchão na reserva de página (métricas de fonte / arredondamento) */
+export const PDF_LAUDO_PHOTO_ATOMIC_PAD_MM = 1.5;
 
 /**
  * Largura do bloco (moldura): 10 cm ou menos se a área útil entre margens for menor.
@@ -35,18 +35,28 @@ export function getLaudoPhotoBoxHeightMm(blockWidthMm) {
   return (blockWidthMm / PDF_LAUDO_PHOTO_WIDTH_MM) * PDF_LAUDO_PHOTO_HEIGHT_MM;
 }
 
-/** Largura máxima para quebra de texto da legenda (≤ largura da imagem). */
+/** Largura útil da legenda = largura da moldura (sem overflow lateral). */
 export function getLaudoCaptionMaxWidthMm(blockWidthMm) {
-  return Math.max(8, blockWidthMm - 2 * PDF_LAUDO_PHOTO_CAPTION_INSET_MM);
+  return Math.max(10, blockWidthMm);
 }
 
 /**
- * Quebra legenda para caber em maxWidthMm (inclui palavras muito longas / URLs sem espaços).
- * jsPDF.splitTextToSize por vezes não parte tokens longos o suficiente em algumas fontes.
+ * Texto único do cabeçalho do bloco: “Foto:” + descrição (quebra junto na mesma unidade lógica).
  */
-export function wrapCaptionLinesForPdf(doc, text, maxWidthMm) {
+export function buildLaudoPhotoBlockLabel(caption, photoNumber) {
+  const c = String(caption || '').trim();
+  if (c) return `Foto: ${c}`;
+  const n = photoNumber != null && photoNumber !== '' ? String(photoNumber) : '';
+  return n ? `Foto: (n.º ${n})` : 'Foto:';
+}
+
+/**
+ * Quebra texto para caber em maxWidthMm (inclui tokens longos / URLs).
+ * `fontStyle`: 'normal' | 'bold' — deve coincidir com o usado ao desenhar.
+ */
+export function wrapCaptionLinesForPdf(doc, text, maxWidthMm, fontStyle = 'normal') {
   const maxW = Math.max(4, maxWidthMm);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('helvetica', fontStyle);
   doc.setFontSize(PDF_LAUDO_PHOTO_CAPTION_PT);
   const normalized = String(text || '')
     .replace(/\r\n/g, ' ')
@@ -121,24 +131,25 @@ export function getImageNaturalSize(url) {
 }
 
 /**
- * Estima altura total do bloco (legenda + moldura + margem inferior) em mm.
+ * Estima altura total do bloco (cabeçalho “Foto: …” + moldura + margem inferior) em mm.
  */
-export function estimateLaudoPhotoBlockHeightMm(doc, caption, blockWidthMm) {
+export function estimateLaudoPhotoBlockHeightMm(doc, blockLabel, blockWidthMm) {
   const blockW = blockWidthMm ?? PDF_LAUDO_PHOTO_WIDTH_MM;
   const capW = getLaudoCaptionMaxWidthMm(blockW);
-  const lines = wrapCaptionLinesForPdf(doc, caption, capW);
+  const lines = wrapCaptionLinesForPdf(doc, blockLabel, capW, 'bold');
   const captionH = lines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   const boxH = getLaudoPhotoBoxHeightMm(blockW);
   return (
     captionH +
     PDF_LAUDO_PHOTO_CAPTION_GAP_MM +
     boxH +
-    PDF_LAUDO_PHOTO_BLOCK_GAP_MM
+    PDF_LAUDO_PHOTO_BLOCK_GAP_MM +
+    PDF_LAUDO_PHOTO_ATOMIC_PAD_MM
   );
 }
 
 /**
- * Desenha um bloco legenda + foto (moldura fixa 2:3, imagem centralizada com contain).
+ * Desenha bloco indivisível: “Foto:” + legenda (centrada, mesma largura da foto) + moldura 10×15 cm.
  * @returns {Promise<number>} novo Y após o bloco
  */
 export async function drawLaudoPhotoFigure(doc, options) {
@@ -146,6 +157,8 @@ export async function drawLaudoPhotoFigure(doc, options) {
     pageWidth,
     yStart,
     caption,
+    photoNumber,
+    blockLabel: blockLabelOverride,
     imageUrl,
     marginMm = 20,
     pageOpts: pageOptsIn = {},
@@ -160,25 +173,42 @@ export async function drawLaudoPhotoFigure(doc, options) {
   const boxH = getLaudoPhotoBoxHeightMm(blockW);
   const blockX = (pageWidth - blockW) / 2;
   const captionMaxW = getLaudoCaptionMaxWidthMm(blockW);
-  const captionX = blockX + PDF_LAUDO_PHOTO_CAPTION_INSET_MM;
+  const blockLabel =
+    blockLabelOverride ??
+    buildLaudoPhotoBlockLabel(caption, photoNumber);
 
-  doc.setFont('helvetica', 'normal');
+  let iw = 0;
+  let ih = 0;
+  if (imageUrl) {
+    try {
+      const dim = await getImageNaturalSize(imageUrl);
+      iw = dim.w;
+      ih = dim.h;
+    } catch {
+      iw = 0;
+      ih = 0;
+    }
+  }
+
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(PDF_LAUDO_PHOTO_CAPTION_PT);
   doc.setTextColor(0, 0, 0);
 
-  const captionLines = wrapCaptionLinesForPdf(doc, caption, captionMaxW);
+  const captionLines = wrapCaptionLinesForPdf(doc, blockLabel, captionMaxW, 'bold');
   const captionBlockH = captionLines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   const totalH =
     captionBlockH +
     PDF_LAUDO_PHOTO_CAPTION_GAP_MM +
     boxH +
-    PDF_LAUDO_PHOTO_BLOCK_GAP_MM;
+    PDF_LAUDO_PHOTO_BLOCK_GAP_MM +
+    PDF_LAUDO_PHOTO_ATOMIC_PAD_MM;
 
   let y = ensureVerticalSpace(doc, yStart, totalH, pageOpts);
 
+  const centerX = blockX + blockW / 2;
   let yLine = y;
   captionLines.forEach((line) => {
-    doc.text(line, captionX, yLine);
+    doc.text(line, centerX, yLine, { align: 'center' });
     yLine += PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   });
 
@@ -192,7 +222,6 @@ export async function drawLaudoPhotoFigure(doc, options) {
 
   if (imageUrl) {
     try {
-      const { w: iw, h: ih } = await getImageNaturalSize(imageUrl);
       if (iw > 0 && ih > 0) {
         const scale = Math.min(blockW / iw, boxH / ih);
         const dw = iw * scale;
@@ -206,6 +235,8 @@ export async function drawLaudoPhotoFigure(doc, options) {
           const jpegUrl = await rasterizeImageToJpegDataUrl(imageUrl);
           doc.addImage(jpegUrl, 'JPEG', ix, iy, dw, dh);
         }
+      } else {
+        throw new Error('dimensões inválidas');
       }
     } catch (e) {
       console.error('Erro ao inserir foto no PDF:', e);

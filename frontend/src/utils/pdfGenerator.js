@@ -338,20 +338,12 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         // Fotos
         const photos = item.photos || [];
         if (photos.length > 0) {
-          checkNewPage(14);
-
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(PDF_BODY_PT);
-          doc.setTextColor(0, 0, 0);
-          doc.text('Fotos:', margin, yPos);
-          yPos += 8;
-
           for (const photo of photos) {
-            const caption = photo.caption || `Foto ${photo.number || ''}`;
             yPos = await drawLaudoPhotoFigure(doc, {
               pageWidth,
               yStart: yPos,
-              caption,
+              caption: photo.caption,
+              photoNumber: photo.number,
               imageUrl: photo.url || null,
               marginMm: margin,
             });
