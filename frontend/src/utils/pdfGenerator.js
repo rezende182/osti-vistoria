@@ -377,8 +377,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         // Fotos: legenda `Foto N: …` com quebra na largura da imagem; sem cabeçalho "Fotos:"
         const photos = item.photos || [];
         if (photos.length > 0) {
-          const imgWidth = 120;
-          const imgHeight = 90;
+          /* Formato 10×15 cm (retrato) */
+          const imgWidth = 100;
+          const imgHeight = 150;
 
           for (const photo of photos) {
             const captionFull = buildPdfPhotoCaptionText(
