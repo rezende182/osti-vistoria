@@ -1,7 +1,7 @@
 {
   "name": "LaudoFlow — Vistoria",
   "short_name": "Vistoria",
-  "description": "Aplicativo de Vistoria de Recebimento de Imóvel",
+  "description": "Laudos, vistorias e diagnóstico de engenharia — fluxo digital do campo ao laudo final.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e293b",
