@@ -14,8 +14,10 @@ import {
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 
-// Logo da empresa - usar arquivo local para evitar problemas de CORS/CDN
-const LOGO_URL = '/logo-osti.png';
+// Logo OSTI apenas no PDF: preferir ficheiro local; fallback CDN (mesmo asset legado)
+const PDF_LOGO_LOCAL = `${process.env.PUBLIC_URL || ''}/logo-osti.png`;
+const PDF_LOGO_FALLBACK =
+  'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
 
 // Texto legal padrão
 const LEGAL_TEXT =
@@ -97,10 +99,13 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // PÁGINA 1: CABEÇALHO - Logo + Título lado a lado
   // ============================================================
   
-  // Carregar logo
+  // Carregar logo OSTI (PDF apenas)
   let logoBase64 = null;
   try {
-    logoBase64 = await loadImageAsBase64(LOGO_URL);
+    logoBase64 = await loadImageAsBase64(PDF_LOGO_LOCAL);
+    if (!logoBase64) {
+      logoBase64 = await loadImageAsBase64(PDF_LOGO_FALLBACK);
+    }
   } catch (e) {
     console.log('Erro ao carregar logo:', e);
   }

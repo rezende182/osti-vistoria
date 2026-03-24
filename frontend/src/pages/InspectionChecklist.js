@@ -14,8 +14,7 @@ import {
   initDB,
   enqueueSyncOperation,
 } from '../utils/offlineStorage';
-
-const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
+import { APP_LOGO_ALT, APP_LOGO_URL } from '@/constants/brand';
 
 // Templates de cômodos com itens na ordem correta
 const ROOM_TEMPLATES = {
@@ -496,8 +495,8 @@ const InspectionChecklist = () => {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <img
-                src={LOGO_URL}
-                alt="OSTI Engenharia"
+                src={APP_LOGO_URL}
+                alt={APP_LOGO_ALT}
                 className="h-9 w-auto shrink-0 sm:h-10"
               />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl lg:text-[1.65rem]">

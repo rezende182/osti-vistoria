@@ -21,7 +21,7 @@ function createWindow() {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    title: "OSTI — Vistoria",
+    title: "LaudoFlow — Vistoria",
     backgroundColor: "#ffffff",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

@@ -2,10 +2,15 @@
  * Service Worker — rede primeiro para o mesmo domínio, evita tela branca após deploy
  * (index.html ou /static/*.js em cache antigo referenciando chunks inexistentes).
  */
-const STATIC_CACHE = 'vistoria-static-v2';
-const DYNAMIC_CACHE = 'vistoria-dynamic-v2';
+const STATIC_CACHE = 'vistoria-static-v3';
+const DYNAMIC_CACHE = 'vistoria-dynamic-v3';
 
-const STATIC_ASSETS = ['/manifest.json', '/logo192.png', '/logo512.png'];
+const STATIC_ASSETS = [
+  '/manifest.json',
+  '/logo192.png',
+  '/logo512.png',
+  '/logo-laudoflow.png',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -77,7 +82,7 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('push', (event) => {
   const data = event.data?.json() || {};
   event.waitUntil(
-    self.registration.showNotification(data.title || 'OSTI Engenharia', {
+    self.registration.showNotification(data.title || 'LaudoFlow', {
       body: data.body || '',
       icon: '/logo192.png',
       badge: '/logo192.png',

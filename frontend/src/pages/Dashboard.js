@@ -9,8 +9,7 @@ import { useAuth } from '@/auth';
 import { inspectionsApi } from '../services/api';
 import { getAllInspectionsLocally, initDB } from '../utils/offlineStorage';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
-
-const LOGO_URL = 'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
+import { APP_LOGO_ALT, APP_LOGO_URL } from '@/constants/brand';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -128,7 +127,7 @@ const Dashboard = () => {
         <div className="max-w-md mx-auto md:max-w-2xl lg:max-w-4xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <img src={LOGO_URL} alt="OSTI Engenharia" className="h-14 w-auto shrink-0 sm:h-16" />
+              <img src={APP_LOGO_URL} alt={APP_LOGO_ALT} className="h-14 w-auto shrink-0 sm:h-16" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight md:text-2xl">
                 Vistoria de Recebimento de Imóvel
               </h1>
