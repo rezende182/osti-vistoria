@@ -76,10 +76,15 @@ function buildPdfPhotoCaptionParts(caption, photoNumber) {
 /**
  * Desenha legenda: só `Foto N.` em negrito; resto em normal; quebra à largura da imagem.
  * Alinhado à esquerda com a foto (imgX).
+ * Retorna Y do topo da foto: imediatamente abaixo da última baseline (sem linha em branco extra).
  */
 function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   const lh = PDF_BODY_LINE_MM;
+  /** Folga mínima só para descendentes (g, y, p); visualmente colado à imagem */
+  const belowBaselineMm = 0.35;
   let y = yStart;
+  let lastBaseline = yStart;
+
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
 
@@ -91,7 +96,7 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
 
   if (!bodyTrim) {
     doc.text(prefix, imgX, y);
-    return y + lh;
+    return y + belowBaselineMm;
   }
 
   doc.setFont('helvetica', 'normal');
@@ -101,14 +106,16 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   if (availFirst < 8) {
     doc.setFont('helvetica', 'bold');
     doc.text(prefix, imgX, y);
+    lastBaseline = y;
     y += lh;
     const restLines = wrapPdfCaptionToImageWidth(doc, bodyTrim, imgWidth);
     doc.setFont('helvetica', 'normal');
     restLines.forEach((ln) => {
       doc.text(ln, imgX, y);
+      lastBaseline = y;
       y += lh;
     });
-    return y;
+    return lastBaseline + belowBaselineMm;
   }
 
   let firstChunk = '';
@@ -127,14 +134,16 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
     if (w0 && doc.getTextWidth(w0) > availFirst) {
       doc.setFont('helvetica', 'bold');
       doc.text(prefix, imgX, y);
+      lastBaseline = y;
       y += lh;
       const restLines = wrapPdfCaptionToImageWidth(doc, bodyTrim, imgWidth);
       doc.setFont('helvetica', 'normal');
       restLines.forEach((ln) => {
         doc.text(ln, imgX, y);
+        lastBaseline = y;
         y += lh;
       });
-      return y;
+      return lastBaseline + belowBaselineMm;
     }
     firstChunk = w0;
     wi = 1;
@@ -144,6 +153,7 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   doc.text(prefix, imgX, y);
   doc.setFont('helvetica', 'normal');
   doc.text(firstChunk, imgX + prefixW, y);
+  lastBaseline = y;
   y += lh;
 
   const restText = words.slice(wi).join(' ').trim();
@@ -151,11 +161,12 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
     const restLines = wrapPdfCaptionToImageWidth(doc, restText, imgWidth);
     restLines.forEach((ln) => {
       doc.text(ln, imgX, y);
+      lastBaseline = y;
       y += lh;
     });
   }
 
-  return y;
+  return lastBaseline + belowBaselineMm;
 }
 
 /**
@@ -467,9 +478,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
           const imgHeight = 100;
 
           for (const photo of photos) {
-            /* 1,5 mm face ao conteúdo acima; legenda sem folga em relação à foto */
+            /* 1,5 mm face ao conteúdo acima; topo da foto colado à legenda (ver drawPdfPhotoCaptionBoldPrefix) */
             const gapAboveCaption = 1.5;
-            const gapCaptionToImg = 0;
             yPos += gapAboveCaption;
 
             const imgX = (pageWidth - imgWidth) / 2;
@@ -479,8 +489,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
               `${parts.prefix}${parts.body}`,
               imgWidth
             ).length;
-            const captionBlockH = (approxLines + 1) * PDF_BODY_LINE_MM;
-            checkNewPage(captionBlockH + gapCaptionToImg + imgHeight + 14);
+            const captionBlockH = approxLines * PDF_BODY_LINE_MM + 1;
+            checkNewPage(captionBlockH + imgHeight + 14);
 
             yPos = drawPdfPhotoCaptionBoldPrefix(
               doc,
@@ -489,7 +499,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
               yPos,
               parts
             );
-            yPos += gapCaptionToImg;
 
             if (photo.url) {
               try {
