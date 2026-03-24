@@ -382,6 +382,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
           const imgHeight = 150;
 
           for (const photo of photos) {
+            /* Respiro em relação ao texto/item acima; legenda mais colada à foto */
+            const gapAboveCaption = 6;
+            const gapCaptionToImg = 2;
+            yPos += gapAboveCaption;
+
             const captionFull = buildPdfPhotoCaptionText(
               photo.caption,
               photo.number
@@ -392,8 +397,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
               imgWidth
             );
             const captionBlockH = captionLines.length * PDF_BODY_LINE_MM;
-            const gapBeforeImg = 4;
-            checkNewPage(captionBlockH + gapBeforeImg + imgHeight + 14);
+            checkNewPage(
+              captionBlockH + gapCaptionToImg + imgHeight + 14
+            );
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(PDF_BODY_PT);
@@ -403,7 +409,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
               doc.text(ln, pageWidth / 2, yCap, { align: 'center' });
               yCap += PDF_BODY_LINE_MM;
             });
-            yPos = yCap + gapBeforeImg;
+            yPos = yCap + gapCaptionToImg;
 
             if (photo.url) {
               try {
