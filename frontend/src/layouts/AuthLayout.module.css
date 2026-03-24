@@ -11,7 +11,10 @@
   }
 }
 
-/* Painel de marca — desktop (SaaS premium: gradiente sóbrio + textura leve) */
+/*
+ * Painel esquerdo: <aside class="brand"> — único fundo visível (sem overlays).
+ * Nada em App/routeGuards aplica bg-* sobre este aside.
+ */
 .brand {
   position: relative;
   display: none;
@@ -20,7 +23,10 @@
   overflow: hidden;
   padding: 2.75rem 2.5rem;
   color: #f8fafc;
-  background: linear-gradient(155deg, #0b1220 0%, #0f172a 48%, #111827 100%);
+  background-color: #0f172a;
+  background-image: linear-gradient(135deg, #0b1220 0%, #0f172a 50%, #111827 100%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
 }
 
 @media (min-width: 1024px) {
@@ -29,75 +35,8 @@
   }
 }
 
-/* Luz ambiente muito suave — sem azul vivo */
-.brandGlow {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse 100% 70% at 50% -15%, rgba(255, 255, 255, 0.055), transparent 52%),
-    radial-gradient(ellipse 80% 60% at 100% 0%, rgba(17, 24, 39, 0.65), transparent 58%),
-    radial-gradient(ellipse 70% 55% at 0% 100%, rgba(15, 23, 42, 0.55), transparent 55%);
-  pointer-events: none;
-}
-
-/* Grain SVG em tile pequeno (leve) + blend suave */
-.brandGrid {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  opacity: 0.26;
-  pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
-  background-size: 160px 160px;
-  mix-blend-mode: soft-light;
-}
-
-/* Pontos ténues (partículas) — atrás do conteúdo */
-.brand::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.22;
-  background-image: radial-gradient(
-    circle at center,
-    rgba(255, 255, 255, 0.08) 0.5px,
-    transparent 1px
-  );
-  background-size: 28px 28px;
-  mask-image: linear-gradient(to bottom, black 0%, black 72%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 72%, transparent 100%);
-}
-
 .brandInner {
   position: relative;
-  z-index: 1;
-}
-
-/* Halo suave atrás do logo (~15% opacidade efetiva no núcleo) */
-.brandInner::before {
-  content: '';
-  position: absolute;
-  left: -2rem;
-  top: -3rem;
-  width: min(22rem, calc(100% + 4rem));
-  height: 12rem;
-  background: radial-gradient(
-    ellipse 55% 50% at 45% 45%,
-    rgba(226, 232, 240, 0.14) 0%,
-    rgba(100, 116, 139, 0.08) 35%,
-    transparent 68%
-  );
-  filter: blur(36px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.brandInner > * {
-  position: relative;
-  z-index: 1;
 }
 
 .logo {
@@ -127,7 +66,6 @@
 
 .brandFooter {
   position: relative;
-  z-index: 1;
   font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
