@@ -1,6 +1,6 @@
 /**
- * Bloco figura para fotos do laudo (jsPDF): título “Foto:” + descrição (acima), moldura 10×15 cm, contain.
- * Bloco indivisível: reserva-se altura total antes de desenhar (sem quebra entre legenda e imagem).
+ * Bloco figura para fotos do laudo (jsPDF): legenda “Foto N. …” (acima), área fixa 10×15 cm (2:3), contain.
+ * Sem tabelas — bloco em fluxo vertical, indivisível entre páginas.
  */
 import {
   ensureVerticalSpace,
@@ -41,13 +41,18 @@ export function getLaudoCaptionMaxWidthMm(blockWidthMm) {
 }
 
 /**
- * Texto único do cabeçalho do bloco: “Foto:” + descrição (quebra junto na mesma unidade lógica).
+ * Legenda do bloco: `Foto N. descrição` (sem “Foto:”).
+ * Remove prefixo duplicado tipo “Foto 3.” vindo do checklist.
  */
 export function buildLaudoPhotoBlockLabel(caption, photoNumber) {
-  const c = String(caption || '').trim();
-  if (c) return `Foto: ${c}`;
-  const n = photoNumber != null && photoNumber !== '' ? String(photoNumber) : '';
-  return n ? `Foto: (n.º ${n})` : 'Foto:';
+  const n =
+    photoNumber != null && photoNumber !== '' && !Number.isNaN(Number(photoNumber))
+      ? String(photoNumber)
+      : '?';
+  let rest = String(caption || '').trim();
+  rest = rest.replace(/^Foto\s*\d+\.\s*/i, '').trim();
+  if (rest) return `Foto ${n}. ${rest}`;
+  return `Foto ${n}.`;
 }
 
 /**
@@ -82,7 +87,7 @@ export function wrapCaptionLinesForPdf(doc, text, maxWidthMm, fontStyle = 'norma
       rest = rest.slice(cut);
     }
   });
-  if (out.length === 0) return ['Foto'];
+  if (out.length === 0) return ['Foto 1.'];
   return out;
 }
 
@@ -131,12 +136,12 @@ export function getImageNaturalSize(url) {
 }
 
 /**
- * Estima altura total do bloco (cabeçalho “Foto: …” + moldura + margem inferior) em mm.
+ * Estima altura total do bloco (legenda “Foto N. …” + área 2:3 + margem inferior) em mm.
  */
 export function estimateLaudoPhotoBlockHeightMm(doc, blockLabel, blockWidthMm) {
   const blockW = blockWidthMm ?? PDF_LAUDO_PHOTO_WIDTH_MM;
   const capW = getLaudoCaptionMaxWidthMm(blockW);
-  const lines = wrapCaptionLinesForPdf(doc, blockLabel, capW, 'bold');
+  const lines = wrapCaptionLinesForPdf(doc, blockLabel, capW, 'normal');
   const captionH = lines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   const boxH = getLaudoPhotoBoxHeightMm(blockW);
   return (
@@ -149,7 +154,7 @@ export function estimateLaudoPhotoBlockHeightMm(doc, blockLabel, blockWidthMm) {
 }
 
 /**
- * Desenha bloco indivisível: “Foto:” + legenda (centrada, mesma largura da foto) + moldura 10×15 cm.
+ * Desenha bloco indivisível: legenda centrada + imagem em área 10×15 cm (2:3), sem moldura tipo grelha.
  * @returns {Promise<number>} novo Y após o bloco
  */
 export async function drawLaudoPhotoFigure(doc, options) {
@@ -190,11 +195,11 @@ export async function drawLaudoPhotoFigure(doc, options) {
     }
   }
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(PDF_LAUDO_PHOTO_CAPTION_PT);
   doc.setTextColor(0, 0, 0);
 
-  const captionLines = wrapCaptionLinesForPdf(doc, blockLabel, captionMaxW, 'bold');
+  const captionLines = wrapCaptionLinesForPdf(doc, blockLabel, captionMaxW, 'normal');
   const captionBlockH = captionLines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   const totalH =
     captionBlockH +
@@ -216,10 +221,7 @@ export async function drawLaudoPhotoFigure(doc, options) {
 
   const boxY = y;
 
-  doc.setDrawColor(235, 235, 235);
-  doc.setLineWidth(0.15);
-  doc.rect(blockX, boxY, blockW, boxH, 'S');
-
+  /* Sem moldura/grelha: só a imagem na área 10×15 (2:3), centrada com letterboxing implícito (página). */
   if (imageUrl) {
     try {
       if (iw > 0 && ih > 0) {
@@ -251,6 +253,13 @@ export async function drawLaudoPhotoFigure(doc, options) {
       );
       doc.setTextColor(0, 0, 0);
     }
+  } else {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(140, 140, 140);
+    doc.text('[Sem imagem]', centerX, boxY + boxH / 2, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
   }
 
   return boxY + boxH + PDF_LAUDO_PHOTO_BLOCK_GAP_MM;
