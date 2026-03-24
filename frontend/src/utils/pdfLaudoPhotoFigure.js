@@ -1,6 +1,6 @@
 /**
- * Bloco figura para fotos do laudo (jsPDF): legenda acima, moldura 2:3, imagem com object-fit: contain.
- * Legenda com a mesma largura da moldura, centralizada; bloco centralizado na página.
+ * Bloco figura para fotos do laudo (jsPDF): legenda acima, moldura padrão 10×15 cm (2:3), contain.
+ * Container (legenda + moldura) centrado na página e limitado às margens.
  */
 import {
   ensureVerticalSpace,
@@ -8,10 +8,13 @@ import {
   PDF_PAGE_TOP_SAFE_MM,
 } from './pdfLayout';
 
-/** ~300px a 96 dpi → mm */
-export const PDF_LAUDO_PHOTO_WIDTH_MM = 79.375;
-/** Proporção retrato 10×15 (2:3): altura = largura × 3/2 */
-export const PDF_LAUDO_PHOTO_HEIGHT_MM = (PDF_LAUDO_PHOTO_WIDTH_MM * 3) / 2;
+/** Largura padrão da foto 10 cm */
+export const PDF_LAUDO_PHOTO_WIDTH_MM = 100;
+/** Altura padrão da foto 15 cm (formato 10×15) */
+export const PDF_LAUDO_PHOTO_HEIGHT_MM = 150;
+/** Recuo interno da legenda vs. borda da moldura (evita tocar no traço / medidas de fonte) */
+export const PDF_LAUDO_PHOTO_CAPTION_INSET_MM = 2;
+
 export const PDF_LAUDO_PHOTO_CAPTION_PT = 10;
 export const PDF_LAUDO_PHOTO_CAPTION_LINE_MM = 4.2;
 /** Espaço entre legenda e moldura */
@@ -20,11 +23,21 @@ export const PDF_LAUDO_PHOTO_CAPTION_GAP_MM = 3;
 export const PDF_LAUDO_PHOTO_BLOCK_GAP_MM = 12;
 
 /**
- * Largura útil do bloco figura: nunca maior que a foto padrão nem que a área entre margens.
+ * Largura do bloco (moldura): 10 cm ou menos se a área útil entre margens for menor.
  */
 export function getLaudoPhotoBlockWidthMm(pageWidthMm, marginMm) {
   const inner = Math.max(20, pageWidthMm - 2 * marginMm);
   return Math.min(PDF_LAUDO_PHOTO_WIDTH_MM, inner);
+}
+
+/** Altura da moldura mantendo proporção 10×15 (15/10 = 1,5). */
+export function getLaudoPhotoBoxHeightMm(blockWidthMm) {
+  return (blockWidthMm / PDF_LAUDO_PHOTO_WIDTH_MM) * PDF_LAUDO_PHOTO_HEIGHT_MM;
+}
+
+/** Largura máxima para quebra de texto da legenda (≤ largura da imagem). */
+export function getLaudoCaptionMaxWidthMm(blockWidthMm) {
+  return Math.max(8, blockWidthMm - 2 * PDF_LAUDO_PHOTO_CAPTION_INSET_MM);
 }
 
 /**
@@ -32,6 +45,7 @@ export function getLaudoPhotoBlockWidthMm(pageWidthMm, marginMm) {
  * jsPDF.splitTextToSize por vezes não parte tokens longos o suficiente em algumas fontes.
  */
 export function wrapCaptionLinesForPdf(doc, text, maxWidthMm) {
+  const maxW = Math.max(4, maxWidthMm);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(PDF_LAUDO_PHOTO_CAPTION_PT);
   const normalized = String(text || '')
@@ -39,18 +53,18 @@ export function wrapCaptionLinesForPdf(doc, text, maxWidthMm) {
     .replace(/\s+/g, ' ')
     .trim();
   const cap = normalized || 'Foto';
-  let lines = doc.splitTextToSize(cap, maxWidthMm);
+  let lines = doc.splitTextToSize(cap, maxW);
   const out = [];
   const epsilon = 0.5;
   lines.forEach((line) => {
     let rest = line;
     while (rest.length > 0) {
-      if (doc.getTextWidth(rest) <= maxWidthMm + epsilon) {
+      if (doc.getTextWidth(rest) <= maxW + epsilon) {
         out.push(rest);
         break;
       }
       let cut = rest.length;
-      while (cut > 1 && doc.getTextWidth(rest.slice(0, cut)) > maxWidthMm + epsilon) {
+      while (cut > 1 && doc.getTextWidth(rest.slice(0, cut)) > maxW + epsilon) {
         cut -= 1;
       }
       if (cut < 1) cut = 1;
@@ -111,9 +125,10 @@ export function getImageNaturalSize(url) {
  */
 export function estimateLaudoPhotoBlockHeightMm(doc, caption, blockWidthMm) {
   const blockW = blockWidthMm ?? PDF_LAUDO_PHOTO_WIDTH_MM;
-  const lines = wrapCaptionLinesForPdf(doc, caption, blockW);
+  const capW = getLaudoCaptionMaxWidthMm(blockW);
+  const lines = wrapCaptionLinesForPdf(doc, caption, capW);
   const captionH = lines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
-  const boxH = (blockW * 3) / 2;
+  const boxH = getLaudoPhotoBoxHeightMm(blockW);
   return (
     captionH +
     PDF_LAUDO_PHOTO_CAPTION_GAP_MM +
@@ -142,14 +157,16 @@ export async function drawLaudoPhotoFigure(doc, options) {
   };
 
   const blockW = getLaudoPhotoBlockWidthMm(pageWidth, marginMm);
-  const boxH = (blockW * 3) / 2;
+  const boxH = getLaudoPhotoBoxHeightMm(blockW);
   const blockX = (pageWidth - blockW) / 2;
+  const captionMaxW = getLaudoCaptionMaxWidthMm(blockW);
+  const captionX = blockX + PDF_LAUDO_PHOTO_CAPTION_INSET_MM;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(PDF_LAUDO_PHOTO_CAPTION_PT);
   doc.setTextColor(0, 0, 0);
 
-  const captionLines = wrapCaptionLinesForPdf(doc, caption, blockW);
+  const captionLines = wrapCaptionLinesForPdf(doc, caption, captionMaxW);
   const captionBlockH = captionLines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   const totalH =
     captionBlockH +
@@ -160,11 +177,11 @@ export async function drawLaudoPhotoFigure(doc, options) {
   let y = ensureVerticalSpace(doc, yStart, totalH, pageOpts);
 
   let yLine = y;
-  const captionCenterX = blockX + blockW / 2;
   captionLines.forEach((line) => {
-    doc.text(line, captionCenterX, yLine, { align: 'center' });
+    doc.text(line, captionX, yLine);
     yLine += PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   });
+
   y = yLine + PDF_LAUDO_PHOTO_CAPTION_GAP_MM;
 
   const boxY = y;
