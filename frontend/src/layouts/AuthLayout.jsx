@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import BrandLogo from '@/components/BrandLogo';
-import { APP_LOGO_ALT } from '@/constants/brand';
+import { OSTI_SIDEBAR_LOGO_URL } from '@/constants/brand';
 import styles from './AuthLayout.module.css';
 
 /**
@@ -21,7 +21,12 @@ const AuthLayout = ({ children }) => (
           palma da sua mão.
         </p>
       </div>
-      <p className={styles.brandFooter}>{APP_LOGO_ALT}</p>
+      <img
+        src={OSTI_SIDEBAR_LOGO_URL}
+        alt="OSTI Engenharia"
+        className={styles.brandFooterLogo}
+        decoding="async"
+      />
     </aside>
 
     <main className={styles.main}>

@@ -84,13 +84,19 @@
   color: rgba(226, 232, 240, 0.88);
 }
 
-.brandFooter {
+/* Marca OSTI pequena — canto inferior esquerdo do painel (só desktop lg+) */
+.brandFooterLogo {
   position: relative;
   z-index: 1;
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(148, 163, 184, 0.75);
+  display: block;
+  align-self: flex-start;
+  height: 2.25rem;
+  width: auto;
+  max-width: min(100%, 11rem);
+  object-fit: contain;
+  object-position: left center;
+  background: transparent !important;
+  opacity: 0.92;
 }
 
 /* Área do formulário */
