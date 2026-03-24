@@ -1,7 +1,7 @@
 {
   "name": "LaudoFlow — Vistoria",
   "short_name": "Vistoria",
-  "description": "Laudos, vistorias e diagnóstico de engenharia — fluxo digital do campo ao laudo final.",
+  "description": "Gestão inteligente de laudos e vistorias técnicas — simples, rápido e 100% digital.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e293b",
