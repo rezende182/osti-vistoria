@@ -55,8 +55,10 @@
 }
 
 .logo {
-  height: 2.75rem;
+  height: 5.25rem;
   width: auto;
+  max-width: min(100%, 14rem);
+  object-fit: contain;
   opacity: 0.96;
 }
 
@@ -134,12 +136,9 @@
 }
 
 .mobileLogo {
-  height: 2.5rem;
+  height: 3.75rem;
   width: auto;
+  max-width: 11rem;
+  object-fit: contain;
 }
 
-.mobileTitle {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: #334155;
-}

@@ -497,7 +497,7 @@ const InspectionChecklist = () => {
               <img
                 src={APP_LOGO_URL}
                 alt={APP_LOGO_ALT}
-                className="h-9 w-auto shrink-0 sm:h-10"
+                className="h-11 w-auto max-w-[9rem] shrink-0 object-contain sm:h-14"
               />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl lg:text-[1.65rem]">
                 Inspeção Técnica e Checklist de Verificação

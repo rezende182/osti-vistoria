@@ -27,7 +27,6 @@ const AuthLayout = ({ children }) => (
       <div className={styles.mainInner}>
         <div className={styles.mobileBrand}>
           <img src={APP_LOGO_URL} alt={APP_LOGO_ALT} className={styles.mobileLogo} />
-          <span className={styles.mobileTitle}>LaudoFlow</span>
         </div>
         {children ?? <Outlet />}
       </div>

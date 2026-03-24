@@ -127,7 +127,11 @@ const Dashboard = () => {
         <div className="max-w-md mx-auto md:max-w-2xl lg:max-w-4xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <img src={APP_LOGO_URL} alt={APP_LOGO_ALT} className="h-14 w-auto shrink-0 sm:h-16" />
+              <img
+                src={APP_LOGO_URL}
+                alt={APP_LOGO_ALT}
+                className="h-16 w-auto max-w-[11rem] shrink-0 object-contain sm:h-[5.25rem]"
+              />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight md:text-2xl">
                 Vistoria de Recebimento de Imóvel
               </h1>
