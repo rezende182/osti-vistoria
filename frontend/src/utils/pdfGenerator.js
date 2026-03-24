@@ -80,8 +80,8 @@ function buildPdfPhotoCaptionParts(caption, photoNumber) {
  */
 function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   const lh = PDF_BODY_LINE_MM;
-  /** Folga mínima só para descendentes (g, y, p); visualmente colado à imagem */
-  const belowBaselineMm = 0.35;
+  /** Espaço entre a última linha da legenda e o topo da imagem */
+  const belowBaselineMm = 1;
   let y = yStart;
   let lastBaseline = yStart;
 
