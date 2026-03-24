@@ -262,11 +262,19 @@ const InspectionChecklist = () => {
     setRoomsData(renumberedData);
   };
 
+  const itemChecklistCompleto = (item) => {
+    if (!item.exists) return false;
+    if (item.exists === 'nao') return true;
+    if (item.exists === 'sim') {
+      const obs = item.observations && String(item.observations).trim();
+      return Boolean(item.condition || obs);
+    }
+    return false;
+  };
+
   const calculateRoomProgress = (room) => {
     const totalItems = room.items.length;
-    const completedItems = room.items.filter(
-      (item) => item.exists && (item.exists === 'nao' || item.condition)
-    ).length;
+    const completedItems = room.items.filter(itemChecklistCompleto).length;
     return totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
   };
 
@@ -357,20 +365,23 @@ const InspectionChecklist = () => {
     setDeleteRoomTarget(null);
   };
 
-  // Validar se todos os itens estão preenchidos
+  // Validar se todos os itens estão preenchidos (existência "sim" + observação dispensa condição)
   const validateChecklist = () => {
     const missingItems = [];
-    
+
     roomsData.forEach((room) => {
       room.items.forEach((item) => {
         if (!item.exists) {
           missingItems.push(`${room.room_name}: "${item.name}" - Existência`);
-        } else if (item.exists === 'sim' && !item.condition) {
-          missingItems.push(`${room.room_name}: "${item.name}" - Condição`);
+        } else if (item.exists === 'sim') {
+          const obs = item.observations && String(item.observations).trim();
+          if (!item.condition && !obs) {
+            missingItems.push(`${room.room_name}: "${item.name}" - Condição ou observação`);
+          }
         }
       });
     });
-    
+
     return missingItems;
   };
 
@@ -385,7 +396,7 @@ const InspectionChecklist = () => {
         const displayItems = missing.slice(0, 5);
         const remaining = missing.length - 5;
         let message =
-          '⚠️ Preencha todos os campos de Existência e Condição antes de adicionar outro cômodo.\n\nItens pendentes:\n' +
+          '⚠️ Preencha Existência e, quando o item existir, Condição ou observação antes de adicionar outro cômodo.\n\nItens pendentes:\n' +
           displayItems.join('\n');
         if (remaining > 0) {
           message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -412,7 +423,9 @@ const InspectionChecklist = () => {
       const displayItems = missingItems.slice(0, 5);
       const remaining = missingItems.length - 5;
       
-      let message = '⚠️ Não é possível continuar!\n\nPreencha todos os campos de Existência e Condição.\n\nItens pendentes:\n' + displayItems.join('\n');
+      let message =
+        '⚠️ Não é possível continuar!\n\nPreencha Existência e, quando o item existir, Condição ou observação.\n\nItens pendentes:\n' +
+        displayItems.join('\n');
       if (remaining > 0) {
         message += `\n\n... e mais ${remaining} item(s) faltando`;
       }
