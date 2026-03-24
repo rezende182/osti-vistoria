@@ -1,6 +1,6 @@
 /**
- * Linha à direita na secção de assinatura: "Cidade - UF, DD de mês de AAAA"
- * (data ISO yyyy-mm-dd da identificação da vistoria).
+ * Linha à direita na secção de assinatura: "Cidade - UF, DD de mês de AAAA".
+ * Usa data ISO yyyy-mm-dd de emissão do laudo (`data_final`), não a data da identificação.
  */
 export function formatPdfAssinaturaDataLine(cidade, uf, dataIso) {
   const c = String(cidade || '').trim();

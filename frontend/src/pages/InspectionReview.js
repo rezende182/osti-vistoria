@@ -95,12 +95,14 @@ const InspectionReview = () => {
 
     try {
       await initDB().catch(() => {});
+      const dataFinal = new Date().toISOString().slice(0, 10);
       const payload = {
         classificacao_final: classificacao,
         conclusao,
         assinatura: '',
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
+        data_final: dataFinal,
         horario_termino: horarioTermino,
         outro_somente_conclusao:
           classificacao === 'outro' ? outroSomenteConclusao : false,
@@ -454,7 +456,7 @@ const InspectionReview = () => {
           </div>
 
           <p className="mb-6 text-xs text-slate-500">
-            Cidade, UF e data do laudo vêm da identificação da vistoria técnica; a linha por extenso na assinatura do PDF é gerada automaticamente.
+            A data na identificação (secção 1 do PDF) é a da vistoria. Na assinatura (secção 5), cidade, UF e data por extenso referem-se à data de emissão do laudo, gravada ao finalizar (dia de hoje).
           </p>
 
           {/* Buttons */}

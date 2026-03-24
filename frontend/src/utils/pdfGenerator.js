@@ -13,11 +13,15 @@ import {
   PDF_PAGE_BOTTOM_SAFE_MM,
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
+import { drawLaudoPhotoFigure } from './pdfLaudoPhotoFigure';
 
-// Logo OSTI apenas no PDF: preferir ficheiro local; fallback CDN (mesmo asset legado)
+// Logo OSTI oficial no PDF (public/logo-osti.png); fallback CDN legado
 const PDF_LOGO_LOCAL = `${process.env.PUBLIC_URL || ''}/logo-osti.png`;
 const PDF_LOGO_FALLBACK =
   'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
+/** Logo horizontal (~2,3:1) — largura × altura em mm */
+const PDF_LOGO_W_MM = 52;
+const PDF_LOGO_H_MM = 22;
 
 // Texto legal padrão
 const LEGAL_TEXT =
@@ -113,20 +117,21 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // Logo à esquerda
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', margin, yPos, 45, 22);
+      doc.addImage(logoBase64, 'PNG', margin, yPos, PDF_LOGO_W_MM, PDF_LOGO_H_MM);
     } catch (e) {
       console.log('Erro ao adicionar logo ao PDF:', e);
     }
   }
 
+  const titleX = margin + PDF_LOGO_W_MM + 8;
   // Título à direita do logo
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text('RELATÓRIO DE VISTORIA', margin + 55, yPos + 8);
-  doc.text('RECEBIMENTO DE IMÓVEL', margin + 55, yPos + 16);
+  doc.text('RELATÓRIO DE VISTORIA', titleX, yPos + 8);
+  doc.text('RECEBIMENTO DE IMÓVEL', titleX, yPos + 16);
   
-  yPos += 35;
+  yPos += Math.max(35, PDF_LOGO_H_MM + 10);
 
   // ============================================================
   // 1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA
@@ -262,51 +267,72 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         doc.text(item.name, margin + 3, yPos + 2);
         yPos += 12;
 
-        // Condição
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(PDF_BODY_PT);
-        doc.setTextColor(0, 0, 0);
-        doc.text('Condição: ', margin, yPos);
-        
-        doc.setFont('helvetica', 'bold');
-        if (item.condition === 'aprovado') {
-          doc.setTextColor(34, 139, 34); // Verde
-          doc.text('APROVADO', margin + 22, yPos);
-        } else if (item.condition === 'reprovado') {
-          doc.setTextColor(178, 34, 34); // Vermelho
-          doc.text('REPROVADO', margin + 22, yPos);
-        } else {
-          doc.setTextColor(0, 0, 0);
-          doc.text('-', margin + 22, yPos);
-        }
-        doc.setTextColor(0, 0, 0); // Resetar cor para preto
-        yPos += PDF_BODY_LINE_MM;
+        const obsTrim = (item.observations || '').trim();
+        const hasCondition =
+          item.condition === 'aprovado' || item.condition === 'reprovado';
+        /** Existência + observação preenchida, sem Aprovado/Reprovado (regra do checklist). */
+        const somenteObservacao =
+          item.exists === 'sim' && !hasCondition && obsTrim;
 
-        // Observações
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(PDF_BODY_PT);
-        
-        if (item.condition === 'aprovado') {
-          // Texto automático para APROVADO
-          doc.text('Observações: ', margin, yPos);
-          doc.setFont('helvetica', 'italic');
-          doc.text('Item em conformidade, sem irregularidades aparentes.', margin + 26, yPos);
-          yPos += PDF_BODY_LINE_MM;
-        } else if (item.condition === 'reprovado') {
-          doc.text('Observações:', margin, yPos);
-          yPos += PDF_BODY_LINE_MM;
-          
-          if (item.observations && item.observations.trim()) {
-            yPos = drawBodyParagraphs(
-              doc,
-              item.observations,
-              margin + 5,
-              contentWidth - 10,
-              yPos,
-              checkNewPage
-            );
-          }
+        if (somenteObservacao) {
+          yPos = drawBodyParagraphs(
+            doc,
+            obsTrim,
+            margin,
+            contentWidth,
+            yPos,
+            checkNewPage
+          );
           yPos += 2;
+        } else {
+          // Condição
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(PDF_BODY_PT);
+          doc.setTextColor(0, 0, 0);
+          doc.text('Condição: ', margin, yPos);
+
+          doc.setFont('helvetica', 'bold');
+          if (item.condition === 'aprovado') {
+            doc.setTextColor(34, 139, 34); // Verde
+            doc.text('APROVADO', margin + 22, yPos);
+          } else if (item.condition === 'reprovado') {
+            doc.setTextColor(178, 34, 34); // Vermelho
+            doc.text('REPROVADO', margin + 22, yPos);
+          } else {
+            doc.setTextColor(0, 0, 0);
+            doc.text('-', margin + 22, yPos);
+          }
+          doc.setTextColor(0, 0, 0);
+          yPos += PDF_BODY_LINE_MM;
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(PDF_BODY_PT);
+
+          if (item.condition === 'aprovado') {
+            doc.text('Observações: ', margin, yPos);
+            doc.setFont('helvetica', 'italic');
+            doc.text(
+              'Item em conformidade, sem irregularidades aparentes.',
+              margin + 26,
+              yPos
+            );
+            yPos += PDF_BODY_LINE_MM;
+          } else if (item.condition === 'reprovado') {
+            doc.text('Observações:', margin, yPos);
+            yPos += PDF_BODY_LINE_MM;
+
+            if (obsTrim) {
+              yPos = drawBodyParagraphs(
+                doc,
+                obsTrim,
+                margin + 5,
+                contentWidth - 10,
+                yPos,
+                checkNewPage
+              );
+            }
+            yPos += 2;
+          }
         }
 
         // Fotos
@@ -315,36 +341,19 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
           checkNewPage(14);
 
           doc.setFont('helvetica', 'bold');
+          doc.setFontSize(PDF_BODY_PT);
           doc.setTextColor(0, 0, 0);
           doc.text('Fotos:', margin, yPos);
           yPos += 8;
 
-          const imgWidth = 120;
-          const imgHeight = 90;
-
           for (const photo of photos) {
-            checkNewPage(imgHeight + 18);
-
-            // Legenda centralizada
             const caption = photo.caption || `Foto ${photo.number || ''}`;
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(PDF_BODY_PT);
-            doc.text(caption, pageWidth / 2, yPos, { align: 'center' });
-            yPos += 5;
-
-            // Imagem centralizada
-            if (photo.url) {
-              try {
-                const imgX = (pageWidth - imgWidth) / 2;
-                doc.addImage(photo.url, 'JPEG', imgX, yPos, imgWidth, imgHeight);
-                yPos += imgHeight + 8;
-              } catch (e) {
-                console.error('Erro ao adicionar imagem:', e);
-                doc.setFont('helvetica', 'italic');
-                doc.text('[Imagem não disponível]', pageWidth / 2, yPos, { align: 'center' });
-                yPos += 8;
-              }
-            }
+            yPos = await drawLaudoPhotoFigure(doc, {
+              pageWidth,
+              yStart: yPos,
+              caption,
+              imageUrl: photo.url || null,
+            });
           }
         }
 
@@ -430,10 +439,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const responsavel = inspection.responsavel_final || inspection.responsavel_tecnico || '-';
   const crea = inspection.crea_final || inspection.crea || '-';
+  /** Data por extenso na assinatura: emissão do laudo (finalização), não a data da identificação. */
   const localAssinatura = formatPdfAssinaturaDataLine(
     inspection.cidade,
     inspection.uf,
-    inspection.data
+    inspection.data_final || inspection.data
   );
 
   yPos = drawResponsavelAssinaturaSection(
@@ -489,7 +499,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   // Gerar arquivo
   const clienteName = (inspection.cliente || 'Relatorio').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
-  const dataFormatada = formatDate(inspection.data).replace(/\//g, '-');
+  const dataArquivo = inspection.data_final || inspection.data;
+  const dataFormatada = formatDate(dataArquivo).replace(/\//g, '-');
   const fileName = `Vistoria_${clienteName}_${dataFormatada}.pdf`;
 
   if (forPreview) {
