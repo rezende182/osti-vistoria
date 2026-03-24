@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle, FileText } from 'lucide-react';
+import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle, Download } from 'lucide-react';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import FAB from '../components/FAB';
 import ConfirmModal from '../components/ConfirmModal';
@@ -8,6 +8,8 @@ import { toast } from 'sonner';
 import { useAuth } from '@/auth';
 import { inspectionsApi } from '../services/api';
 import { getAllInspectionsLocally, initDB } from '../utils/offlineStorage';
+import { loadInspectionWithFallback } from '../utils/inspectionLoader';
+import { generateInspectionPDF } from '../utils/pdfGenerator';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
 import BrandLogo from '@/components/BrandLogo';
 
@@ -20,6 +22,7 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, inspectionId: null, inspectionName: '' });
+  const [pdfLoadingId, setPdfLoadingId] = useState(null);
 
   const fetchInspections = useCallback(async () => {
     try {
@@ -58,6 +61,32 @@ const Dashboard = () => {
   const openDeleteModal = (e, id, name) => {
     e.stopPropagation();
     setDeleteModal({ isOpen: true, inspectionId: id, inspectionName: name });
+  };
+
+  const handleDownloadPdf = async (e, inspectionId) => {
+    e.stopPropagation();
+    if (!uid) {
+      toast.error('Sessão inválida. Inicie sessão novamente.');
+      return;
+    }
+    setPdfLoadingId(inspectionId);
+    toast.info('Gerando PDF...');
+    try {
+      const res = await loadInspectionWithFallback(inspectionId, uid);
+      if (!res.ok) {
+        toast.error(res.error || 'Não foi possível carregar a vistoria.');
+        return;
+      }
+      const result = await generateInspectionPDF(res.data, false);
+      if (result) {
+        toast.success('PDF baixado com sucesso!');
+      }
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar PDF. Tente novamente.');
+    } finally {
+      setPdfLoadingId(null);
+    }
   };
 
   const closeDeleteModal = () => {
@@ -215,12 +244,28 @@ const Dashboard = () => {
                         <StatusIcon size={16} className={statusInfo.color} />
                         <span className={`text-xs font-bold ${statusInfo.color}`}>{statusInfo.label}</span>
                       </div>
+                      {inspection.status === 'concluida' && (
+                        <button
+                          type="button"
+                          data-testid={`download-pdf-${inspection.id}`}
+                          onClick={(e) => handleDownloadPdf(e, inspection.id)}
+                          disabled={pdfLoadingId === inspection.id}
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                          aria-label="Baixar PDF do laudo"
+                          title="Baixar PDF"
+                        >
+                          <Download size={18} aria-hidden />
+                        </button>
+                      )}
                       <button
+                        type="button"
                         data-testid={`delete-inspection-${inspection.id}`}
                         onClick={(e) => openDeleteModal(e, inspection.id, inspection.cliente)}
                         className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        aria-label="Excluir vistoria"
+                        title="Excluir"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={18} aria-hidden />
                       </button>
                     </div>
                   </div>
