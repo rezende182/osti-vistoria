@@ -42,6 +42,8 @@ const InspectionReview = () => {
   const [conclusao, setConclusao] = useState('');
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
+  /** Data ISO (yyyy-mm-dd) para secção 5 do PDF — emissão do laudo, não a data da identificação */
+  const [dataEmissaoLaudo, setDataEmissaoLaudo] = useState('');
   const [horarioTermino, setHorarioTermino] = useState('');
   const [outroSomenteConclusao, setOutroSomenteConclusao] = useState(false);
   const [classificacaoEscolhaRotulo, setClassificacaoEscolhaRotulo] = useState('');
@@ -62,6 +64,9 @@ const InspectionReview = () => {
       setConclusao(data.conclusao || '');
       setResponsavelFinal(data.responsavel_final || data.responsavel_tecnico || '');
       setCreaFinal(data.crea_final || data.crea || '');
+      setDataEmissaoLaudo(
+        data.data_final || new Date().toISOString().slice(0, 10)
+      );
       setHorarioTermino(data.horario_termino || '');
       setOutroSomenteConclusao(!!data.outro_somente_conclusao);
       setClassificacaoEscolhaRotulo(data.classificacao_escolha_rotulo || '');
@@ -92,17 +97,20 @@ const InspectionReview = () => {
       );
       return;
     }
+    if (!dataEmissaoLaudo) {
+      toast.error('Selecione a data de emissão do laudo (aparece na assinatura do PDF).');
+      return;
+    }
 
     try {
       await initDB().catch(() => {});
-      const dataFinal = new Date().toISOString().slice(0, 10);
       const payload = {
         classificacao_final: classificacao,
         conclusao,
         assinatura: '',
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
-        data_final: dataFinal,
+        data_final: dataEmissaoLaudo,
         horario_termino: horarioTermino,
         outro_somente_conclusao:
           classificacao === 'outro' ? outroSomenteConclusao : false,
@@ -160,6 +168,7 @@ const InspectionReview = () => {
         assinatura: '',
         responsavel_final: responsavelFinal || '',
         crea_final: creaFinal || '',
+        data_final: dataEmissaoLaudo || null,
         horario_termino: horarioTermino || '',
         outro_somente_conclusao:
           classificacao === 'outro' ? outroSomenteConclusao : false,
@@ -429,6 +438,22 @@ const InspectionReview = () => {
             />
           </div>
 
+          <div className="mb-4">
+            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+              Data de emissão do laudo (assinatura no PDF)
+            </label>
+            <input
+              data-testid="data-emissao-laudo-input"
+              type="date"
+              value={dataEmissaoLaudo}
+              onChange={(e) => setDataEmissaoLaudo(e.target.value)}
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+            />
+            <p className="mt-1.5 text-xs text-slate-500">
+              Usada na linha cidade, UF e data por extenso na secção 5 do PDF — não altera a data da identificação (secção 1).
+            </p>
+          </div>
+
           {/* Horários */}
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
@@ -456,7 +481,7 @@ const InspectionReview = () => {
           </div>
 
           <p className="mb-6 text-xs text-slate-500">
-            A data na identificação (secção 1 do PDF) é a da vistoria. Na assinatura (secção 5), cidade, UF e data por extenso referem-se à data de emissão do laudo, gravada ao finalizar (dia de hoje).
+            A data na identificação (secção 1) continua a ser a da vistoria. A data acima define o que aparece por extenso na assinatura (secção 5).
           </p>
 
           {/* Buttons */}

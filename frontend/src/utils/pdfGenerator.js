@@ -353,6 +353,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
               yStart: yPos,
               caption,
               imageUrl: photo.url || null,
+              marginMm: margin,
             });
           }
         }

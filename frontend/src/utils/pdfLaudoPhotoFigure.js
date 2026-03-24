@@ -19,6 +19,49 @@ export const PDF_LAUDO_PHOTO_CAPTION_GAP_MM = 3;
 /** Margem inferior entre blocos de fotos */
 export const PDF_LAUDO_PHOTO_BLOCK_GAP_MM = 12;
 
+/**
+ * Largura útil do bloco figura: nunca maior que a foto padrão nem que a área entre margens.
+ */
+export function getLaudoPhotoBlockWidthMm(pageWidthMm, marginMm) {
+  const inner = Math.max(20, pageWidthMm - 2 * marginMm);
+  return Math.min(PDF_LAUDO_PHOTO_WIDTH_MM, inner);
+}
+
+/**
+ * Quebra legenda para caber em maxWidthMm (inclui palavras muito longas / URLs sem espaços).
+ * jsPDF.splitTextToSize por vezes não parte tokens longos o suficiente em algumas fontes.
+ */
+export function wrapCaptionLinesForPdf(doc, text, maxWidthMm) {
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(PDF_LAUDO_PHOTO_CAPTION_PT);
+  const normalized = String(text || '')
+    .replace(/\r\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const cap = normalized || 'Foto';
+  let lines = doc.splitTextToSize(cap, maxWidthMm);
+  const out = [];
+  const epsilon = 0.5;
+  lines.forEach((line) => {
+    let rest = line;
+    while (rest.length > 0) {
+      if (doc.getTextWidth(rest) <= maxWidthMm + epsilon) {
+        out.push(rest);
+        break;
+      }
+      let cut = rest.length;
+      while (cut > 1 && doc.getTextWidth(rest.slice(0, cut)) > maxWidthMm + epsilon) {
+        cut -= 1;
+      }
+      if (cut < 1) cut = 1;
+      out.push(rest.slice(0, cut));
+      rest = rest.slice(cut);
+    }
+  });
+  if (out.length === 0) return ['Foto'];
+  return out;
+}
+
 function guessImageFormat(url) {
   const s = String(url || '').toLowerCase();
   if (s.startsWith('data:image/png')) return 'PNG';
@@ -66,17 +109,15 @@ export function getImageNaturalSize(url) {
 /**
  * Estima altura total do bloco (legenda + moldura + margem inferior) em mm.
  */
-export function estimateLaudoPhotoBlockHeightMm(doc, caption) {
-  const blockW = PDF_LAUDO_PHOTO_WIDTH_MM;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(PDF_LAUDO_PHOTO_CAPTION_PT);
-  const capText = String(caption || '').trim() || 'Foto';
-  const lines = doc.splitTextToSize(capText, blockW);
+export function estimateLaudoPhotoBlockHeightMm(doc, caption, blockWidthMm) {
+  const blockW = blockWidthMm ?? PDF_LAUDO_PHOTO_WIDTH_MM;
+  const lines = wrapCaptionLinesForPdf(doc, caption, blockW);
   const captionH = lines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
+  const boxH = (blockW * 3) / 2;
   return (
     captionH +
     PDF_LAUDO_PHOTO_CAPTION_GAP_MM +
-    PDF_LAUDO_PHOTO_HEIGHT_MM +
+    boxH +
     PDF_LAUDO_PHOTO_BLOCK_GAP_MM
   );
 }
@@ -91,6 +132,7 @@ export async function drawLaudoPhotoFigure(doc, options) {
     yStart,
     caption,
     imageUrl,
+    marginMm = 20,
     pageOpts: pageOptsIn = {},
   } = options;
 
@@ -99,16 +141,15 @@ export async function drawLaudoPhotoFigure(doc, options) {
     topMarginMm: pageOptsIn.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM,
   };
 
-  const blockW = PDF_LAUDO_PHOTO_WIDTH_MM;
-  const boxH = PDF_LAUDO_PHOTO_HEIGHT_MM;
+  const blockW = getLaudoPhotoBlockWidthMm(pageWidth, marginMm);
+  const boxH = (blockW * 3) / 2;
   const blockX = (pageWidth - blockW) / 2;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(PDF_LAUDO_PHOTO_CAPTION_PT);
   doc.setTextColor(0, 0, 0);
 
-  const capText = String(caption || '').trim() || 'Foto';
-  const captionLines = doc.splitTextToSize(capText, blockW);
+  const captionLines = wrapCaptionLinesForPdf(doc, caption, blockW);
   const captionBlockH = captionLines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   const totalH =
     captionBlockH +
@@ -119,8 +160,9 @@ export async function drawLaudoPhotoFigure(doc, options) {
   let y = ensureVerticalSpace(doc, yStart, totalH, pageOpts);
 
   let yLine = y;
+  const captionCenterX = blockX + blockW / 2;
   captionLines.forEach((line) => {
-    doc.text(line, blockX + blockW / 2, yLine, { align: 'center' });
+    doc.text(line, captionCenterX, yLine, { align: 'center' });
     yLine += PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   });
   y = yLine + PDF_LAUDO_PHOTO_CAPTION_GAP_MM;
