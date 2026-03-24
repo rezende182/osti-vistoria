@@ -13,7 +13,7 @@ import {
 } from '../utils/offlineStorage';
 import TimePickerField from '../components/TimePickerField';
 import { BRASIL_UFS } from '../constants/brasilEstados';
-import { APP_LOGO_ALT, APP_LOGO_URL } from '@/constants/brand';
+import BrandLogo from '@/components/BrandLogo';
 
 const NewInspection = () => {
   const navigate = useNavigate();
@@ -129,11 +129,7 @@ const NewInspection = () => {
           </button>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <img
-              src={APP_LOGO_URL}
-              alt={APP_LOGO_ALT}
-              className="h-14 w-auto max-w-[10rem] shrink-0 object-contain sm:h-16"
-            />
+              <BrandLogo className="h-14 w-auto max-w-[10rem] shrink-0 object-contain sm:h-16" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
                 Identificação da Vistoria Técnica
               </h1>

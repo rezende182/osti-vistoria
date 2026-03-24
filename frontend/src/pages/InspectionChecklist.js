@@ -14,7 +14,7 @@ import {
   initDB,
   enqueueSyncOperation,
 } from '../utils/offlineStorage';
-import { APP_LOGO_ALT, APP_LOGO_URL } from '@/constants/brand';
+import BrandLogo from '@/components/BrandLogo';
 
 // Templates de cômodos com itens na ordem correta
 const ROOM_TEMPLATES = {
@@ -494,11 +494,7 @@ const InspectionChecklist = () => {
           </button>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <img
-                src={APP_LOGO_URL}
-                alt={APP_LOGO_ALT}
-                className="h-11 w-auto max-w-[9rem] shrink-0 object-contain sm:h-14"
-              />
+              <BrandLogo className="h-11 w-auto max-w-[9rem] shrink-0 object-contain sm:h-14" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl lg:text-[1.65rem]">
                 Inspeção Técnica e Checklist de Verificação
               </h1>

@@ -33,6 +33,15 @@
   * {
     @apply border-border;
   }
+
+  /* Logos com canal alpha: sem fundo artificial (alguns UAs/heranças podem pintar área da imagem). */
+  img.app-brand-logo {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

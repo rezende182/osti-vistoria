@@ -18,7 +18,7 @@ import {
   CLASSIFICACAO_FINAL_LABELS,
   conclusaoPareceAutomatica,
 } from '../constants/inspectionClassificacao';
-import { APP_LOGO_ALT, APP_LOGO_URL } from '@/constants/brand';
+import BrandLogo from '@/components/BrandLogo';
 
 const LEGAL_TEXT =
   'A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes.\n\n' +
@@ -217,11 +217,7 @@ const InspectionReview = () => {
           </button>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <img
-              src={APP_LOGO_URL}
-              alt={APP_LOGO_ALT}
-              className="h-12 w-auto max-w-[9rem] shrink-0 object-contain sm:h-14"
-            />
+              <BrandLogo className="h-12 w-auto max-w-[9rem] shrink-0 object-contain sm:h-14" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
                 Finalização da Vistoria
               </h1>
