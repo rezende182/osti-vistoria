@@ -1,6 +1,6 @@
 /**
- * Bloco figura para fotos do laudo (jsPDF): legenda “Foto N. …” (acima), área fixa 10×15 cm (2:3), contain.
- * Sem tabelas — bloco em fluxo vertical, indivisível entre páginas.
+ * Bloco figura (laudo de engenharia, jsPDF): área fixa 10×15 cm (2:3) para todas as imagens;
+ * legenda “Foto N. …” logo abaixo da foto, mesmo alinhamento e largura. Bloco indivisível entre páginas.
  */
 import {
   ensureVerticalSpace,
@@ -15,8 +15,8 @@ export const PDF_LAUDO_PHOTO_HEIGHT_MM = 150;
 
 export const PDF_LAUDO_PHOTO_CAPTION_PT = 10;
 export const PDF_LAUDO_PHOTO_CAPTION_LINE_MM = 4.2;
-/** Espaço entre legenda e moldura */
-export const PDF_LAUDO_PHOTO_CAPTION_GAP_MM = 3;
+/** Espaço entre a base da foto e a legenda (mínimo, “colado” ao registo visual) */
+export const PDF_LAUDO_PHOTO_CAPTION_GAP_MM = 2;
 /** Margem inferior entre blocos de fotos */
 export const PDF_LAUDO_PHOTO_BLOCK_GAP_MM = 12;
 /** Colchão na reserva de página (métricas de fonte / arredondamento) */
@@ -136,7 +136,7 @@ export function getImageNaturalSize(url) {
 }
 
 /**
- * Estima altura total do bloco (legenda “Foto N. …” + área 2:3 + margem inferior) em mm.
+ * Estima altura total: área 10×15 + legenda + margens.
  */
 export function estimateLaudoPhotoBlockHeightMm(doc, blockLabel, blockWidthMm) {
   const blockW = blockWidthMm ?? PDF_LAUDO_PHOTO_WIDTH_MM;
@@ -145,16 +145,16 @@ export function estimateLaudoPhotoBlockHeightMm(doc, blockLabel, blockWidthMm) {
   const captionH = lines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   const boxH = getLaudoPhotoBoxHeightMm(blockW);
   return (
-    captionH +
-    PDF_LAUDO_PHOTO_CAPTION_GAP_MM +
     boxH +
+    PDF_LAUDO_PHOTO_CAPTION_GAP_MM +
+    captionH +
     PDF_LAUDO_PHOTO_BLOCK_GAP_MM +
     PDF_LAUDO_PHOTO_ATOMIC_PAD_MM
   );
 }
 
 /**
- * Desenha bloco indivisível: legenda centrada + imagem em área 10×15 cm (2:3), sem moldura tipo grelha.
+ * Desenha bloco indivisível: área padrão 10×15 cm (todas iguais) + legenda imediatamente abaixo.
  * @returns {Promise<number>} novo Y após o bloco
  */
 export async function drawLaudoPhotoFigure(doc, options) {
@@ -202,26 +202,21 @@ export async function drawLaudoPhotoFigure(doc, options) {
   const captionLines = wrapCaptionLinesForPdf(doc, blockLabel, captionMaxW, 'normal');
   const captionBlockH = captionLines.length * PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
   const totalH =
-    captionBlockH +
-    PDF_LAUDO_PHOTO_CAPTION_GAP_MM +
     boxH +
+    PDF_LAUDO_PHOTO_CAPTION_GAP_MM +
+    captionBlockH +
     PDF_LAUDO_PHOTO_BLOCK_GAP_MM +
     PDF_LAUDO_PHOTO_ATOMIC_PAD_MM;
 
   let y = ensureVerticalSpace(doc, yStart, totalH, pageOpts);
 
   const centerX = blockX + blockW / 2;
-  let yLine = y;
-  captionLines.forEach((line) => {
-    doc.text(line, centerX, yLine, { align: 'center' });
-    yLine += PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
-  });
-
-  y = yLine + PDF_LAUDO_PHOTO_CAPTION_GAP_MM;
-
   const boxY = y;
 
-  /* Sem moldura/grelha: só a imagem na área 10×15 (2:3), centrada com letterboxing implícito (página). */
+  /* Área padrão idêntica em todo o laudo; fundo neutro (papel de registo fotográfico). */
+  doc.setFillColor(248, 248, 248);
+  doc.rect(blockX, boxY, blockW, boxH, 'F');
+
   if (imageUrl) {
     try {
       if (iw > 0 && ih > 0) {
@@ -262,5 +257,15 @@ export async function drawLaudoPhotoFigure(doc, options) {
     doc.setTextColor(0, 0, 0);
   }
 
-  return boxY + boxH + PDF_LAUDO_PHOTO_BLOCK_GAP_MM;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(PDF_LAUDO_PHOTO_CAPTION_PT);
+  doc.setTextColor(0, 0, 0);
+
+  let yCaption = boxY + boxH + PDF_LAUDO_PHOTO_CAPTION_GAP_MM;
+  captionLines.forEach((line) => {
+    doc.text(line, centerX, yCaption, { align: 'center' });
+    yCaption += PDF_LAUDO_PHOTO_CAPTION_LINE_MM;
+  });
+
+  return yCaption + PDF_LAUDO_PHOTO_BLOCK_GAP_MM;
 }
