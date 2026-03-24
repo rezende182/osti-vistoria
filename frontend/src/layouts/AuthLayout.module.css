@@ -90,9 +90,9 @@
   z-index: 1;
   display: block;
   align-self: flex-start;
-  height: 2.25rem;
+  height: 2.875rem;
   width: auto;
-  max-width: min(100%, 11rem);
+  max-width: min(100%, 13.5rem);
   object-fit: contain;
   object-position: left center;
   background: transparent !important;
