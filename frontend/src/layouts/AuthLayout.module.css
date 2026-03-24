@@ -84,19 +84,23 @@
   color: rgba(226, 232, 240, 0.88);
 }
 
-/* Marca OSTI pequena — canto inferior esquerdo do painel (só desktop lg+) */
+/* Marca OSTI — canto inferior esquerdo do painel escuro (login desktop) */
 .brandFooterLogo {
   position: relative;
   z-index: 1;
   display: block;
   align-self: flex-start;
-  height: 2.875rem;
+  height: clamp(3.5rem, 4.1vw, 4.35rem);
   width: auto;
-  max-width: min(100%, 13.5rem);
+  max-width: min(100%, 19.5rem);
+  margin-top: 0.5rem;
+  padding: 0.2rem 0;
   object-fit: contain;
   object-position: left center;
   background: transparent !important;
-  opacity: 0.92;
+  opacity: 1;
+  /* Cinza/laranja mais legíveis sobre o gradiente escuro */
+  filter: brightness(1.08) contrast(1.12);
 }
 
 /* Área do formulário */
