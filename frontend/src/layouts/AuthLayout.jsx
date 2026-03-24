@@ -11,6 +11,8 @@ import styles from './AuthLayout.module.css';
 const AuthLayout = ({ children }) => (
   <div className={styles.shell}>
     <aside className={styles.brand}>
+      <div className={styles.brandGlow} aria-hidden />
+      <div className={styles.brandGrid} aria-hidden />
       <div className={styles.brandInner}>
         <BrandLogo alt="" className={styles.logo} />
         <h1 className={styles.headline}>Vistoria de recebimento de imóvel</h1>

@@ -11,10 +11,7 @@
   }
 }
 
-/*
- * Painel esquerdo: <aside class="brand"> — único fundo visível (sem overlays).
- * Nada em App/routeGuards aplica bg-* sobre este aside.
- */
+/* Painel de marca — desktop */
 .brand {
   position: relative;
   display: none;
@@ -23,10 +20,7 @@
   overflow: hidden;
   padding: 2.75rem 2.5rem;
   color: #f8fafc;
-  background-color: #0f172a;
-  background-image: linear-gradient(135deg, #0b1220 0%, #0f172a 50%, #111827 100%);
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
+  background: linear-gradient(145deg, #0f172a 0%, #1e293b 42%, #0c4a6e 100%);
 }
 
 @media (min-width: 1024px) {
@@ -35,8 +29,29 @@
   }
 }
 
+.brandGlow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 100% 0%, rgba(56, 189, 248, 0.22), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 0% 100%, rgba(99, 102, 241, 0.18), transparent 50%);
+  pointer-events: none;
+}
+
+.brandGrid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
 .brandInner {
   position: relative;
+  z-index: 1;
 }
 
 .logo {
@@ -66,6 +81,7 @@
 
 .brandFooter {
   position: relative;
+  z-index: 1;
   font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
