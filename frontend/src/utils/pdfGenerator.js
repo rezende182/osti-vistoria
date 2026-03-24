@@ -13,7 +13,6 @@ import {
   PDF_PAGE_BOTTOM_SAFE_MM,
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
-import { drawLaudoPhotoFigure } from './pdfLaudoPhotoFigure';
 
 // Logo OSTI oficial no PDF (public/logo-osti.png); fallback CDN legado
 const PDF_LOGO_LOCAL = `${process.env.PUBLIC_URL || ''}/logo-osti.png`;
@@ -335,18 +334,43 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
           }
         }
 
-        // Fotos
+        // Fotos (layout padrão original)
         const photos = item.photos || [];
         if (photos.length > 0) {
+          checkNewPage(14);
+
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(PDF_BODY_PT);
+          doc.setTextColor(0, 0, 0);
+          doc.text('Fotos:', margin, yPos);
+          yPos += 8;
+
+          const imgWidth = 120;
+          const imgHeight = 90;
+
           for (const photo of photos) {
-            yPos = await drawLaudoPhotoFigure(doc, {
-              pageWidth,
-              yStart: yPos,
-              caption: photo.caption,
-              photoNumber: photo.number,
-              imageUrl: photo.url || null,
-              marginMm: margin,
-            });
+            checkNewPage(imgHeight + 18);
+
+            const caption = photo.caption || `Foto ${photo.number || ''}`;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(PDF_BODY_PT);
+            doc.text(caption, pageWidth / 2, yPos, { align: 'center' });
+            yPos += 5;
+
+            if (photo.url) {
+              try {
+                const imgX = (pageWidth - imgWidth) / 2;
+                doc.addImage(photo.url, 'JPEG', imgX, yPos, imgWidth, imgHeight);
+                yPos += imgHeight + 8;
+              } catch (e) {
+                console.error('Erro ao adicionar imagem:', e);
+                doc.setFont('helvetica', 'italic');
+                doc.text('[Imagem não disponível]', pageWidth / 2, yPos, {
+                  align: 'center',
+                });
+                yPos += 8;
+              }
+            }
           }
         }
 
