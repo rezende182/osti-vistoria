@@ -16,6 +16,29 @@ import {
 } from '../utils/offlineStorage';
 import BrandLogo from '@/components/BrandLogo';
 
+// Itens padrão de cozinha — reutilizado em Área de Serviço
+const ITEMS_COZINHA = [
+  'Teto',
+  'Paredes',
+  'Revestimento da Parede (Azulejo)',
+  'Esquadrias - Janela',
+  'Peitoril da Janela',
+  'Esquadrias - Porta',
+  'Soleiras',
+  'Pintura',
+  'Pia e Bancada',
+  'Louças e Metais',
+  'Instalações Hidráulicas',
+  'Instalação de Gás',
+  'Ralo',
+  'Piso (contrapiso/cerâmica)',
+  'Tomadas, interruptores e iluminação',
+  'Ventilação Forçada',
+  'Interfone',
+  'Limpeza',
+  'Dimensões',
+];
+
 // Templates de cômodos com itens na ordem correta
 const ROOM_TEMPLATES = {
   sala: {
@@ -39,27 +62,11 @@ const ROOM_TEMPLATES = {
   },
   cozinha: {
     name: 'Cozinha',
-    items: [
-      'Teto',
-      'Paredes',
-      'Revestimento da Parede (Azulejo)',
-      'Esquadrias - Janela',
-      'Peitoril da Janela',
-      'Esquadrias - Porta',
-      'Soleiras',
-      'Pintura',
-      'Pia e Bancada',
-      'Louças e Metais',
-      'Instalações Hidráulicas',
-      'Instalação de Gás',
-      'Ralo',
-      'Piso (contrapiso/cerâmica)',
-      'Tomadas, interruptores e iluminação',
-      'Ventilação Forçada',
-      'Interfone',
-      'Limpeza',
-      'Dimensões'
-    ]
+    items: [...ITEMS_COZINHA],
+  },
+  area_servico: {
+    name: 'Área de Serviço',
+    items: [...ITEMS_COZINHA],
   },
   banheiro: {
     name: 'Banheiro',
