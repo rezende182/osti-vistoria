@@ -62,15 +62,100 @@ const formatDate = (dateString) => {
   return dateString;
 };
 
-/** Texto da legenda: `Foto N: …` (remove prefixo duplicado vindo do app). */
-function buildPdfPhotoCaptionText(caption, photoNumber) {
+/** Prefixo `Foto N. ` (negrito no PDF) + corpo da legenda (normal). */
+function buildPdfPhotoCaptionParts(caption, photoNumber) {
   const n =
     photoNumber != null && photoNumber !== '' && !Number.isNaN(Number(photoNumber))
       ? String(photoNumber)
       : '?';
-  let rest = String(caption || '').trim();
-  rest = rest.replace(/^Foto\s*\d+\s*[.:]?\s*/i, '').trim();
-  return rest ? `Foto ${n}: ${rest}` : `Foto ${n}:`;
+  let body = String(caption || '').trim();
+  body = body.replace(/^Foto\s*\d+\s*[.:]?\s*/i, '').trim();
+  return { prefix: `Foto ${n}. `, body };
+}
+
+/**
+ * Desenha legenda: só `Foto N.` em negrito; resto em normal; quebra à largura da imagem.
+ * Alinhado à esquerda com a foto (imgX).
+ */
+function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
+  const lh = PDF_BODY_LINE_MM;
+  let y = yStart;
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+
+  const { prefix, body } = parts;
+  const bodyTrim = body.trim();
+
+  doc.setFont('helvetica', 'bold');
+  const prefixW = doc.getTextWidth(prefix);
+
+  if (!bodyTrim) {
+    doc.text(prefix, imgX, y);
+    return y + lh;
+  }
+
+  doc.setFont('helvetica', 'normal');
+  const words = bodyTrim.split(/\s+/).filter(Boolean);
+  let availFirst = imgWidth - prefixW;
+
+  if (availFirst < 8) {
+    doc.setFont('helvetica', 'bold');
+    doc.text(prefix, imgX, y);
+    y += lh;
+    const restLines = wrapPdfCaptionToImageWidth(doc, bodyTrim, imgWidth);
+    doc.setFont('helvetica', 'normal');
+    restLines.forEach((ln) => {
+      doc.text(ln, imgX, y);
+      y += lh;
+    });
+    return y;
+  }
+
+  let firstChunk = '';
+  let wi = 0;
+  for (; wi < words.length; wi++) {
+    const test = firstChunk ? `${firstChunk} ${words[wi]}` : words[wi];
+    if (doc.getTextWidth(test) <= availFirst + 0.5) {
+      firstChunk = test;
+    } else {
+      break;
+    }
+  }
+
+  if (!firstChunk) {
+    const w0 = words[0];
+    if (w0 && doc.getTextWidth(w0) > availFirst) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(prefix, imgX, y);
+      y += lh;
+      const restLines = wrapPdfCaptionToImageWidth(doc, bodyTrim, imgWidth);
+      doc.setFont('helvetica', 'normal');
+      restLines.forEach((ln) => {
+        doc.text(ln, imgX, y);
+        y += lh;
+      });
+      return y;
+    }
+    firstChunk = w0;
+    wi = 1;
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.text(prefix, imgX, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(firstChunk, imgX + prefixW, y);
+  y += lh;
+
+  const restText = words.slice(wi).join(' ').trim();
+  if (restText) {
+    const restLines = wrapPdfCaptionToImageWidth(doc, restText, imgWidth);
+    restLines.forEach((ln) => {
+      doc.text(ln, imgX, y);
+      y += lh;
+    });
+  }
+
+  return y;
 }
 
 /**
@@ -387,33 +472,27 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
             const gapCaptionToImg = 0;
             yPos += gapAboveCaption;
 
-            const captionFull = buildPdfPhotoCaptionText(
-              photo.caption,
-              photo.number
-            );
-            const captionLines = wrapPdfCaptionToImageWidth(
+            const imgX = (pageWidth - imgWidth) / 2;
+            const parts = buildPdfPhotoCaptionParts(photo.caption, photo.number);
+            const approxLines = wrapPdfCaptionToImageWidth(
               doc,
-              captionFull,
+              `${parts.prefix}${parts.body}`,
               imgWidth
-            );
-            const captionBlockH = captionLines.length * PDF_BODY_LINE_MM;
-            checkNewPage(
-              captionBlockH + gapCaptionToImg + imgHeight + 14
-            );
+            ).length;
+            const captionBlockH = (approxLines + 1) * PDF_BODY_LINE_MM;
+            checkNewPage(captionBlockH + gapCaptionToImg + imgHeight + 14);
 
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(PDF_BODY_PT);
-            doc.setTextColor(0, 0, 0);
-            let yCap = yPos;
-            captionLines.forEach((ln) => {
-              doc.text(ln, pageWidth / 2, yCap, { align: 'center' });
-              yCap += PDF_BODY_LINE_MM;
-            });
-            yPos = yCap + gapCaptionToImg;
+            yPos = drawPdfPhotoCaptionBoldPrefix(
+              doc,
+              imgX,
+              imgWidth,
+              yPos,
+              parts
+            );
+            yPos += gapCaptionToImg;
 
             if (photo.url) {
               try {
-                const imgX = (pageWidth - imgWidth) / 2;
                 doc.addImage(photo.url, 'JPEG', imgX, yPos, imgWidth, imgHeight);
                 yPos += imgHeight + 8;
               } catch (e) {
