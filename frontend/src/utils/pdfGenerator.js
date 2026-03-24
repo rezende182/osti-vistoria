@@ -62,6 +62,46 @@ const formatDate = (dateString) => {
   return dateString;
 };
 
+/** Texto da legenda: `Foto N: …` (remove prefixo duplicado vindo do app). */
+function buildPdfPhotoCaptionText(caption, photoNumber) {
+  const n =
+    photoNumber != null && photoNumber !== '' && !Number.isNaN(Number(photoNumber))
+      ? String(photoNumber)
+      : '?';
+  let rest = String(caption || '').trim();
+  rest = rest.replace(/^Foto\s*\d+\s*[.:]?\s*/i, '').trim();
+  return rest ? `Foto ${n}: ${rest}` : `Foto ${n}:`;
+}
+
+/**
+ * Quebra legenda à largura da imagem (mm); força partição em tokens muito longos.
+ */
+function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  const maxW = Math.max(20, maxWidthMm);
+  let parts = doc.splitTextToSize(String(text), maxW);
+  const out = [];
+  const epsilon = 0.5;
+  parts.forEach((line) => {
+    let rest = line;
+    while (rest.length > 0) {
+      if (doc.getTextWidth(rest) <= maxW + epsilon) {
+        out.push(rest);
+        break;
+      }
+      let cut = rest.length;
+      while (cut > 1 && doc.getTextWidth(rest.slice(0, cut)) > maxW + epsilon) {
+        cut -= 1;
+      }
+      if (cut < 1) cut = 1;
+      out.push(rest.slice(0, cut));
+      rest = rest.slice(cut);
+    }
+  });
+  return out.length ? out : [String(text)];
+}
+
 /** Títulos longos de secção quebram em várias linhas dentro da margem */
 function drawSectionTitle(doc, margin, contentWidth, yPos, title, gapAfter = 8) {
   doc.setFontSize(12);
@@ -334,28 +374,35 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
           }
         }
 
-        // Fotos (layout padrão original)
+        // Fotos: legenda `Foto N: …` com quebra na largura da imagem; sem cabeçalho "Fotos:"
         const photos = item.photos || [];
         if (photos.length > 0) {
-          checkNewPage(14);
-
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(PDF_BODY_PT);
-          doc.setTextColor(0, 0, 0);
-          doc.text('Fotos:', margin, yPos);
-          yPos += 8;
-
           const imgWidth = 120;
           const imgHeight = 90;
 
           for (const photo of photos) {
-            checkNewPage(imgHeight + 18);
+            const captionFull = buildPdfPhotoCaptionText(
+              photo.caption,
+              photo.number
+            );
+            const captionLines = wrapPdfCaptionToImageWidth(
+              doc,
+              captionFull,
+              imgWidth
+            );
+            const captionBlockH = captionLines.length * PDF_BODY_LINE_MM;
+            const gapBeforeImg = 4;
+            checkNewPage(captionBlockH + gapBeforeImg + imgHeight + 14);
 
-            const caption = photo.caption || `Foto ${photo.number || ''}`;
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(PDF_BODY_PT);
-            doc.text(caption, pageWidth / 2, yPos, { align: 'center' });
-            yPos += 5;
+            doc.setTextColor(0, 0, 0);
+            let yCap = yPos;
+            captionLines.forEach((ln) => {
+              doc.text(ln, pageWidth / 2, yCap, { align: 'center' });
+              yCap += PDF_BODY_LINE_MM;
+            });
+            yPos = yCap + gapBeforeImg;
 
             if (photo.url) {
               try {
