@@ -55,11 +55,12 @@
 }
 
 .logo {
-  height: 5.25rem;
+  height: 6.75rem;
   width: auto;
-  max-width: min(100%, 14rem);
+  max-width: min(100%, 17rem);
   object-fit: contain;
-  opacity: 0.96;
+  background: transparent;
+  opacity: 0.98;
 }
 
 .headline {
@@ -136,9 +137,10 @@
 }
 
 .mobileLogo {
-  height: 3.75rem;
+  height: 4.75rem;
   width: auto;
-  max-width: 11rem;
+  max-width: 13rem;
   object-fit: contain;
+  background: transparent;
 }
 
