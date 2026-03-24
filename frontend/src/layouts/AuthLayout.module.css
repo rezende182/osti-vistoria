@@ -18,7 +18,7 @@
   flex-direction: column;
   justify-content: space-between;
   overflow: hidden;
-  padding: 2.75rem 2.5rem;
+  padding: 3rem 2.5rem 2.75rem;
   color: #f8fafc;
   background: linear-gradient(145deg, #0f172a 0%, #1e293b 42%, #0c4a6e 100%);
 }
@@ -52,18 +52,23 @@
 .brandInner {
   position: relative;
   z-index: 1;
+  padding-top: 0.35rem;
 }
 
+/* Logo vertical: altura fluida + largura máx. — hierarquia forte sem distorção */
 .logo {
-  height: 6.75rem;
+  display: block;
+  height: clamp(7rem, 11vw, 8.75rem);
   width: auto;
-  max-width: min(100%, 17rem);
+  max-width: min(100%, 20rem);
+  margin: 0 0 0.75rem;
   object-fit: contain;
+  object-position: left center;
   background: transparent !important;
 }
 
 .headline {
-  margin: 2.5rem 0 0;
+  margin: 1.75rem 0 0;
   max-width: 22rem;
   font-size: clamp(1.75rem, 2.4vw, 2.125rem);
   font-weight: 700;
@@ -126,7 +131,8 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1.75rem;
+  margin-bottom: 2rem;
+  padding: 0.35rem 0 0.5rem;
 }
 
 @media (min-width: 1024px) {
@@ -136,10 +142,12 @@
 }
 
 .mobileLogo {
-  height: 4.75rem;
+  display: block;
+  height: clamp(5.5rem, 16vw, 6.75rem);
   width: auto;
-  max-width: 13rem;
+  max-width: min(100%, 15.5rem);
   object-fit: contain;
+  object-position: left center;
   background: transparent !important;
 }
 

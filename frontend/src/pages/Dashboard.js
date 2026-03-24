@@ -127,7 +127,7 @@ const Dashboard = () => {
         <div className="max-w-md mx-auto md:max-w-2xl lg:max-w-4xl">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <BrandLogo className="h-16 w-auto max-w-[11rem] shrink-0 object-contain sm:h-[5.25rem]" />
+              <BrandLogo className="h-[5.75rem] w-auto max-w-[13.5rem] shrink-0 object-contain object-left py-1 sm:h-[6.75rem] sm:max-w-[16rem]" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight md:text-2xl">
                 Vistoria de Recebimento de Imóvel
               </h1>

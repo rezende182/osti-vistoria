@@ -147,7 +147,7 @@ const EditInspection = () => {
           </button>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <BrandLogo className="h-14 w-auto max-w-[10rem] shrink-0 object-contain sm:h-16" />
+              <BrandLogo className="h-16 w-auto max-w-[12rem] shrink-0 object-contain object-left py-1 sm:h-[5.25rem] sm:max-w-[14rem]" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
                 Identificação da Vistoria Técnica
               </h1>

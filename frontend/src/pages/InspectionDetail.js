@@ -175,7 +175,7 @@ const InspectionDetail = () => {
           </button>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-center gap-4">
-              <BrandLogo className="h-12 w-auto max-w-[9rem] shrink-0 object-contain sm:h-14" />
+              <BrandLogo className="h-14 w-auto max-w-[11rem] shrink-0 object-contain object-left py-0.5 sm:h-[4.75rem] sm:max-w-[13rem]" />
               <div className="min-w-0">
                 <h1 className="mb-1 text-2xl font-bold font-secondary uppercase tracking-tight">
                   {inspection.cliente}
