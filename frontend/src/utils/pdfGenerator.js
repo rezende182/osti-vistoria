@@ -377,14 +377,14 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         // Fotos: legenda `Foto N: …` com quebra na largura da imagem; sem cabeçalho "Fotos:"
         const photos = item.photos || [];
         if (photos.length > 0) {
-          /* Formato 10×15 cm (retrato) */
-          const imgWidth = 100;
-          const imgHeight = 150;
+          /* 15 cm largura × 10 cm altura (paisagem) */
+          const imgWidth = 150;
+          const imgHeight = 100;
 
           for (const photo of photos) {
-            /* Respiro em relação ao texto/item acima; legenda mais colada à foto */
-            const gapAboveCaption = 6;
-            const gapCaptionToImg = 2;
+            /* 1,5 mm face ao conteúdo acima; legenda sem folga em relação à foto */
+            const gapAboveCaption = 1.5;
+            const gapCaptionToImg = 0;
             yPos += gapAboveCaption;
 
             const captionFull = buildPdfPhotoCaptionText(
