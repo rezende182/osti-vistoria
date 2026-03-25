@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     # Em produção, documentação Swagger fica desligada salvo DEBUG_API_DOCS=true
     debug_api_docs: bool = Field(default=False, validation_alias="DEBUG_API_DOCS")
 
+    # Geração de legendas/observação (checklist) — opcional
+    openai_api_key: str = Field(default="", validation_alias="OPENAI_API_KEY")
+    openai_model: str = Field(
+        default="gpt-4o-mini",
+        validation_alias="OPENAI_MODEL",
+    )
+
     @field_validator("environment", mode="before")
     @classmethod
     def _norm_env(cls, v: object) -> str:

@@ -72,6 +72,7 @@ class ChecklistItemData(BaseModel):
     exists: Optional[Literal["sim", "nao"]] = None
     condition: Optional[Literal["aprovado", "reprovado"]] = None
     observations: str = ""
+    descricao: str = ""
     photos: List[PhotoData] = []
 
 
@@ -397,6 +398,33 @@ async def delete_inspection(
     await database.inspections.delete_one({"id": inspection_id})
 
     return {"message": "Vistoria excluída com sucesso"}
+
+
+class GerarTextoItemChecklistBody(BaseModel):
+    """Pedido para gerar legendas técnicas + observação a partir da descrição do item."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    room_name: str = Field(..., min_length=1, max_length=300)
+    item_name: str = Field(..., min_length=1, max_length=300)
+    descricao: str = Field(..., min_length=3, max_length=8000)
+    num_fotos: int = Field(..., ge=1, le=60)
+
+
+@api_router.post("/ai/gerar-texto-item-checklist")
+async def gerar_texto_item_checklist(
+    body: GerarTextoItemChecklistBody,
+    uid: str = Depends(get_current_uid),
+):
+    """Gera legendas (uma por foto) e observação técnica via OpenAI. Requer OPENAI_API_KEY."""
+    from ai_item_text import generate_item_checklist_text
+
+    return await generate_item_checklist_text(
+        room_name=body.room_name.strip(),
+        item_name=body.item_name.strip(),
+        descricao=body.descricao.strip(),
+        num_fotos=body.num_fotos,
+    )
 
 
 @api_router.post("/inspections/{inspection_id}/upload-photo")

@@ -1,18 +1,46 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, MessageSquare, X, Image, FolderOpen, Smartphone } from 'lucide-react';
+import {
+  Camera,
+  MessageSquare,
+  X,
+  Image,
+  FolderOpen,
+  Smartphone,
+  Sparkles,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/auth';
 import InspectionOrientationModal from './InspectionOrientationModal';
 import { getOrientationForItemName } from '../constants/itemOrientations';
 import { compressImage, formatFileSize, getDataUrlSize } from '../utils/imageCompressor';
+import { inspectionsApi } from '../services/api';
 
-const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoCount }) => {
+const ChecklistItem = ({
+  item,
+  roomName = '',
+  onChange,
+  onAddPhoto,
+  onRemovePhoto,
+  globalPhotoCount,
+}) => {
+  const { user } = useAuth();
+  const uid = user?.uid;
   const [showPhotoInput, setShowPhotoInput] = useState(false);
   const [showObservations, setShowObservations] = useState(false);
   const [showMobileWarning, setShowMobileWarning] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [showOrientationModal, setShowOrientationModal] = useState(false);
+  const [gerandoIA, setGerandoIA] = useState(false);
   const orientation = getOrientationForItemName(item.name);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+
+  const photos = (item.photos || []).map((photo, index) => {
+    if (typeof photo === 'string') {
+      return { url: photo, caption: `Foto ${index + 1}`, number: index + 1 };
+    }
+    return photo;
+  });
 
   // Itens que não têm campo "Existência" - apenas Condição
   const itensApenasCondicao = ['Limpeza', 'Dimensões'];
@@ -51,6 +79,61 @@ const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoC
 
   const handleObservationsChange = (value) => {
     onChange({ ...item, observations: value });
+  };
+
+  const handleDescricaoChange = (value) => {
+    onChange({ ...item, descricao: value });
+  };
+
+  const handleGerarTextoTecnico = async () => {
+    const d = String(item.descricao ?? '').trim();
+    if (d.length < 3) {
+      toast.error('Descreva o que observou (algumas palavras) antes de gerar.');
+      return;
+    }
+    if (!photos.length) return;
+    if (!uid) {
+      toast.error('Sessão inválida. Inicie sessão novamente.');
+      return;
+    }
+    setGerandoIA(true);
+    toast.info('A gerar legenda técnica e observação...');
+    try {
+      const res = await inspectionsApi.generateItemChecklistText(
+        {
+          room_name: roomName || '—',
+          item_name: item.name,
+          descricao: d,
+          num_fotos: photos.length,
+        },
+        uid
+      );
+      if (!res.ok) {
+        toast.error(res.error || 'Não foi possível gerar o texto.');
+        return;
+      }
+      const { legendas, observacao_tecnica } = res.data;
+      const newPhotos = photos.map((photo, index) => {
+        const leg = String(legendas[index] || '').trim();
+        const body = leg || 'Registo fotográfico do elemento.';
+        return {
+          ...photo,
+          caption: `Foto ${photo.number}. ${body}`,
+        };
+      });
+      onChange({
+        ...item,
+        photos: newPhotos,
+        observations: String(observacao_tecnica || '').trim() || item.observations,
+      });
+      setShowObservations(true);
+      toast.success('Texto gerado — reveja e ajuste se necessário.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Erro ao gerar texto técnico.');
+    } finally {
+      setGerandoIA(false);
+    }
   };
 
   // Escolher arquivo do dispositivo
@@ -137,14 +220,6 @@ const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoC
     if (item.condition === 'reprovado') return 'border-red-500 bg-red-50';
     return 'border-slate-300 bg-white';
   };
-
-  // Converter formato antigo (array de strings) para novo formato (array de objetos)
-  const photos = (item.photos || []).map((photo, index) => {
-    if (typeof photo === 'string') {
-      return { url: photo, caption: `Foto ${index + 1}`, number: index + 1 };
-    }
-    return photo;
-  });
 
   return (
     <div data-testid="checklist-item" className={`border-2 rounded-lg p-4 mb-3 transition-all duration-200 ${getStatusColor()}`}>
@@ -325,6 +400,49 @@ const ChecklistItem = ({ item, onChange, onAddPhoto, onRemovePhoto, globalPhotoC
               <p className="text-sm text-yellow-800 font-medium">
                 A função "Tirar Foto" está disponível apenas em dispositivos móveis (celular ou tablet).
               </p>
+            </div>
+          )}
+
+          {photos.length > 0 && (
+            <div className="mt-4 mb-4 rounded-lg border border-slate-200 bg-white p-3">
+              <label
+                className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block"
+                htmlFor={`descricao-item-${item.name}`}
+              >
+                Descrição do que observou
+              </label>
+              <textarea
+                id={`descricao-item-${item.name}`}
+                data-testid={`descricao-item-${item.name}`}
+                value={item.descricao ?? ''}
+                onChange={(e) => handleDescricaoChange(e.target.value)}
+                placeholder="Ex.: trinca junto ao rodapé, tinta a descascar na zona da janela..."
+                rows={3}
+                className="w-full p-3 border border-slate-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+              />
+              <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+                Com base nesta descrição, o sistema pode gerar a legenda técnica de cada foto e a
+                observação do item (requer API configurada no servidor).
+              </p>
+              <button
+                type="button"
+                data-testid={`gerar-ia-${item.name}`}
+                onClick={handleGerarTextoTecnico}
+                disabled={gerandoIA}
+                className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {gerandoIA ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    A gerar…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={18} className="shrink-0" aria-hidden />
+                    Gerar legenda e observação (IA)
+                  </>
+                )}
+              </button>
             </div>
           )}
           
