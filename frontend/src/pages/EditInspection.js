@@ -10,6 +10,7 @@ import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import TimePickerField from '../components/TimePickerField';
 import { BRASIL_UFS } from '../constants/brasilEstados';
 import BrandLogo from '@/components/BrandLogo';
+import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 
 const EditInspection = () => {
   const { id } = useParams();
@@ -32,7 +33,8 @@ const EditInspection = () => {
     horario_inicio: '',
     tipo_imovel: 'novo',
     energia_disponivel: 'sim',
-    documentos_recebidos: []
+    documentos_recebidos: [],
+    pdf_logo_data_url: '',
   });
   // Removed horario_termino - moved to finalization page
 
@@ -68,7 +70,8 @@ const EditInspection = () => {
         horario_inicio: data.horario_inicio || '',
         tipo_imovel: data.tipo_imovel || 'novo',
         energia_disponivel: data.energia_disponivel || 'sim',
-        documentos_recebidos: data.documentos_recebidos || []
+        documentos_recebidos: data.documentos_recebidos || [],
+        pdf_logo_data_url: data.pdf_logo_data_url || '',
       });
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
@@ -160,7 +163,13 @@ const EditInspection = () => {
       {/* Form */}
       <div className="max-w-md mx-auto md:max-w-2xl px-4 py-6">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6">
-          
+          <InspectionPdfLogoField
+            value={formData.pdf_logo_data_url}
+            onChange={(url) =>
+              setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
+            }
+          />
+
           {/* Cliente */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">

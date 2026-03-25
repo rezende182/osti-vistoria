@@ -14,6 +14,7 @@ import {
 import TimePickerField from '../components/TimePickerField';
 import { BRASIL_UFS } from '../constants/brasilEstados';
 import BrandLogo from '@/components/BrandLogo';
+import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 
 const NewInspection = () => {
   const navigate = useNavigate();
@@ -34,7 +35,8 @@ const NewInspection = () => {
     horario_inicio: '',
     tipo_imovel: 'novo',
     energia_disponivel: 'sim',
-    documentos_recebidos: []
+    documentos_recebidos: [],
+    pdf_logo_data_url: '',
   });
 
   const documentosOptions = [
@@ -89,6 +91,7 @@ const NewInspection = () => {
         id,
         userId: uid,
         ...formData,
+        pdf_logo_data_url: formData.pdf_logo_data_url || '',
         horario_termino: '',
         rooms_checklist: [],
         documentos_recebidos: formData.documentos_recebidos || [],
@@ -142,7 +145,13 @@ const NewInspection = () => {
       {/* Form */}
       <div className="max-w-md mx-auto md:max-w-2xl px-4 py-6">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6">
-          
+          <InspectionPdfLogoField
+            value={formData.pdf_logo_data_url}
+            onChange={(url) =>
+              setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
+            }
+          />
+
           {/* Cliente */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">

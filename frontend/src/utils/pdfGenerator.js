@@ -28,6 +28,13 @@ const LEGAL_TEXT =
   'Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.';
 
 // Carregar imagem como base64 com retry
+function getJsPdfFormatFromDataUrl(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string') return 'JPEG';
+  const head = dataUrl.slice(0, 48).toLowerCase();
+  if (head.includes('image/png')) return 'PNG';
+  return 'JPEG';
+}
+
 const loadImageAsBase64 = async (url, retries = 3) => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -238,21 +245,32 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // PÁGINA 1: CABEÇALHO - Logo + Título lado a lado
   // ============================================================
   
-  // Carregar logo OSTI (PDF apenas)
+  // Logótipo: personalizado na vistoria (data URL) ou OSTI por defeito
   let logoBase64 = null;
-  try {
-    logoBase64 = await loadImageAsBase64(PDF_LOGO_LOCAL);
-    if (!logoBase64) {
-      logoBase64 = await loadImageAsBase64(PDF_LOGO_FALLBACK);
+  let logoFormat = 'PNG';
+  const customLogo = inspection.pdf_logo_data_url;
+  if (
+    customLogo &&
+    typeof customLogo === 'string' &&
+    customLogo.startsWith('data:image/')
+  ) {
+    logoBase64 = customLogo;
+    logoFormat = getJsPdfFormatFromDataUrl(customLogo);
+  } else {
+    try {
+      logoBase64 = await loadImageAsBase64(PDF_LOGO_LOCAL);
+      if (!logoBase64) {
+        logoBase64 = await loadImageAsBase64(PDF_LOGO_FALLBACK);
+      }
+      logoFormat = 'PNG';
+    } catch (e) {
+      console.log('Erro ao carregar logo:', e);
     }
-  } catch (e) {
-    console.log('Erro ao carregar logo:', e);
   }
 
-  // Logo à esquerda
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, 'PNG', margin, yPos, PDF_LOGO_W_MM, PDF_LOGO_H_MM);
+      doc.addImage(logoBase64, logoFormat, margin, yPos, PDF_LOGO_W_MM, PDF_LOGO_H_MM);
     } catch (e) {
       console.log('Erro ao adicionar logo ao PDF:', e);
     }

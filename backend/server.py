@@ -104,6 +104,30 @@ class InspectionCreateIn(BaseModel):
     tipo_imovel: Literal["novo", "usado", "reformado"]
     energia_disponivel: Literal["sim", "nao"]
     documentos_recebidos: List[str] = []
+    pdf_logo_data_url: Optional[str] = Field(
+        default=None,
+        max_length=2_500_000,
+        description="data:image/png ou data:image/jpeg;base64,... para o cabeçalho do PDF",
+    )
+
+    @field_validator("pdf_logo_data_url", mode="before")
+    @classmethod
+    def _empty_logo_create(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+    @field_validator("pdf_logo_data_url")
+    @classmethod
+    def _logo_must_be_data_image(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip()
+        if not s.startswith("data:image/"):
+            raise ValueError("Logótipo: envie uma data URL de imagem (PNG ou JPEG).")
+        return s
 
 
 class InspectionUpdate(BaseModel):
@@ -122,6 +146,26 @@ class InspectionUpdate(BaseModel):
     horario_termino: Optional[str] = None
     outro_somente_conclusao: Optional[bool] = None
     classificacao_escolha_rotulo: Optional[str] = None
+    pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
+
+    @field_validator("pdf_logo_data_url", mode="before")
+    @classmethod
+    def _empty_logo_update(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+    @field_validator("pdf_logo_data_url")
+    @classmethod
+    def _logo_update_data_image(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip()
+        if not s.startswith("data:image/"):
+            raise ValueError("Logótipo: envie uma data URL de imagem (PNG ou JPEG).")
+        return s
 
 
 class Inspection(BaseModel):
@@ -158,6 +202,7 @@ class Inspection(BaseModel):
     classificacao_escolha_rotulo: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: Literal["em_andamento", "concluida"] = "em_andamento"
+    pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
 
 
 class UserRegisterBody(BaseModel):
@@ -205,6 +250,26 @@ class IdentificationUpdate(BaseModel):
     tipo_imovel: Optional[Literal["novo", "usado", "reformado"]] = None
     energia_disponivel: Optional[Literal["sim", "nao"]] = None
     documentos_recebidos: Optional[List[str]] = None
+    pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
+
+    @field_validator("pdf_logo_data_url", mode="before")
+    @classmethod
+    def _empty_logo_ident(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
+    @field_validator("pdf_logo_data_url")
+    @classmethod
+    def _logo_ident_data_image(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip()
+        if not s.startswith("data:image/"):
+            raise ValueError("Logótipo: envie uma data URL de imagem (PNG ou JPEG).")
+        return s
 
 
 # --- Rotas /api ---

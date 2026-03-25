@@ -42,7 +42,6 @@ const InspectionReview = () => {
   const [conclusao, setConclusao] = useState('');
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
-  /** Data ISO (yyyy-mm-dd) para secção 5 do PDF — emissão do laudo, não a data da identificação */
   const [dataEmissaoLaudo, setDataEmissaoLaudo] = useState('');
   const [horarioTermino, setHorarioTermino] = useState('');
   const [outroSomenteConclusao, setOutroSomenteConclusao] = useState(false);
@@ -449,9 +448,6 @@ const InspectionReview = () => {
               onChange={(e) => setDataEmissaoLaudo(e.target.value)}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
             />
-            <p className="mt-1.5 text-xs text-slate-500">
-              Usada na linha cidade, UF e data por extenso na secção 5 do PDF — não altera a data da identificação (secção 1).
-            </p>
           </div>
 
           {/* Horários */}
@@ -479,10 +475,6 @@ const InspectionReview = () => {
               />
             </div>
           </div>
-
-          <p className="mb-6 text-xs text-slate-500">
-            A data na identificação (secção 1) continua a ser a da vistoria. A data acima define o que aparece por extenso na assinatura (secção 5).
-          </p>
 
           {/* Buttons */}
           <div className="space-y-3">
