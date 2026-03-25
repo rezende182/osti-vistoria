@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# Projeto usa Yarn no deploy — evitar package-lock.json (npm) para não misturar lockfiles
+package-lock.json
 /.pnp
 .pnp.js
 
