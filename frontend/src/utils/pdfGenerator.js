@@ -14,13 +14,11 @@ import {
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 
-// Logo OSTI oficial no PDF (public/logo-osti.png); fallback CDN legado
-const PDF_LOGO_LOCAL = `${process.env.PUBLIC_URL || ''}/logo-osti.png`;
-const PDF_LOGO_FALLBACK =
-  'https://customer-assets.emergentagent.com/job_vistoria-imovel-1/artifacts/msx2fmcu_Design%20sem%20nome-Photoroom.png';
-/** Logo horizontal (~2,3:1) — largura × altura em mm */
+/** Logótipo personalizado no PDF — largura × altura em mm (lado a lado com o título) */
 const PDF_LOGO_W_MM = 52;
 const PDF_LOGO_H_MM = 22;
+
+const PDF_TITLE_FULL = 'RELATÓRIO DE VISTORIA DE RECEBIMENTO DE IMÓVEL';
 
 // Texto legal padrão
 const LEGAL_TEXT =
@@ -34,30 +32,6 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   if (head.includes('image/png')) return 'PNG';
   return 'JPEG';
 }
-
-const loadImageAsBase64 = async (url, retries = 3) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) {
-        const blob = await response.blob();
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(blob);
-        });
-      }
-      console.log(`Tentativa ${i + 1} retornou status ${response.status}`);
-    } catch (e) {
-      console.log(`Tentativa ${i + 1} falhou para carregar logo:`, e);
-    }
-    // Aguardar 500ms antes de retry
-    await new Promise(r => setTimeout(r, 500));
-  }
-  console.log('Não foi possível carregar o logo após todas as tentativas');
-  return null;
-};
 
 // Formatar data
 const formatDate = (dateString) => {
@@ -242,49 +216,57 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   };
 
   // ============================================================
-  // PÁGINA 1: CABEÇALHO - Logo + Título lado a lado
+  // PÁGINA 1: CABEÇALHO — só logótipo se o utilizador enviou; senão só o título
   // ============================================================
-  
-  // Logótipo: personalizado na vistoria (data URL) ou OSTI por defeito
-  let logoBase64 = null;
-  let logoFormat = 'PNG';
+
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+
   const customLogo = inspection.pdf_logo_data_url;
-  if (
+  const hasCustomLogo =
     customLogo &&
     typeof customLogo === 'string' &&
-    customLogo.startsWith('data:image/')
-  ) {
-    logoBase64 = customLogo;
-    logoFormat = getJsPdfFormatFromDataUrl(customLogo);
-  } else {
-    try {
-      logoBase64 = await loadImageAsBase64(PDF_LOGO_LOCAL);
-      if (!logoBase64) {
-        logoBase64 = await loadImageAsBase64(PDF_LOGO_FALLBACK);
-      }
-      logoFormat = 'PNG';
-    } catch (e) {
-      console.log('Erro ao carregar logo:', e);
-    }
-  }
+    customLogo.startsWith('data:image/');
 
-  if (logoBase64) {
+  if (hasCustomLogo) {
+    const logoFormat = getJsPdfFormatFromDataUrl(customLogo);
     try {
-      doc.addImage(logoBase64, logoFormat, margin, yPos, PDF_LOGO_W_MM, PDF_LOGO_H_MM);
+      doc.addImage(
+        customLogo,
+        logoFormat,
+        margin,
+        yPos,
+        PDF_LOGO_W_MM,
+        PDF_LOGO_H_MM
+      );
     } catch (e) {
       console.log('Erro ao adicionar logo ao PDF:', e);
     }
-  }
 
-  const titleX = margin + PDF_LOGO_W_MM + 8;
-  // Título à direita do logo
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('RELATÓRIO DE VISTORIA', titleX, yPos + 8);
-  doc.text('RECEBIMENTO DE IMÓVEL', titleX, yPos + 16);
-  
-  yPos += Math.max(35, PDF_LOGO_H_MM + 10);
+    const titleX = margin + PDF_LOGO_W_MM + 8;
+    const titleMaxW = contentWidth - PDF_LOGO_W_MM - 8;
+    doc.setFontSize(14);
+    const titleLines = doc.splitTextToSize(PDF_TITLE_FULL, titleMaxW);
+    const lineStep = 7;
+    let ty = yPos + 8;
+    titleLines.forEach((ln) => {
+      doc.text(ln, titleX, ty);
+      ty += lineStep;
+    });
+
+    const titleBlockH = titleLines.length * lineStep + 4;
+    yPos += Math.max(PDF_LOGO_H_MM + 8, titleBlockH, 28);
+  } else {
+    doc.setFontSize(16);
+    const titleLines = doc.splitTextToSize(PDF_TITLE_FULL, contentWidth);
+    const lineStep = 8;
+    let ty = yPos + 6;
+    titleLines.forEach((ln) => {
+      doc.text(ln, margin, ty);
+      ty += lineStep;
+    });
+    yPos += titleLines.length * lineStep + 10;
+  }
 
   // ============================================================
   // 1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA

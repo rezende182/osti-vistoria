@@ -36,7 +36,7 @@ export default function InspectionPdfLogoField({ value, onChange, disabled }) {
         Logótipo no relatório PDF (opcional)
       </label>
       <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-        Substitui o logótipo padrão no topo da primeira página do PDF. PNG ou JPEG do seu dispositivo.
+        Aparece ao lado do título no topo do PDF. Se não escolher imagem, o PDF mostra só o título do relatório. PNG ou JPEG.
       </p>
       <input
         ref={inputRef}

@@ -1,5 +1,5 @@
 /**
- * Marca na interface (LaudoFlow). No PDF, o cabeçalho pode usar logótipo da vistoria; ver pdfGenerator.js.
+ * Marca na interface (LaudoFlow). No PDF, logótipo opcional na vistoria; sem logótipo, só o título — ver pdfGenerator.js.
  * Query string força novo fetch quando o ficheiro em /public é substituído (evita PNG antigo em cache).
  */
 export const APP_LOGO_URL = `${process.env.PUBLIC_URL || ''}/logo-laudoflow.png?v=9`;
