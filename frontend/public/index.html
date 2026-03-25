@@ -29,17 +29,49 @@
         
         <!-- Registrar Service Worker para PWA -->
         <script>
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('%PUBLIC_URL%/service-worker.js')
-                        .then(function(registration) {
+            (function () {
+                if (!('serviceWorker' in navigator)) return;
+
+                var swUrl = '%PUBLIC_URL%/service-worker.js';
+
+                // Uma vez: abra o site com ?reset-sw=1 para limpar SW + caches e recarregar (útil após deploy).
+                var params = new URLSearchParams(window.location.search);
+                if (params.has('reset-sw')) {
+                    window.addEventListener('load', function () {
+                        Promise.all([
+                            navigator.serviceWorker.getRegistrations().then(function (regs) {
+                                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+                            }),
+                            'caches' in window
+                                ? caches.keys().then(function (names) {
+                                      return Promise.all(names.map(function (n) { return caches.delete(n); }));
+                                  })
+                                : Promise.resolve(),
+                        ])
+                            .then(function () {
+                                var u = new URL(window.location.href);
+                                u.searchParams.delete('reset-sw');
+                                window.location.replace(u.pathname + u.search + u.hash);
+                            })
+                            .catch(function (e) {
+                                console.warn('[PWA] reset-sw falhou', e);
+                            });
+                    });
+                    return;
+                }
+
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker
+                        .register(swUrl)
+                        .then(function (registration) {
                             console.log('[PWA] Service Worker registrado:', registration.scope);
+                            registration.update();
                         })
-                        .catch(function(error) {
+                        .catch(function (error) {
                             console.log('[PWA] Falha ao registrar Service Worker:', error);
                         });
                 });
-            }
+            })();
         </script>
         <footer
             style="

@@ -2,8 +2,8 @@
  * Service Worker — rede primeiro para o mesmo domínio, evita tela branca após deploy
  * (index.html ou /static/*.js em cache antigo referenciando chunks inexistentes).
  */
-const STATIC_CACHE = 'vistoria-static-v12';
-const DYNAMIC_CACHE = 'vistoria-dynamic-v12';
+const STATIC_CACHE = 'vistoria-static-v13';
+const DYNAMIC_CACHE = 'vistoria-dynamic-v13';
 
 const STATIC_ASSETS = [
   '/manifest.json',
