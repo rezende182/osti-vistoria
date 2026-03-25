@@ -129,16 +129,6 @@ export const inspectionsApi = {
       client.post(`/inspections/${id}/upload-photo`, form).then((r) => r.data)
     );
   },
-
-  /** Legendas técnicas + observação a partir da descrição do item (OpenAI no backend). */
-  generateItemChecklistText: (payload, userId) => {
-    if (!normalizeUserId(userId)) return rejectNoUser();
-    return wrap(
-      client
-        .post('/ai/gerar-texto-item-checklist', payload)
-        .then((r) => r.data)
-    );
-  },
 };
 
 export default inspectionsApi;

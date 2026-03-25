@@ -323,7 +323,6 @@ const InspectionChecklist = () => {
         exists: null,
         condition: null,
         observations: '',
-        descricao: '',
         photos: []
       }))
     };
@@ -648,7 +647,6 @@ const InspectionChecklist = () => {
             {selectedRoom?.items.map((item, itemIndex) => (
               <ChecklistItem
                 key={`${selectedRoomId}-${itemIndex}`}
-                roomName={selectedRoom.room_name}
                 item={item}
                 onChange={(updatedItem, shouldRenumber) => handleItemChange(selectedRoomIndex, itemIndex, updatedItem, shouldRenumber)}
                 onAddPhoto={(photoData) => handleAddPhoto(selectedRoomIndex, itemIndex, photoData)}
