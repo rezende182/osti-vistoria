@@ -20,6 +20,17 @@ const PDF_LOGO_H_MM = 22;
 
 const PDF_TITLE_FULL = 'RELATÓRIO DE VISTORIA DE RECEBIMENTO DE IMÓVEL';
 
+/** Margens da página (~25px @96dpi ≈ 6,6mm — intervalo pedido 20–30px) */
+const PDF_PAGE_MARGIN_MM = 6.6;
+/** Espaço logo ↔ título (~17px @96dpi ≈ 4,5mm — intervalo pedido 10–20px) */
+const PDF_LOGO_TITLE_GAP_MM = 4.5;
+/** Título do cabeçalho: entre 16–18pt */
+const PDF_HEADER_TITLE_PT = 17;
+/** Helvetica no jsPDF equivale ao Arial nos PDFs com fontes padrão */
+const PDF_HEADER_FONT = 'helvetica';
+/** Preto / cinza escuro */
+const PDF_HEADER_TITLE_COLOR = [26, 26, 26];
+
 // Texto legal padrão
 const LEGAL_TEXT =
   'A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes.\n\n' +
@@ -201,8 +212,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const contentWidth = pageWidth - (margin * 2);
+  const margin = PDF_PAGE_MARGIN_MM;
+  const contentWidth = pageWidth - margin * 2;
   let yPos = margin;
 
   // Verificar nova página
@@ -216,17 +227,27 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   };
 
   // ============================================================
-  // PÁGINA 1: CABEÇALHO — só logótipo se o utilizador enviou; senão só o título
+  // PÁGINA 1: CABEÇALHO — mesmas margens com ou sem logo (consistência visual)
   // ============================================================
 
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 0, 0);
+  doc.setFont(PDF_HEADER_FONT, 'bold');
+  doc.setFontSize(PDF_HEADER_TITLE_PT);
+  doc.setTextColor(
+    PDF_HEADER_TITLE_COLOR[0],
+    PDF_HEADER_TITLE_COLOR[1],
+    PDF_HEADER_TITLE_COLOR[2]
+  );
+
+  /** Altura entre baselines (pt → mm, fator de linha ~1.15) */
+  const lineStepMm = (PDF_HEADER_TITLE_PT * 1.15 * 25.4) / 72;
 
   const customLogo = inspection.pdf_logo_data_url;
   const hasCustomLogo =
     customLogo &&
     typeof customLogo === 'string' &&
     customLogo.startsWith('data:image/');
+
+  const headerY0 = yPos;
 
   if (hasCustomLogo) {
     const logoFormat = getJsPdfFormatFromDataUrl(customLogo);
@@ -235,7 +256,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         customLogo,
         logoFormat,
         margin,
-        yPos,
+        headerY0,
         PDF_LOGO_W_MM,
         PDF_LOGO_H_MM
       );
@@ -243,29 +264,34 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       console.log('Erro ao adicionar logo ao PDF:', e);
     }
 
-    const titleX = margin + PDF_LOGO_W_MM + 8;
-    const titleMaxW = contentWidth - PDF_LOGO_W_MM - 8;
-    doc.setFontSize(14);
+    const titleX = margin + PDF_LOGO_W_MM + PDF_LOGO_TITLE_GAP_MM;
+    const titleMaxW = Math.max(
+      40,
+      pageWidth - margin - titleX
+    );
     const titleLines = doc.splitTextToSize(PDF_TITLE_FULL, titleMaxW);
-    const lineStep = 7;
-    let ty = yPos + 8;
-    titleLines.forEach((ln) => {
-      doc.text(ln, titleX, ty);
-      ty += lineStep;
+    const n = titleLines.length;
+    const logoCenterY = headerY0 + PDF_LOGO_H_MM / 2;
+    /** Centrar bloco de linhas no eixo vertical do logo (baseline jsPDF) */
+    const firstBaselineY =
+      logoCenterY - ((n - 1) * lineStepMm) / 2 + PDF_HEADER_TITLE_PT * 0.12;
+
+    titleLines.forEach((ln, i) => {
+      doc.text(ln, titleX, firstBaselineY + i * lineStepMm);
     });
 
-    const titleBlockH = titleLines.length * lineStep + 4;
-    yPos += Math.max(PDF_LOGO_H_MM + 8, titleBlockH, 28);
+    const lastTitleBaseline = firstBaselineY + (n - 1) * lineStepMm;
+    yPos =
+      Math.max(headerY0 + PDF_LOGO_H_MM, lastTitleBaseline + 5) + 3;
   } else {
-    doc.setFontSize(16);
     const titleLines = doc.splitTextToSize(PDF_TITLE_FULL, contentWidth);
-    const lineStep = 8;
-    let ty = yPos + 6;
+    const cx = pageWidth / 2;
+    let ty = headerY0 + 5;
     titleLines.forEach((ln) => {
-      doc.text(ln, margin, ty);
-      ty += lineStep;
+      doc.text(ln, cx, ty, { align: 'center' });
+      ty += lineStepMm;
     });
-    yPos += titleLines.length * lineStep + 10;
+    yPos = ty + 5;
   }
 
   // ============================================================
