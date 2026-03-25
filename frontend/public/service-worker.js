@@ -1,9 +1,10 @@
 /**
- * Service Worker — rede primeiro para o mesmo domínio, evita tela branca após deploy
- * (index.html ou /static/*.js em cache antigo referenciando chunks inexistentes).
+ * Service Worker — rede primeiro para o mesmo domínio.
+ * HTML e bundles (/static/js, /static/css) NÃO entram no cache dinâmico, para não
+ * ficar com interface antiga (ex.: código já removido do repositório).
  */
-const STATIC_CACHE = 'vistoria-static-v13';
-const DYNAMIC_CACHE = 'vistoria-dynamic-v13';
+const STATIC_CACHE = 'vistoria-static-v14';
+const DYNAMIC_CACHE = 'vistoria-dynamic-v14';
 
 const STATIC_ASSETS = [
   '/manifest.json',
@@ -71,6 +72,15 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  const isNavigate = request.mode === 'navigate';
+  const isAppBundle =
+    url.pathname.includes('/static/js/') || url.pathname.includes('/static/css/');
+
+  if (isNavigate || isAppBundle) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   event.respondWith(networkFirst(request));
 });

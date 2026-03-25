@@ -2,9 +2,8 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "OSTI — Vistoria de imóvel (interface desktop)",
+  "description": "OSTI — Vistoria de imóvel (interface web)",
   "author": "OSTI",
-  "main": "electron/main.js",
   "homepage": ".",
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -16,7 +15,7 @@
     "@radix-ui/react-collapsible": "^1.1.8",
     "@radix-ui/react-context-menu": "^2.2.12",
     "@radix-ui/react-dialog": "^1.1.11",
-    "@radix-ui/react-dropdown-menu": "^2.1.12",
+    "@radix-ui/react-dropdown-menu": "^2.2.12",
     "@radix-ui/react-hover-card": "^1.1.11",
     "@radix-ui/react-label": "^2.1.4",
     "@radix-ui/react-menubar": "^1.1.12",
@@ -56,7 +55,6 @@
     "react-router-dom": "^7.5.1",
     "react-scripts": "5.0.1",
     "react-signature-canvas": "^1.1.0-alpha.2",
-    "recharts": "^3.6.0",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
@@ -68,10 +66,7 @@
     "build": "craco build",
     "ci:build": "cross-env CI=true npm run build",
     "lint": "eslint \"src/**/*.{js,jsx}\" --max-warnings 0",
-    "test": "craco test",
-    "electron": "electron .",
-    "desktop": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on -t 120000 http://127.0.0.1:3000 && cross-env ELECTRON_IS_DEV=1 electron .\"",
-    "electron:pack": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win"
+    "test": "craco test"
   },
   "browserslist": {
     "production": [
@@ -99,45 +94,7 @@
     "globals": "15.15.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "concurrently": "^9.1.2",
-    "cross-env": "^7.0.3",
-    "electron": "^34.2.0",
-    "electron-builder": "^25.1.8",
-    "wait-on": "^8.0.1"
-  },
-  "build": {
-    "extends": null,
-    "appId": "com.osti.vistoria",
-    "productName": "OSTI Vistoria",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "build/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
-    "win": {
-      "signAndEditExecutable": false,
-      "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
+    "cross-env": "^7.0.3"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
