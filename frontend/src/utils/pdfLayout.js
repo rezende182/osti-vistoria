@@ -1,15 +1,32 @@
 /**
- * Layout comum dos PDFs (Helvetica ≈ Arial no PDF embutido).
- * Corpo 12 pt; entre linhas ~1,5 (≈ 7,5 mm com fonte 12).
- * drawBodyParagraphs: textos corridos (conclusão, legais, observações) — não usar em títulos/tabelas.
+ * Layout comum dos PDFs. No motor embutido do jsPDF, Helvetica equivale visualmente a Arial.
+ * Corpo 12 pt, justificado em drawBodyParagraphs; hierarquia de títulos conforme laudos de vistoria.
  */
 export const PDF_FONT = 'helvetica';
 export const PDF_BODY_PT = 12;
 export const PDF_BODY_LINE_MM = 7.5;
-/** Recuo de primeira linha (~1,25 cm) em parágrafos de corpo */
+/** pt → mm (coordenadas jsPDF em mm) */
+export const PDF_PT_TO_MM = 25.4 / 72;
+
+/** Títulos de capítulo (1., 2., …): negrito 14 pt; antes 12 pt / depois 6 pt */
+export const PDF_CHAPTER_TITLE_PT = 14;
+export const PDF_CHAPTER_TITLE_BEFORE_MM = 12 * PDF_PT_TO_MM;
+export const PDF_CHAPTER_TITLE_AFTER_MM = 6 * PDF_PT_TO_MM;
+export const PDF_CHAPTER_LINE_MM = (PDF_CHAPTER_TITLE_PT / PDF_BODY_PT) * PDF_BODY_LINE_MM;
+
+/** Subtítulos (ex.: 4.1 SALA): negrito 12 pt; antes 8 pt / depois 4 pt */
+export const PDF_SUBSECTION_BEFORE_MM = 8 * PDF_PT_TO_MM;
+export const PDF_SUBSECTION_AFTER_MM = 4 * PDF_PT_TO_MM;
+
+/** Recuo uniforme para listas e blocos do checklist (a partir da margem esquerda) */
+export const PDF_LIST_INDENT_MM = 5;
+/** Espaço extra entre itens de lista/checklist (valor médio 4–6 pt) */
+export const PDF_LIST_ITEM_EXTRA_GAP_MM = 5 * PDF_PT_TO_MM;
+
+/** Recuo de primeira linha em parágrafos de corpo */
 export const PDF_BODY_FIRST_LINE_INDENT_MM = 12.5;
-/** Espaço vertical entre parágrafos */
-export const PDF_PARAGRAPH_GAP_MM = 8;
+/** Espaço vertical após cada parágrafo (6 pt) */
+export const PDF_PARAGRAPH_GAP_MM = 6 * PDF_PT_TO_MM;
 /** ~60px — zona segura para não invadir o rodapé (jsPDF em mm) */
 export const PDF_PAGE_BOTTOM_SAFE_MM = 20;
 /** ~60px — margem superior ao continuar após quebra de página */
@@ -139,6 +156,83 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
   return y;
 }
 
+const defaultPageOpts = () => ({
+  bottomMarginMm: PDF_PAGE_BOTTOM_SAFE_MM,
+  topMarginMm: PDF_PAGE_TOP_SAFE_MM,
+});
+
+/**
+ * Título de capítulo numerado: negrito 14 pt; espaço antes 12 pt e depois 6 pt (com quebra de página se necessário).
+ */
+export function drawChapterTitle(doc, margin, contentWidth, yStart, title, pageOpts = {}) {
+  const po = { ...defaultPageOpts(), ...pageOpts };
+  const bottomSafe = po.bottomMarginMm;
+  const topReset = po.topMarginMm;
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_CHAPTER_TITLE_PT);
+  doc.setTextColor(0, 0, 0);
+  const lines = doc.splitTextToSize(String(title), contentWidth);
+  const lineH = PDF_CHAPTER_LINE_MM;
+  const totalNeeded =
+    PDF_CHAPTER_TITLE_BEFORE_MM + lines.length * lineH + PDF_CHAPTER_TITLE_AFTER_MM;
+
+  let y = yStart;
+  if (y + totalNeeded > pageHeight - bottomSafe) {
+    doc.addPage();
+    y = topReset;
+  }
+  y += PDF_CHAPTER_TITLE_BEFORE_MM;
+
+  lines.forEach((ln) => {
+    if (y + lineH > pageHeight - bottomSafe) {
+      doc.addPage();
+      y = topReset;
+    }
+    doc.text(ln, margin, y);
+    y += lineH;
+  });
+  y += PDF_CHAPTER_TITLE_AFTER_MM;
+  return y;
+}
+
+/**
+ * Subtítulo de secção (ex.: nome do cômodo): negrito 12 pt; antes 8 pt / depois 4 pt.
+ */
+export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, pageOpts = {}) {
+  const po = { ...defaultPageOpts(), ...pageOpts };
+  const bottomSafe = po.bottomMarginMm;
+  const topReset = po.topMarginMm;
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+  const lines = doc.splitTextToSize(String(title), contentWidth);
+  const lineH = PDF_BODY_LINE_MM;
+  const totalNeeded =
+    PDF_SUBSECTION_BEFORE_MM + lines.length * lineH + PDF_SUBSECTION_AFTER_MM;
+
+  let y = yStart;
+  if (y + totalNeeded > pageHeight - bottomSafe) {
+    doc.addPage();
+    y = topReset;
+  }
+  y += PDF_SUBSECTION_BEFORE_MM;
+
+  lines.forEach((ln) => {
+    if (y + lineH > pageHeight - bottomSafe) {
+      doc.addPage();
+      y = topReset;
+    }
+    doc.text(ln, margin, y);
+    y += lineH;
+  });
+  y += PDF_SUBSECTION_AFTER_MM;
+  return y;
+}
+
 /**
  * Faixa de classificação: fundo ajustado ao texto + padding lateral.
  */
@@ -154,10 +248,10 @@ export function drawClassificationBadge(
   const padX = 4;
   const padY = 3.5;
   doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(PDF_BODY_PT);
   const maxInner = contentWidth - padX * 2;
   const lines = doc.splitTextToSize(labelText, maxInner);
-  const lineH = 5;
+  const lineH = 6;
   let maxLineW = 0;
   lines.forEach((line) => {
     maxLineW = Math.max(maxLineW, doc.getTextWidth(line));
@@ -211,7 +305,7 @@ export function drawClassificationFinalPlain(
     doc.setFont(PDF_FONT, 'bold');
     doc.text(label, margin + wPrefix, yPos);
     doc.setFont(PDF_FONT, 'normal');
-    return yPos + PDF_BODY_LINE_MM + 4;
+    return yPos + PDF_BODY_LINE_MM + PDF_PARAGRAPH_GAP_MM;
   }
 
   doc.text(prefix, margin, yPos);
@@ -223,7 +317,7 @@ export function drawClassificationFinalPlain(
     yPos += PDF_BODY_LINE_MM;
   });
   doc.setFont(PDF_FONT, 'normal');
-  return yPos + 4;
+  return yPos + PDF_PARAGRAPH_GAP_MM;
 }
 
 /**
