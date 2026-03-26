@@ -22,6 +22,30 @@ const PDF_TITLE_LINE1 = 'RELATÓRIO DE VISTORIA';
 const PDF_TITLE_LINE2 = 'RECEBIMENTO DE IMÓVEL';
 const PDF_TITLE_LINES = [PDF_TITLE_LINE1, PDF_TITLE_LINE2];
 
+/** Endereço, cidade e UF para a secção 3. Introdução (identificação da vistoria). */
+function formatPdfIntroLocalizacao(inspection) {
+  const e = (inspection.endereco || '').trim();
+  const c = (inspection.cidade || '').trim();
+  const u = (inspection.uf || '').trim().toUpperCase();
+  const cidadeUf = u ? (c ? `${c} - ${u}` : u) : c;
+  if (e && cidadeUf) return `${e}, ${cidadeUf}`;
+  if (e) return e;
+  return cidadeUf || '-';
+}
+
+/** Texto fixo da secção 3. INTRODUÇÃO com dados da identificação. */
+function buildPdfIntroducaoText(inspection) {
+  const loc = formatPdfIntroLocalizacao(inspection);
+  const apt = (inspection.unidade || '').trim() || '-';
+  const emp = (inspection.empreendimento || '').trim() || '-';
+
+  return [
+    `O presente laudo técnico, referente ao imóvel localizado no endereço: ${loc}, apartamento nº: ${apt}, do empreendimento ${emp}, tem como objetivo registrar os resultados da vistoria técnica realizada, avaliando as condições construtivas, acabamentos, instalações prediais e demais elementos relevantes para a utilização segura e adequada do bem.`,
+    'A inspeção foi conduzida de acordo com normas técnicas aplicáveis e procedimentos de engenharia reconhecidos, buscando identificar eventuais irregularidades, vícios aparentes ou não conformidades que possam comprometer o uso, segurança ou desempenho do imóvel.',
+    'Este documento constitui registro formal da condição do imóvel no momento da entrega, fornecendo suporte técnico para o recebimento e eventual acionamento de garantias junto à construtora, quando necessário.',
+  ].join('\n\n');
+}
+
 // Texto legal padrão
 const LEGAL_TEXT =
   'A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes.\n\n' +
@@ -258,9 +282,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   } else {
     doc.setFontSize(16);
     const lineStep = 8;
+    const cx = pageWidth / 2;
     let ty = yPos + 6;
     PDF_TITLE_LINES.forEach((ln) => {
-      doc.text(ln, margin, ty);
+      doc.text(ln, cx, ty, { align: 'center' });
       ty += lineStep;
     });
     yPos += PDF_TITLE_LINES.length * lineStep + 10;
@@ -342,19 +367,44 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     yPos += PDF_BODY_LINE_MM;
   }
 
-  // Checklist sempre em página nova: a 1.ª página contém apenas 1 e 2
-  doc.addPage();
-  yPos = margin;
-
   // ============================================================
-  // 3. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO
+  // 3. INTRODUÇÃO
   // ============================================================
   yPos = drawSectionTitle(
     doc,
     margin,
     contentWidth,
     yPos,
-    '3. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO',
+    '3. INTRODUÇÃO',
+    8
+  );
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+  yPos = drawBodyParagraphs(
+    doc,
+    buildPdfIntroducaoText(inspection),
+    margin,
+    contentWidth,
+    yPos,
+    checkNewPage
+  );
+  yPos += 6;
+
+  // Checklist em página nova após identificação, documentos e introdução
+  doc.addPage();
+  yPos = margin;
+
+  // ============================================================
+  // 4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO
+  // ============================================================
+  yPos = drawSectionTitle(
+    doc,
+    margin,
+    contentWidth,
+    yPos,
+    '4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO',
     8
   );
 
@@ -372,11 +422,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
       checkNewPage(26);
 
-      // Nome do cômodo (ex: 3.1 SALA)
+      // Nome do cômodo (ex: 4.1 SALA)
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
-      doc.text(`3.${roomNumber} ${room.room_name.toUpperCase()}`, margin, yPos);
+      doc.text(`4.${roomNumber} ${room.room_name.toUpperCase()}`, margin, yPos);
       yPos += 8;
       
       // "Itens verificados:"
@@ -528,11 +578,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   // ============================================================
-  // 4. CONCLUSÃO (sempre inicia no topo de uma página nova)
+  // 5. CONCLUSÃO (sempre inicia no topo de uma página nova)
   // ============================================================
   doc.addPage();
   yPos = margin;
-  yPos = drawSectionTitle(doc, margin, contentWidth, yPos, '4. CONCLUSÃO', 10);
+  yPos = drawSectionTitle(doc, margin, contentWidth, yPos, '5. CONCLUSÃO', 10);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(PDF_BODY_PT);
@@ -578,11 +628,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
   }
 
-  /* Espaço entre o fim do texto da secção 4 e o título da secção 5 (evita título colado ao parágrafo) */
+  /* Espaço entre o fim do texto da secção 5 e o título da secção 6 (evita título colado ao parágrafo) */
   yPos += 12;
 
   // ============================================================
-  // 5. RESPONSÁVEL TÉCNICO / ASSINATURA
+  // 6. RESPONSÁVEL TÉCNICO / ASSINATURA
   // ============================================================
   checkNewPage(36);
   yPos = drawSectionTitle(
@@ -590,7 +640,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '5. RESPONSÁVEL TÉCNICO / ASSINATURA',
+    '6. RESPONSÁVEL TÉCNICO / ASSINATURA',
     12
   );
 
@@ -619,7 +669,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   );
 
   // ============================================================
-  // 6. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS
+  // 7. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS
   // ============================================================
   yPos += 8;
   checkNewPage(28);
@@ -628,7 +678,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '6. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS',
+    '7. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS',
     10
   );
 
