@@ -3,15 +3,15 @@
  * HTML e bundles (/static/js, /static/css) NÃO entram no cache dinâmico, para não
  * ficar com interface antiga (ex.: código já removido do repositório).
  */
-const STATIC_CACHE = 'vistoria-static-v14';
-const DYNAMIC_CACHE = 'vistoria-dynamic-v14';
+const STATIC_CACHE = 'vistoria-static-v15';
+const DYNAMIC_CACHE = 'vistoria-dynamic-v15';
 
 const STATIC_ASSETS = [
   '/manifest.json',
   '/favicon.ico',
   '/icon-192.png',
   '/icon-512.png',
-  '/logo-laudoflow.png',
+  '/logo-inspec360.png',
   '/logo-osti-sidebar.png',
 ];
 
@@ -94,7 +94,7 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('push', (event) => {
   const data = event.data?.json() || {};
   event.waitUntil(
-    self.registration.showNotification(data.title || 'LaudoFlow', {
+    self.registration.showNotification(data.title || 'InSpec360', {
       body: data.body || '',
       icon: '/icon-192.png',
       badge: '/icon-192.png',
