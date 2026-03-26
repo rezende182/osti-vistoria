@@ -324,11 +324,11 @@ const Dashboard = () => {
             <DropdownMenuItem
               asChild
               onSelect={() => navigate('/new-inspection')}
-              className="cursor-pointer rounded-2xl p-0 focus:bg-transparent data-[highlighted]:bg-transparent"
+              className="cursor-pointer rounded-2xl p-0 !text-white focus:bg-transparent focus:!text-white data-[highlighted]:bg-transparent data-[highlighted]:!text-white"
             >
               <button
                 type="button"
-                className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-blue-600 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:bg-blue-700 sm:w-[6.25rem]"
+                className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-blue-600 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:!bg-blue-700 data-[highlighted]:!text-white data-[highlighted]:shadow-[0_6px_20px_rgba(37,99,235,0.5)] sm:w-[6.25rem]"
                 aria-label="Apartamento — iniciar identificação da vistoria"
               >
                 <div className="flex min-h-[5.75rem] flex-1 items-center justify-center sm:min-h-[6rem]">
