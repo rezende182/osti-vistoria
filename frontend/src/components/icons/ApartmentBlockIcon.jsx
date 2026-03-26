@@ -10,7 +10,7 @@ export function ApartmentBlockIcon({ className }) {
   return (
     <svg
       viewBox="0 0 80 80"
-      className={className}
+      className={className ? `block ${className}` : 'block'}
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
       preserveAspectRatio="xMidYMid meet"

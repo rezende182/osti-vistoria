@@ -328,10 +328,12 @@ const Dashboard = () => {
             >
               <button
                 type="button"
-                className="flex w-[5.85rem] shrink-0 flex-col items-center justify-between gap-2 rounded-2xl bg-blue-600 px-2 pb-2.5 pt-3 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:bg-blue-700 sm:w-[6.25rem]"
+                className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-blue-600 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:bg-blue-700 sm:w-[6.25rem]"
                 aria-label="Apartamento — iniciar identificação da vistoria"
               >
-                <ApartmentBlockIcon className="h-12 w-12 shrink-0 text-white drop-shadow-sm sm:h-14 sm:w-14" />
+                <div className="flex min-h-[5.75rem] flex-1 items-center justify-center sm:min-h-[6rem]">
+                  <ApartmentBlockIcon className="h-[4.75rem] w-[4.75rem] shrink-0 text-white drop-shadow-sm sm:h-[5.25rem] sm:w-[5.25rem]" />
+                </div>
                 <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
                   Apartamento
                 </span>
@@ -343,12 +345,14 @@ const Dashboard = () => {
               className="cursor-not-allowed rounded-2xl p-0 data-[disabled]:opacity-100"
               aria-label="Casa — em breve"
             >
-              <span className="flex w-[5.85rem] shrink-0 flex-col items-center justify-between gap-2 rounded-2xl bg-amber-500 px-2 pb-2.5 pt-3 text-white shadow-[0_4px_14px_rgba(245,158,11,0.4)] ring-2 ring-amber-300/80 opacity-55 saturate-75 sm:w-[6.25rem]">
-                <Home
-                  className="h-11 w-11 shrink-0 drop-shadow-sm sm:h-12 sm:w-12"
-                  strokeWidth={2.4}
-                  aria-hidden
-                />
+              <span className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-amber-500 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(245,158,11,0.4)] ring-2 ring-amber-300/80 opacity-55 saturate-75 sm:w-[6.25rem]">
+                <div className="flex min-h-[5.75rem] flex-1 items-center justify-center sm:min-h-[6rem]">
+                  <Home
+                    className="h-[4.75rem] w-[4.75rem] shrink-0 drop-shadow-sm sm:h-[5.25rem] sm:w-[5.25rem]"
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                </div>
                 <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
                   Casa
                 </span>
@@ -360,12 +364,14 @@ const Dashboard = () => {
               className="cursor-not-allowed rounded-2xl p-0 data-[disabled]:opacity-100"
               aria-label="Área comum — em breve"
             >
-              <span className="flex w-[5.85rem] shrink-0 flex-col items-center justify-between gap-2 rounded-2xl bg-emerald-600 px-2 pb-2.5 pt-3 text-white shadow-[0_4px_14px_rgba(5,150,105,0.4)] ring-2 ring-emerald-300/80 opacity-55 saturate-75 sm:w-[6.25rem]">
-                <Trees
-                  className="h-11 w-11 shrink-0 drop-shadow-sm sm:h-12 sm:w-12"
-                  strokeWidth={2.4}
-                  aria-hidden
-                />
+              <span className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-emerald-600 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(5,150,105,0.4)] ring-2 ring-emerald-300/80 opacity-55 saturate-75 sm:w-[6.25rem]">
+                <div className="flex min-h-[5.75rem] flex-1 items-center justify-center sm:min-h-[6rem]">
+                  <Trees
+                    className="h-[4.75rem] w-[4.75rem] shrink-0 drop-shadow-sm sm:h-[5.25rem] sm:w-[5.25rem]"
+                    strokeWidth={2.25}
+                    aria-hidden
+                  />
+                </div>
                 <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
                   Área comum
                 </span>
