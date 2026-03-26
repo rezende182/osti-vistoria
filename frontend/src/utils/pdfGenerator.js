@@ -28,8 +28,8 @@ import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 const PDF_LOGO_W_MM = 52;
 const PDF_LOGO_H_MM = 22;
 
-const PDF_TITLE_LINE1 = 'RELATÓRIO DE VISTORIA';
-const PDF_TITLE_LINE2 = 'RECEBIMENTO DE IMÓVEL';
+const PDF_TITLE_LINE1 = 'LAUDO DE INSPEÇÃO TÉCNICA';
+const PDF_TITLE_LINE2 = 'RECEBIMENTO DE IMOVEL NOVO';
 const PDF_TITLE_LINES = [PDF_TITLE_LINE1, PDF_TITLE_LINE2];
 
 /** Endereço, cidade e UF para a secção 3. Introdução (identificação da vistoria). */
@@ -239,7 +239,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   };
 
   // ============================================================
-  // PÁGINA 1: CABEÇALHO — só logótipo se o utilizador enviou; senão só o título
+  // PÁGINA 1: CABEÇALHO — com logótipo: logo + título centrados; sem logo: só título centrado
   // ============================================================
 
   doc.setFont(PDF_FONT, 'bold');
@@ -251,13 +251,17 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     typeof customLogo === 'string' &&
     customLogo.startsWith('data:image/');
 
+  const cx = pageWidth / 2;
+  const lineStep = PDF_CHAPTER_LINE_MM;
+
   if (hasCustomLogo) {
     const logoFormat = getJsPdfFormatFromDataUrl(customLogo);
+    const logoX = (pageWidth - PDF_LOGO_W_MM) / 2;
     try {
       doc.addImage(
         customLogo,
         logoFormat,
-        margin,
+        logoX,
         yPos,
         PDF_LOGO_W_MM,
         PDF_LOGO_H_MM
@@ -266,21 +270,16 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       console.log('Erro ao adicionar logo ao PDF:', e);
     }
 
-    const titleX = margin + PDF_LOGO_W_MM + 8;
     doc.setFontSize(PDF_CHAPTER_TITLE_PT);
-    const lineStep = PDF_CHAPTER_LINE_MM;
-    let ty = yPos + 8;
+    let ty = yPos + PDF_LOGO_H_MM + 6;
     PDF_TITLE_LINES.forEach((ln) => {
-      doc.text(ln, titleX, ty);
+      doc.text(ln, cx, ty, { align: 'center' });
       ty += lineStep;
     });
 
-    const titleBlockH = PDF_TITLE_LINES.length * lineStep + 4;
-    yPos += Math.max(PDF_LOGO_H_MM + 8, titleBlockH, 28);
+    yPos = ty + 8;
   } else {
     doc.setFontSize(PDF_CHAPTER_TITLE_PT);
-    const lineStep = PDF_CHAPTER_LINE_MM;
-    const cx = pageWidth / 2;
     let ty = yPos + 6;
     PDF_TITLE_LINES.forEach((ln) => {
       doc.text(ln, cx, ty, { align: 'center' });
