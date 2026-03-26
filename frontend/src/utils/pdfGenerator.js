@@ -31,7 +31,7 @@ const PDF_HEADER_LOGO_MAX_H_MM = 16;
 const PDF_HEADER_LOGO_GAP_MM = 4;
 const PDF_HEADER_TITLE_PT = 17;
 
-const PDF_HEADER_TITLE_MAIN = 'Laudo de Inspeção Técnica';
+const PDF_HEADER_TITLE_MAIN = 'LAUDO DE INSPEÇÃO TÉCNICA';
 
 /** Dimensões naturais da imagem (browser) para calcular largura proporcional sem distorção */
 function getDataUrlImageDimensions(dataUrl) {
@@ -291,7 +291,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   };
 
   // ============================================================
-  // PÁGINA 1: CABEÇALHO — com logo: logo | só "Laudo de Inspeção Técnica" (centrado na coluna à direita)
+  // PÁGINA 1: CABEÇALHO — com logo: logo | só "LAUDO DE INSPEÇÃO TÉCNICA" (centrado na coluna à direita)
   // ============================================================
 
   const customLogo = inspection.pdf_logo_data_url;
