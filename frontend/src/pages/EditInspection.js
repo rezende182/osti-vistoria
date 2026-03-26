@@ -176,8 +176,7 @@ const EditInspection = () => {
 
           <div className="mb-6 space-y-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4">
             <p className="text-xs leading-relaxed text-slate-600">
-              Opcional: se tiver firma aberta, pode indicar nome da empresa e CNPJ para o rodapé do
-              PDF. Se deixar em branco, o rodapé mostrará o responsável técnico (ENG).
+              Campo opcional — preencha apenas se tiver empresa.
             </p>
             <div>
               <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">

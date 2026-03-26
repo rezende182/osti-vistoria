@@ -30,8 +30,8 @@ const PDF_HEADER_LOGO_MAX_W_MM = 52;
 const PDF_HEADER_LOGO_MAX_H_MM = 16;
 const PDF_HEADER_LOGO_GAP_MM = 4;
 const PDF_HEADER_TITLE_PT = 17;
-const PDF_HEADER_SUBTITLE_PT = 12;
-const PDF_HEADER_SUBTITLE_GRAY = [55, 55, 55];
+/** Subtítulo do cabeçalho: negrito + itálico, 14 pt, preto */
+const PDF_HEADER_SUBTITLE_PT = 14;
 
 const PDF_HEADER_TITLE_MAIN = 'Laudo de Inspeção Técnica';
 const PDF_HEADER_TITLE_SUB = 'Recebimento de Imóvel Novo';
@@ -107,24 +107,20 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   return 'JPEG';
 }
 
-/** Rodapé esquerdo: empresa + CNPJ se preenchido; senão ENG: RESPONSÁVEL (maiúsculas). */
+/** Rodapé esquerdo: com empresa → só nome (+ CNPJ se houver); sem empresa → título do laudo + sufixo. */
 function buildPdfFooterLeftLine(inspection) {
   const empresa = String(inspection.pdf_empresa_nome || '').trim();
   const cnpj = String(inspection.pdf_empresa_cnpj || '').trim();
-  const rt = String(
-    inspection.responsavel_final || inspection.responsavel_tecnico || ''
-  ).trim();
 
   if (empresa) {
     let line = empresa;
     if (cnpj) {
       line += ` — CNPJ: ${cnpj}`;
     }
-    return `${line} - Relatório de Vistoria`;
+    return line;
   }
 
-  const eng = rt && rt !== '-' ? rt.toUpperCase() : '—';
-  return `ENG: ${eng} - Relatório de Vistoria`;
+  return 'Laudo de Inspeção Técnica - Relatório de Vistoria';
 }
 
 // Formatar data
@@ -329,7 +325,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     doc.setFontSize(PDF_HEADER_TITLE_PT);
     const titleLines = doc.splitTextToSize(PDF_HEADER_TITLE_MAIN, textWidth);
 
-    doc.setFont(PDF_FONT, 'italic');
+    doc.setFont(PDF_FONT, 'bolditalic');
     doc.setFontSize(PDF_HEADER_SUBTITLE_PT);
     const subLines = doc.splitTextToSize(PDF_HEADER_TITLE_SUB, textWidth);
 
@@ -358,14 +354,13 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
     ty += gapTitleSub;
 
-    doc.setFont(PDF_FONT, 'italic');
+    doc.setFont(PDF_FONT, 'bolditalic');
     doc.setFontSize(PDF_HEADER_SUBTITLE_PT);
-    doc.setTextColor(...PDF_HEADER_SUBTITLE_GRAY);
+    doc.setTextColor(0, 0, 0);
     subLines.forEach((ln) => {
       doc.text(ln, textLeft, ty);
       ty += subLineH;
     });
-    doc.setTextColor(0, 0, 0);
 
     yPos = yPos + rowH + 10;
   } else {
@@ -379,15 +374,14 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       ty += titleLineH;
     });
     ty += gapTitleSub;
-    doc.setFont(PDF_FONT, 'italic');
+    doc.setFont(PDF_FONT, 'bolditalic');
     doc.setFontSize(PDF_HEADER_SUBTITLE_PT);
-    doc.setTextColor(...PDF_HEADER_SUBTITLE_GRAY);
+    doc.setTextColor(0, 0, 0);
     const subLines = doc.splitTextToSize(PDF_HEADER_TITLE_SUB, contentWidth);
     subLines.forEach((ln) => {
       doc.text(ln, cx, ty, { align: 'center' });
       ty += subLineH;
     });
-    doc.setTextColor(0, 0, 0);
     yPos = ty + 10;
   }
 
