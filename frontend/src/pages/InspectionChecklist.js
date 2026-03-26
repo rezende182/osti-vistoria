@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import RoomSelector from '../components/RoomSelector';
 import ChecklistItem from '../components/ChecklistItem';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
@@ -144,7 +144,13 @@ const InspectionChecklist = () => {
   const [showAddRoom, setShowAddRoom] = useState(false);
   /** Confirmação antes de excluir cômodo (mobile + desktop) */
   const [deleteRoomTarget, setDeleteRoomTarget] = useState(null);
+  /** Edição do nome exibido do cômodo (ex.: "Quarto" → "Suíte") */
+  const [roomNameEdit, setRoomNameEdit] = useState(null);
   const contentRef = useRef(null);
+
+  useEffect(() => {
+    setRoomNameEdit((cur) => (cur && cur.roomId !== selectedRoomId ? null : cur));
+  }, [selectedRoomId]);
 
   const loadInspection = useCallback(async () => {
     try {
@@ -396,6 +402,33 @@ const InspectionChecklist = () => {
   const canAddAnotherRoom =
     roomsData.length === 0 || pendingChecklistItems.length === 0;
 
+  const startEditRoomName = () => {
+    if (!selectedRoomId) return;
+    const room = roomsData.find((r) => r.room_id === selectedRoomId);
+    if (!room) return;
+    setRoomNameEdit({ roomId: room.room_id, draft: room.room_name || '' });
+  };
+
+  const cancelEditRoomName = () => setRoomNameEdit(null);
+
+  const commitEditRoomName = () => {
+    if (!roomNameEdit) return;
+    const name = roomNameEdit.draft.trim();
+    if (!name) {
+      toast.error('Indique um nome para o cômodo.');
+      return;
+    }
+    const rid = roomNameEdit.roomId;
+    setRoomsData((prev) =>
+      prev.map((r) => (r.room_id === rid ? { ...r, room_name: name } : r))
+    );
+    setRoomsList((prev) =>
+      prev.map((r) => (r.id === rid ? { ...r, name } : r))
+    );
+    setRoomNameEdit(null);
+    toast.success('Nome do cômodo atualizado.');
+  };
+
   const handleOpenAddRoomModal = () => {
     if (roomsData.length > 0) {
       const missing = validateChecklist();
@@ -628,9 +661,72 @@ const InspectionChecklist = () => {
         ) : (
           <>
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <h2 className="text-balance text-xl font-bold font-secondary uppercase text-slate-900 sm:text-2xl lg:pr-4">
-                {selectedRoom?.room_name}
-              </h2>
+              <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 lg:pr-4">
+                {roomNameEdit?.roomId === selectedRoomId ? (
+                  <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+                    <input
+                      type="text"
+                      data-testid="edit-room-name-input"
+                      value={roomNameEdit.draft}
+                      onChange={(e) =>
+                        setRoomNameEdit((cur) =>
+                          cur ? { ...cur, draft: e.target.value } : cur
+                        )
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          commitEditRoomName();
+                        }
+                        if (e.key === 'Escape') cancelEditRoomName();
+                      }}
+                      className="min-h-touch w-full min-w-0 rounded-lg border-2 border-blue-400 bg-white px-3 py-2.5 text-base font-bold font-secondary uppercase text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 sm:min-h-0 sm:max-w-xl sm:py-2"
+                      aria-label="Nome do cômodo"
+                      autoFocus
+                    />
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        data-testid="save-room-name-button"
+                        onClick={commitEditRoomName}
+                        className="inline-flex min-h-touch items-center justify-center gap-1 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 sm:min-h-0 sm:px-3 sm:py-2"
+                        aria-label="Guardar nome"
+                      >
+                        <Check size={18} aria-hidden />
+                        Guardar
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="cancel-room-name-button"
+                        onClick={cancelEditRoomName}
+                        className="inline-flex min-h-touch items-center justify-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 sm:min-h-0 sm:px-3 sm:py-2"
+                        aria-label="Cancelar edição"
+                      >
+                        <X size={18} aria-hidden />
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+                    <h2 className="text-balance text-xl font-bold font-secondary uppercase text-slate-900 sm:text-2xl">
+                      {selectedRoom?.room_name}
+                    </h2>
+                    {selectedRoom && (
+                      <button
+                        type="button"
+                        data-testid="edit-room-name-toggle"
+                        onClick={startEditRoomName}
+                        className="shrink-0 rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-slate-900 active:bg-slate-200"
+                        aria-label="Editar nome do cômodo"
+                        title="Editar nome do cômodo"
+                      >
+                        <Pencil size={20} className="sm:h-[22px] sm:w-[22px]" aria-hidden />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               {selectedRoom && (
                 <button
                   type="button"
