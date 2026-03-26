@@ -21,16 +21,55 @@ import {
   PDF_PARAGRAPH_GAP_MM,
   PDF_CHAPTER_KEEP_WITH_NEXT_MM,
   PDF_CHAPTER_KEEP_WITH_SIGNATURE_BLOCK_MM,
+  PDF_PT_TO_MM,
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 
-/** Logótipo personalizado no PDF — largura × altura em mm (lado a lado com o título) */
-const PDF_LOGO_W_MM = 52;
-const PDF_LOGO_H_MM = 22;
+/** Cabeçalho: logo à esquerda; título + subtítulo à direita (~50–60px altura ≈ 14–16 mm) */
+const PDF_HEADER_LOGO_MAX_W_MM = 52;
+const PDF_HEADER_LOGO_MAX_H_MM = 16;
+const PDF_HEADER_LOGO_GAP_MM = 4;
+const PDF_HEADER_TITLE_PT = 17;
+const PDF_HEADER_SUBTITLE_PT = 12;
+const PDF_HEADER_SUBTITLE_GRAY = [55, 55, 55];
 
-const PDF_TITLE_LINE1 = 'LAUDO DE INSPEÇÃO TÉCNICA';
-const PDF_TITLE_LINE2 = 'RECEBIMENTO DE IMOVEL NOVO';
-const PDF_TITLE_LINES = [PDF_TITLE_LINE1, PDF_TITLE_LINE2];
+const PDF_HEADER_TITLE_MAIN = 'Laudo de Inspeção Técnica';
+const PDF_HEADER_TITLE_SUB = 'Recebimento de Imóvel Novo';
+
+/** Dimensões naturais da imagem (browser) para calcular largura proporcional sem distorção */
+function getDataUrlImageDimensions(dataUrl) {
+  return new Promise((resolve) => {
+    if (typeof Image === 'undefined') {
+      resolve({ width: 1, height: 1 });
+      return;
+    }
+    const img = new Image();
+    img.onload = () =>
+      resolve({
+        width: img.naturalWidth || 1,
+        height: img.naturalHeight || 1,
+      });
+    img.onerror = () => resolve({ width: 1, height: 1 });
+    img.src = dataUrl;
+  });
+}
+
+/**
+ * Encaixa o logótipo numa caixa (maxW × maxH mm) mantendo proporção.
+ */
+function fitLogoSizeMm(naturalW, naturalH, maxW, maxH) {
+  if (!naturalW || !naturalH) {
+    return { w: maxW * 0.6, h: maxH };
+  }
+  const aspect = naturalW / naturalH;
+  let w = maxH * aspect;
+  let h = maxH;
+  if (w > maxW) {
+    w = maxW;
+    h = w / aspect;
+  }
+  return { w, h };
+}
 
 /** Endereço, cidade e UF para a secção 3. Introdução (identificação da vistoria). */
 function formatPdfIntroLocalizacao(inspection) {
@@ -239,11 +278,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   };
 
   // ============================================================
-  // PÁGINA 1: CABEÇALHO — com logótipo: logo + título centrados; sem logo: só título centrado
+  // PÁGINA 1: CABEÇALHO — com logo: coluna esquerda logo | direita título + subtítulo (alinhados ao centro vertical)
   // ============================================================
-
-  doc.setFont(PDF_FONT, 'bold');
-  doc.setTextColor(0, 0, 0);
 
   const customLogo = inspection.pdf_logo_data_url;
   const hasCustomLogo =
@@ -252,40 +288,87 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     customLogo.startsWith('data:image/');
 
   const cx = pageWidth / 2;
-  const lineStep = PDF_CHAPTER_LINE_MM;
+  const titleLineH = PDF_HEADER_TITLE_PT * PDF_PT_TO_MM * 1.25;
+  const subLineH = PDF_HEADER_SUBTITLE_PT * PDF_PT_TO_MM * 1.25;
+  const gapTitleSub = 2;
 
   if (hasCustomLogo) {
+    const { width: iw, height: ih } = await getDataUrlImageDimensions(customLogo);
+    const { w: logoW, h: logoH } = fitLogoSizeMm(
+      iw,
+      ih,
+      PDF_HEADER_LOGO_MAX_W_MM,
+      PDF_HEADER_LOGO_MAX_H_MM
+    );
+
     const logoFormat = getJsPdfFormatFromDataUrl(customLogo);
-    const logoX = (pageWidth - PDF_LOGO_W_MM) / 2;
+    const textLeft = margin + logoW + PDF_HEADER_LOGO_GAP_MM;
+    const textWidth = Math.max(40, pageWidth - margin - textLeft);
+
+    doc.setFont(PDF_FONT, 'bold');
+    doc.setFontSize(PDF_HEADER_TITLE_PT);
+    const titleLines = doc.splitTextToSize(PDF_HEADER_TITLE_MAIN, textWidth);
+
+    doc.setFont(PDF_FONT, 'italic');
+    doc.setFontSize(PDF_HEADER_SUBTITLE_PT);
+    const subLines = doc.splitTextToSize(PDF_HEADER_TITLE_SUB, textWidth);
+
+    const textBlockH =
+      titleLines.length * titleLineH + gapTitleSub + subLines.length * subLineH;
+
+    const rowH = Math.max(logoH, textBlockH);
+    const logoY = yPos + (rowH - logoH) / 2;
+
     try {
-      doc.addImage(
-        customLogo,
-        logoFormat,
-        logoX,
-        yPos,
-        PDF_LOGO_W_MM,
-        PDF_LOGO_H_MM
-      );
+      doc.addImage(customLogo, logoFormat, margin, logoY, logoW, logoH);
     } catch (e) {
       console.log('Erro ao adicionar logo ao PDF:', e);
     }
 
-    doc.setFontSize(PDF_CHAPTER_TITLE_PT);
-    let ty = yPos + PDF_LOGO_H_MM + 6;
-    PDF_TITLE_LINES.forEach((ln) => {
-      doc.text(ln, cx, ty, { align: 'center' });
-      ty += lineStep;
+    const textTop = yPos + (rowH - textBlockH) / 2;
+    let ty = textTop + titleLineH * 0.75;
+
+    doc.setFont(PDF_FONT, 'bold');
+    doc.setFontSize(PDF_HEADER_TITLE_PT);
+    doc.setTextColor(0, 0, 0);
+    titleLines.forEach((ln) => {
+      doc.text(ln, textLeft, ty);
+      ty += titleLineH;
     });
 
-    yPos = ty + 8;
-  } else {
-    doc.setFontSize(PDF_CHAPTER_TITLE_PT);
-    let ty = yPos + 6;
-    PDF_TITLE_LINES.forEach((ln) => {
-      doc.text(ln, cx, ty, { align: 'center' });
-      ty += lineStep;
+    ty += gapTitleSub;
+
+    doc.setFont(PDF_FONT, 'italic');
+    doc.setFontSize(PDF_HEADER_SUBTITLE_PT);
+    doc.setTextColor(...PDF_HEADER_SUBTITLE_GRAY);
+    subLines.forEach((ln) => {
+      doc.text(ln, textLeft, ty);
+      ty += subLineH;
     });
-    yPos += PDF_TITLE_LINES.length * lineStep + 10;
+    doc.setTextColor(0, 0, 0);
+
+    yPos = yPos + rowH + 10;
+  } else {
+    doc.setFont(PDF_FONT, 'bold');
+    doc.setFontSize(PDF_HEADER_TITLE_PT);
+    doc.setTextColor(0, 0, 0);
+    const titleLines = doc.splitTextToSize(PDF_HEADER_TITLE_MAIN, contentWidth);
+    let ty = yPos + 6;
+    titleLines.forEach((ln) => {
+      doc.text(ln, cx, ty, { align: 'center' });
+      ty += titleLineH;
+    });
+    ty += gapTitleSub;
+    doc.setFont(PDF_FONT, 'italic');
+    doc.setFontSize(PDF_HEADER_SUBTITLE_PT);
+    doc.setTextColor(...PDF_HEADER_SUBTITLE_GRAY);
+    const subLines = doc.splitTextToSize(PDF_HEADER_TITLE_SUB, contentWidth);
+    subLines.forEach((ln) => {
+      doc.text(ln, cx, ty, { align: 'center' });
+      ty += subLineH;
+    });
+    doc.setTextColor(0, 0, 0);
+    yPos = ty + 10;
   }
 
   // ============================================================
