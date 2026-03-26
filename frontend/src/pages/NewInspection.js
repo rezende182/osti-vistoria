@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Home, ArrowRight } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
@@ -18,6 +18,8 @@ import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 
 const NewInspection = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tipoImovelFluxo = searchParams.get('tipo');
   const { user } = useAuth();
   const uid = user?.uid;
   const [showExitModal, setShowExitModal] = useState(false);
@@ -135,11 +137,18 @@ const NewInspection = () => {
             Página Inicial
           </button>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-4">
               <BrandLogo className="h-16 w-auto max-w-[12rem] shrink-0 object-contain object-left py-1 sm:h-[5.25rem] sm:max-w-[14rem]" />
-              <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
-                Identificação da Vistoria Técnica
-              </h1>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
+                  Identificação da Vistoria Técnica
+                </h1>
+                {tipoImovelFluxo === 'apartamento' && (
+                  <p className="w-full text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-300 sm:text-base">
+                    (Apartamento)
+                  </p>
+                )}
+              </div>
             </div>
             <LogoutHeaderButton />
           </div>

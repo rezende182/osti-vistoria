@@ -1,7 +1,7 @@
 {
   "name": "InSpec360 — Vistoria",
   "short_name": "InSpec360",
-  "description": "Gestão inteligente de laudos e vistorias técnicas — simples, rápido e 100% digital.",
+  "description": "Gestão inteligente de laudos de inspeções técnicas — simples, rápido e 100% digital.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e293b",
