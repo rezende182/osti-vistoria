@@ -25,16 +25,13 @@ import {
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 
-/** Cabeçalho: logo à esquerda; título + subtítulo à direita (~50–60px altura ≈ 14–16 mm) */
+/** Cabeçalho: logo à esquerda; só o título à direita, centrado na coluna de texto */
 const PDF_HEADER_LOGO_MAX_W_MM = 52;
 const PDF_HEADER_LOGO_MAX_H_MM = 16;
 const PDF_HEADER_LOGO_GAP_MM = 4;
 const PDF_HEADER_TITLE_PT = 17;
-/** Subtítulo do cabeçalho: negrito + itálico, 14 pt, preto */
-const PDF_HEADER_SUBTITLE_PT = 14;
 
 const PDF_HEADER_TITLE_MAIN = 'Laudo de Inspeção Técnica';
-const PDF_HEADER_TITLE_SUB = 'Recebimento de Imóvel Novo';
 
 /** Dimensões naturais da imagem (browser) para calcular largura proporcional sem distorção */
 function getDataUrlImageDimensions(dataUrl) {
@@ -294,7 +291,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   };
 
   // ============================================================
-  // PÁGINA 1: CABEÇALHO — com logo: coluna esquerda logo | direita título + subtítulo (alinhados ao centro vertical)
+  // PÁGINA 1: CABEÇALHO — com logo: logo | só "Laudo de Inspeção Técnica" (centrado na coluna à direita)
   // ============================================================
 
   const customLogo = inspection.pdf_logo_data_url;
@@ -305,8 +302,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const cx = pageWidth / 2;
   const titleLineH = PDF_HEADER_TITLE_PT * PDF_PT_TO_MM * 1.25;
-  const subLineH = PDF_HEADER_SUBTITLE_PT * PDF_PT_TO_MM * 1.25;
-  const gapTitleSub = 2;
 
   if (hasCustomLogo) {
     const { width: iw, height: ih } = await getDataUrlImageDimensions(customLogo);
@@ -318,20 +313,15 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
 
     const logoFormat = getJsPdfFormatFromDataUrl(customLogo);
-    const textLeft = margin + logoW + PDF_HEADER_LOGO_GAP_MM;
-    const textWidth = Math.max(40, pageWidth - margin - textLeft);
+    const textColLeft = margin + logoW + PDF_HEADER_LOGO_GAP_MM;
+    const textColWidth = Math.max(40, pageWidth - margin - textColLeft);
+    const textColCenterX = textColLeft + textColWidth / 2;
 
     doc.setFont(PDF_FONT, 'bold');
     doc.setFontSize(PDF_HEADER_TITLE_PT);
-    const titleLines = doc.splitTextToSize(PDF_HEADER_TITLE_MAIN, textWidth);
+    const titleLines = doc.splitTextToSize(PDF_HEADER_TITLE_MAIN, textColWidth);
 
-    doc.setFont(PDF_FONT, 'bolditalic');
-    doc.setFontSize(PDF_HEADER_SUBTITLE_PT);
-    const subLines = doc.splitTextToSize(PDF_HEADER_TITLE_SUB, textWidth);
-
-    const textBlockH =
-      titleLines.length * titleLineH + gapTitleSub + subLines.length * subLineH;
-
+    const textBlockH = titleLines.length * titleLineH;
     const rowH = Math.max(logoH, textBlockH);
     const logoY = yPos + (rowH - logoH) / 2;
 
@@ -348,18 +338,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     doc.setFontSize(PDF_HEADER_TITLE_PT);
     doc.setTextColor(0, 0, 0);
     titleLines.forEach((ln) => {
-      doc.text(ln, textLeft, ty);
+      doc.text(ln, textColCenterX, ty, { align: 'center' });
       ty += titleLineH;
-    });
-
-    ty += gapTitleSub;
-
-    doc.setFont(PDF_FONT, 'bolditalic');
-    doc.setFontSize(PDF_HEADER_SUBTITLE_PT);
-    doc.setTextColor(0, 0, 0);
-    subLines.forEach((ln) => {
-      doc.text(ln, textLeft, ty);
-      ty += subLineH;
     });
 
     yPos = yPos + rowH + 10;
@@ -372,15 +352,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     titleLines.forEach((ln) => {
       doc.text(ln, cx, ty, { align: 'center' });
       ty += titleLineH;
-    });
-    ty += gapTitleSub;
-    doc.setFont(PDF_FONT, 'bolditalic');
-    doc.setFontSize(PDF_HEADER_SUBTITLE_PT);
-    doc.setTextColor(0, 0, 0);
-    const subLines = doc.splitTextToSize(PDF_HEADER_TITLE_SUB, contentWidth);
-    subLines.forEach((ln) => {
-      doc.text(ln, cx, ty, { align: 'center' });
-      ty += subLineH;
     });
     yPos = ty + 10;
   }
