@@ -367,6 +367,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     yPos += PDF_BODY_LINE_MM;
   }
 
+  // Primeira página: só cabeçalho + secções 1 e 2. O restante começa na página seguinte.
+  doc.addPage();
+  yPos = margin;
+
   // ============================================================
   // 3. INTRODUÇÃO
   // ============================================================
@@ -392,12 +396,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   );
   yPos += 6;
 
-  // Checklist em página nova após identificação, documentos e introdução
-  doc.addPage();
-  yPos = margin;
-
   // ============================================================
-  // 4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO
+  // 4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO (em seguida à introdução)
   // ============================================================
   yPos = drawSectionTitle(
     doc,
@@ -578,10 +578,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   // ============================================================
-  // 5. CONCLUSÃO (sempre inicia no topo de uma página nova)
+  // 5. CONCLUSÃO (em continuação ao checklist; nova página só se não couber)
   // ============================================================
-  doc.addPage();
-  yPos = margin;
+  yPos += 6;
+  checkNewPage(40);
   yPos = drawSectionTitle(doc, margin, contentWidth, yPos, '5. CONCLUSÃO', 10);
 
   doc.setFont('helvetica', 'normal');
