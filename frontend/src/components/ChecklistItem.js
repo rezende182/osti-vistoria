@@ -7,6 +7,9 @@ import {
   FolderOpen,
   Smartphone,
   Trash2,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
 } from 'lucide-react';
 import InspectionOrientationModal from './InspectionOrientationModal';
 import { getOrientationForItemName } from '../constants/itemOrientations';
@@ -18,7 +21,11 @@ const ChecklistItem = ({
   onAddPhoto,
   onRemovePhoto,
   onRemoveItem,
-  globalPhotoCount,
+  canMoveUp = false,
+  canMoveDown = false,
+  onMoveUp,
+  onMoveDown,
+  dragHandleProps,
 }) => {
   const [showPhotoInput, setShowPhotoInput] = useState(false);
   const [showObservations, setShowObservations] = useState(false);
@@ -136,10 +143,52 @@ const ChecklistItem = ({
   return (
     <div
       data-testid="checklist-item"
-      className={`border-2 rounded-lg p-4 mb-3 transition-all duration-200 ${getStatusColor()}`}
+      className={`border-2 rounded-lg p-4 transition-all duration-200 ${getStatusColor()}`}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
-        <h4 className="font-bold text-slate-900 flex-1 leading-snug">{item.name}</h4>
+        <div className="flex min-w-0 flex-1 gap-2">
+          {(onMoveUp || onMoveDown || dragHandleProps) && (
+            <div className="flex shrink-0 flex-col items-center gap-0.5 pt-0.5">
+              {onMoveUp && (
+                <button
+                  type="button"
+                  data-testid={`move-item-up-${item.name}`}
+                  disabled={!canMoveUp}
+                  onClick={onMoveUp}
+                  className="rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                  aria-label="Mover item para cima"
+                  title="Mover para cima"
+                >
+                  <ChevronUp size={22} aria-hidden />
+                </button>
+              )}
+              {dragHandleProps && (
+                <div
+                  {...dragHandleProps}
+                  className="cursor-grab touch-none select-none rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700 active:cursor-grabbing"
+                  aria-label="Arrastar para reordenar"
+                  title="Arrastar para reordenar"
+                >
+                  <GripVertical size={22} aria-hidden />
+                </div>
+              )}
+              {onMoveDown && (
+                <button
+                  type="button"
+                  data-testid={`move-item-down-${item.name}`}
+                  disabled={!canMoveDown}
+                  onClick={onMoveDown}
+                  className="rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                  aria-label="Mover item para baixo"
+                  title="Mover para baixo"
+                >
+                  <ChevronDown size={22} aria-hidden />
+                </button>
+              )}
+            </div>
+          )}
+          <h4 className="min-w-0 flex-1 font-bold text-slate-900 leading-snug">{item.name}</h4>
+        </div>
         <div className="flex shrink-0 items-center gap-1">
           {onRemoveItem && (
             <button

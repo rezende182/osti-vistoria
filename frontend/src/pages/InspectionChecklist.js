@@ -144,6 +144,8 @@ const InspectionChecklist = () => {
   const [showAddRoom, setShowAddRoom] = useState(false);
   /** Confirmação antes de excluir cômodo (mobile + desktop) */
   const [deleteRoomTarget, setDeleteRoomTarget] = useState(null);
+  /** Confirmação antes de remover item do checklist */
+  const [deleteItemTarget, setDeleteItemTarget] = useState(null);
   /** Edição do nome exibido do cômodo (ex.: "Quarto" → "Suíte") */
   const [roomNameEdit, setRoomNameEdit] = useState(null);
   /** Modal: adicionar item personalizado ao cômodo */
@@ -280,23 +282,84 @@ const InspectionChecklist = () => {
     setRoomsData(renumberedData);
   };
 
-  const handleRemoveItem = (roomIndex, itemIndex) => {
-    const item = roomsData[roomIndex]?.items[itemIndex];
+  const requestDeleteItem = (roomIndex, itemIndex) => {
+    const room = roomsData[roomIndex];
+    const item = room?.items[itemIndex];
     if (!item) return;
-    if (
-      !window.confirm(
-        `Remover o item "${item.name}"? Use quando este elemento não existir nesta vistoria.`
-      )
-    ) {
+    setDeleteItemTarget({
+      roomId: room.room_id,
+      itemId: item.id,
+      name: item.name,
+    });
+  };
+
+  const confirmDeleteItem = () => {
+    if (!deleteItemTarget) return;
+    const { roomId, itemId, name } = deleteItemTarget;
+    setRoomsData((prev) => {
+      const newRoomsData = prev.map((room) => {
+        if (room.room_id !== roomId) return room;
+        let idx = itemId ? room.items.findIndex((it) => it.id === itemId) : -1;
+        if (idx < 0) idx = room.items.findIndex((it) => it.name === name);
+        if (idx < 0) return room;
+        return {
+          ...room,
+          items: room.items.filter((_, i) => i !== idx),
+        };
+      });
+      return renumberAllPhotos(newRoomsData);
+    });
+    setDeleteItemTarget(null);
+    toast.success('Item removido.');
+  };
+
+  /** Reordenar itens dentro do cômodo (PDF e fotos seguem a nova ordem) */
+  const [itemDragSource, setItemDragSource] = useState(null);
+
+  const moveItemInRoom = (roomIndex, fromIndex, toIndex) => {
+    if (fromIndex === toIndex) return;
+    setRoomsData((prev) => {
+      const newRoomsData = prev.map((r, ri) => {
+        if (ri !== roomIndex) return r;
+        const items = [...r.items];
+        const [removed] = items.splice(fromIndex, 1);
+        items.splice(toIndex, 0, removed);
+        return { ...r, items };
+      });
+      return renumberAllPhotos(newRoomsData);
+    });
+  };
+
+  const handleItemDragStart = (e, roomIndex, itemIndex) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ roomIndex, itemIndex }));
+    setItemDragSource({ roomIndex, itemIndex });
+  };
+
+  const handleItemDragEnd = () => {
+    setItemDragSource(null);
+  };
+
+  const handleItemDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleItemDrop = (e, roomIndex, toIndex) => {
+    e.preventDefault();
+    let data;
+    try {
+      data = JSON.parse(e.dataTransfer.getData('text/plain') || '{}');
+    } catch {
+      setItemDragSource(null);
       return;
     }
-    const newRoomsData = [...roomsData];
-    newRoomsData[roomIndex] = {
-      ...newRoomsData[roomIndex],
-      items: newRoomsData[roomIndex].items.filter((_, i) => i !== itemIndex),
-    };
-    setRoomsData(renumberAllPhotos(newRoomsData));
-    toast.success('Item removido.');
+    if (data.roomIndex !== roomIndex || typeof data.itemIndex !== 'number') {
+      setItemDragSource(null);
+      return;
+    }
+    moveItemInRoom(roomIndex, data.itemIndex, toIndex);
+    setItemDragSource(null);
   };
 
   const cancelAddItemModal = () => {
@@ -650,6 +713,46 @@ const InspectionChecklist = () => {
         </div>
       )}
 
+      {deleteItemTarget && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-item-title"
+            className="w-full max-w-md rounded-t-xl bg-white p-6 shadow-xl sm:rounded-xl"
+          >
+            <h3
+              id="delete-item-title"
+              className="mb-2 text-lg font-bold text-slate-900 font-secondary uppercase"
+            >
+              Remover item?
+            </h3>
+            <p className="mb-6 text-sm leading-relaxed text-slate-600">
+              Remover o item{' '}
+              <strong className="text-slate-900">&quot;{deleteItemTarget.name}&quot;</strong>? Use
+              quando este elemento não existir nesta vistoria.
+            </p>
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteItemTarget(null)}
+                className="min-h-touch w-full rounded-lg border-2 border-slate-200 px-4 py-3 font-semibold text-slate-700 transition-colors hover:bg-slate-50 sm:min-h-0 sm:w-auto"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                data-testid="confirm-delete-item-button"
+                onClick={confirmDeleteItem}
+                className="min-h-touch w-full rounded-lg bg-red-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-red-700 sm:min-h-0 sm:w-auto"
+              >
+                Remover item
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {addItemForRoomId && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
           <div
@@ -836,18 +939,63 @@ const InspectionChecklist = () => {
               )}
             </div>
 
-            {selectedRoom?.items.map((item, itemIndex) => (
-              <ChecklistItem
-                key={item.id || `${selectedRoomId}-${itemIndex}`}
-                item={item}
-                onChange={(updatedItem, shouldRenumber) =>
-                  handleItemChange(selectedRoomIndex, itemIndex, updatedItem, shouldRenumber)
-                }
-                onAddPhoto={(photoData) => handleAddPhoto(selectedRoomIndex, itemIndex, photoData)}
-                onRemovePhoto={(photoIndex) => handleRemovePhoto(selectedRoomIndex, itemIndex, photoIndex)}
-                onRemoveItem={() => handleRemoveItem(selectedRoomIndex, itemIndex)}
-              />
-            ))}
+            {selectedRoom?.items.map((item, itemIndex) => {
+              const itemCount = selectedRoom.items.length;
+              const canReorder = itemCount > 1;
+              return (
+                <div
+                  key={item.id || `${selectedRoomId}-${itemIndex}`}
+                  onDragOver={canReorder ? handleItemDragOver : undefined}
+                  onDrop={
+                    canReorder
+                      ? (ev) => handleItemDrop(ev, selectedRoomIndex, itemIndex)
+                      : undefined
+                  }
+                  className={`mb-3 rounded-xl transition-opacity ${
+                    itemDragSource?.roomIndex === selectedRoomIndex &&
+                    itemDragSource?.itemIndex === itemIndex
+                      ? 'opacity-50'
+                      : ''
+                  }`}
+                >
+                  <ChecklistItem
+                    item={item}
+                    onChange={(updatedItem, shouldRenumber) =>
+                      handleItemChange(selectedRoomIndex, itemIndex, updatedItem, shouldRenumber)
+                    }
+                    onAddPhoto={(photoData) =>
+                      handleAddPhoto(selectedRoomIndex, itemIndex, photoData)
+                    }
+                    onRemovePhoto={(photoIndex) =>
+                      handleRemovePhoto(selectedRoomIndex, itemIndex, photoIndex)
+                    }
+                    onRemoveItem={() => requestDeleteItem(selectedRoomIndex, itemIndex)}
+                    canMoveUp={canReorder && itemIndex > 0}
+                    canMoveDown={canReorder && itemIndex < itemCount - 1}
+                    onMoveUp={
+                      canReorder
+                        ? () => moveItemInRoom(selectedRoomIndex, itemIndex, itemIndex - 1)
+                        : undefined
+                    }
+                    onMoveDown={
+                      canReorder
+                        ? () => moveItemInRoom(selectedRoomIndex, itemIndex, itemIndex + 1)
+                        : undefined
+                    }
+                    dragHandleProps={
+                      canReorder
+                        ? {
+                            draggable: true,
+                            onDragStart: (e) =>
+                              handleItemDragStart(e, selectedRoomIndex, itemIndex),
+                            onDragEnd: handleItemDragEnd,
+                          }
+                        : undefined
+                    }
+                  />
+                </div>
+              );
+            })}
 
             <div className="mt-2">
               <button
