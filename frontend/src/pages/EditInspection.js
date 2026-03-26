@@ -347,6 +347,62 @@ const EditInspection = () => {
             </div>
           )}
 
+          {/* Tipo do imóvel: Térreo / Sobrado — logo após localização (destaque no fluxo Casa) */}
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+            <label className="text-xs font-bold tracking-wider uppercase text-slate-600 mb-2 block">
+              Tipo do imóvel (opcional)
+            </label>
+            {formData.tipo_vistoria_fluxo === 'casa' && (
+              <p className="mb-3 text-xs text-slate-600">
+                Indique se a casa é térrea ou sobrado. Se for sobrado, informe o número de pavimentos.
+              </p>
+            )}
+            <div className="flex gap-2">
+              {[
+                { id: 'terreo', label: 'Térreo' },
+                { id: 'sobrado', label: 'Sobrado' },
+              ].map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  data-testid={`imovel-tipologia-${id}`}
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      imovel_tipologia: id,
+                      imovel_numero_pavimentos: id === 'terreo' ? '' : formData.imovel_numero_pavimentos,
+                    })
+                  }
+                  className={`flex-1 py-3 px-4 rounded-lg font-semibold text-sm transition-all duration-200 sm:text-base ${
+                    formData.imovel_tipologia === id
+                      ? 'bg-slate-900 text-white shadow-md'
+                      : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {formData.imovel_tipologia === 'sobrado' && (
+              <div className="mt-4">
+                <label className="text-xs font-bold tracking-wider uppercase text-slate-600 mb-2 block">
+                  Número de pavimentos (opcional)
+                </label>
+                <input
+                  data-testid="input-numero-pavimentos"
+                  type="text"
+                  name="imovel_numero_pavimentos"
+                  inputMode="numeric"
+                  value={formData.imovel_numero_pavimentos}
+                  onChange={handleChange}
+                  placeholder="Ex.: 2"
+                  className="w-full max-w-xs px-4 py-3 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
+                />
+              </div>
+            )}
+          </div>
+
           {/* Empreendimento */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
@@ -421,58 +477,6 @@ const EditInspection = () => {
               className="w-full max-w-xs border border-slate-300 rounded-lg"
             />
           </div>
-
-          {/* Tipo do imóvel: Térreo / Sobrado */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Tipo do imóvel (opcional)
-            </label>
-            <div className="flex gap-2">
-              {[
-                { id: 'terreo', label: 'Térreo' },
-                { id: 'sobrado', label: 'Sobrado' },
-              ].map(({ id, label }) => (
-                <button
-                  key={id}
-                  type="button"
-                  data-testid={`imovel-tipologia-${id}`}
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      imovel_tipologia: id,
-                      imovel_numero_pavimentos: id === 'terreo' ? '' : formData.imovel_numero_pavimentos,
-                    })
-                  }
-                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                    formData.imovel_tipologia === id
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {formData.imovel_tipologia === 'sobrado' && (
-            <div className="mb-4">
-              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                Número de pavimentos (opcional)
-              </label>
-              <input
-                data-testid="input-numero-pavimentos"
-                type="text"
-                name="imovel_numero_pavimentos"
-                inputMode="numeric"
-                value={formData.imovel_numero_pavimentos}
-                onChange={handleChange}
-                placeholder="Ex.: 2"
-                className="w-full max-w-xs px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoComplete="off"
-              />
-            </div>
-          )}
 
           {/* Condição do imóvel (novo / usado / reformado) */}
           <div className="mb-4">
