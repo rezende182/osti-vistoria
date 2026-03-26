@@ -103,6 +103,8 @@ class InspectionCreateIn(BaseModel):
     horario_termino: str = ""
     tipo_imovel: Literal["novo", "usado", "reformado"] = "novo"
     energia_disponivel: Literal["sim", "nao"] = "sim"
+    imovel_tipologia: Literal["terreo", "sobrado"] = "terreo"
+    imovel_numero_pavimentos: str = ""
     documentos_recebidos: List[str] = []
     tipo_vistoria_fluxo: Optional[Literal["apartamento", "casa"]] = None
     pdf_logo_data_url: Optional[str] = Field(
@@ -220,6 +222,8 @@ class Inspection(BaseModel):
     horario_termino: str = ""
     tipo_imovel: Literal["novo", "usado", "reformado"]
     energia_disponivel: Literal["sim", "nao"]
+    imovel_tipologia: Literal["terreo", "sobrado"] = "terreo"
+    imovel_numero_pavimentos: str = ""
     documentos_recebidos: List[str] = []
     rooms_checklist: List[RoomChecklist] = []
     classificacao_final: Optional[
@@ -290,6 +294,8 @@ class IdentificationUpdate(BaseModel):
     pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
     pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
     tipo_vistoria_fluxo: Optional[Literal["apartamento", "casa"]] = None
+    imovel_tipologia: Optional[Literal["terreo", "sobrado"]] = None
+    imovel_numero_pavimentos: Optional[str] = None
 
     @field_validator("pdf_logo_data_url", mode="before")
     @classmethod

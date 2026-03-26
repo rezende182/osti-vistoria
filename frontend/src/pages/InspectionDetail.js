@@ -256,8 +256,34 @@ const InspectionDetail = () => {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Tipo do Imóvel</span>
-                <p className="text-slate-900">{inspection.tipo_imovel === 'novo' ? 'Novo' : inspection.tipo_imovel === 'usado' ? 'Usado' : 'Reformado'}</p>
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Tipo do imóvel</span>
+                <p className="text-slate-900">
+                  {inspection.imovel_tipologia === 'sobrado'
+                    ? 'Sobrado'
+                    : inspection.imovel_tipologia === 'terreo'
+                      ? 'Térreo'
+                      : '—'}
+                </p>
+              </div>
+              {inspection.imovel_tipologia === 'sobrado' && (
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                    Número de pavimentos
+                  </span>
+                  <p className="text-slate-900">{inspection.imovel_numero_pavimentos || '—'}</p>
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Condição do imóvel</span>
+                <p className="text-slate-900">
+                  {inspection.tipo_imovel === 'novo'
+                    ? 'Novo'
+                    : inspection.tipo_imovel === 'usado'
+                      ? 'Usado'
+                      : 'Reformado'}
+                </p>
               </div>
               <div>
                 <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Energia Disponível</span>

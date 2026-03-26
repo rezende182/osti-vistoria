@@ -120,6 +120,16 @@ function buildIdentificacaoTableBody(inspection) {
   const hi = pdfRowOptional('Horário de Início', inspection.horario_inicio);
   if (hi) rows.push(hi);
 
+  const tipE = inspection.imovel_tipologia;
+  const tipEStr =
+    tipE === 'terreo' ? 'Térreo' : tipE === 'sobrado' ? 'Sobrado' : '';
+  const trTipE = pdfRowOptional('Tipo do imóvel', tipEStr);
+  if (trTipE) rows.push(trTipE);
+  if (tipE === 'sobrado') {
+    const np = pdfRowOptional('Número de pavimentos', inspection.imovel_numero_pavimentos);
+    if (np) rows.push(np);
+  }
+
   const ht = pdfRowOptional('Horário de Término', inspection.horario_termino);
   if (ht) rows.push(ht);
 
@@ -132,7 +142,7 @@ function buildIdentificacaoTableBody(inspection) {
         : tipo === 'reformado'
           ? 'Reformado'
           : '';
-  const trTipo = pdfRowOptional('Tipo do Imóvel', tipoStr);
+  const trTipo = pdfRowOptional('Condição do imóvel', tipoStr);
   if (trTipo) rows.push(trTipo);
 
   const en = inspection.energia_disponivel;
