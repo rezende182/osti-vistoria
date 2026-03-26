@@ -340,12 +340,15 @@ const Dashboard = () => {
               </button>
             </DropdownMenuItem>
             <DropdownMenuItem
-              disabled
-              title="Em breve"
-              className="cursor-not-allowed rounded-2xl p-0 data-[disabled]:opacity-100"
-              aria-label="Casa — em breve"
+              asChild
+              onSelect={() => navigate('/new-inspection?tipo=casa')}
+              className="cursor-pointer rounded-2xl p-0 !text-white focus:bg-transparent focus:!text-white data-[highlighted]:bg-transparent data-[highlighted]:!text-white"
             >
-              <span className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-amber-500 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(245,158,11,0.4)] ring-2 ring-amber-300/80 opacity-55 saturate-75 sm:w-[6.25rem]">
+              <button
+                type="button"
+                className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-amber-500 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(245,158,11,0.45)] ring-2 ring-transparent transition hover:bg-amber-600 hover:shadow-[0_6px_20px_rgba(217,119,6,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 data-[highlighted]:!bg-amber-600 data-[highlighted]:!text-white data-[highlighted]:shadow-[0_6px_20px_rgba(217,119,6,0.45)] sm:w-[6.25rem]"
+                aria-label="Casa — iniciar identificação da vistoria"
+              >
                 <div className="flex min-h-[5.75rem] flex-1 items-center justify-center sm:min-h-[6rem]">
                   <Home
                     className="h-[4.75rem] w-[4.75rem] shrink-0 drop-shadow-sm sm:h-[5.25rem] sm:w-[5.25rem]"
@@ -356,7 +359,7 @@ const Dashboard = () => {
                 <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
                   Casa
                 </span>
-              </span>
+              </button>
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled

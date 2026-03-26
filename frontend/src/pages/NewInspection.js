@@ -16,10 +16,20 @@ import { BRASIL_UFS } from '../constants/brasilEstados';
 import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 
+/** Subtítulo do header conforme `?tipo=` na URL (Apartamento, Casa, …). */
+const SUBTIPO_FLUXO_LABEL = {
+  apartamento: 'Apartamento',
+  casa: 'Casa',
+};
+
 const NewInspection = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tipoImovelFluxo = searchParams.get('tipo');
+  const subtipoLabel =
+    tipoImovelFluxo && SUBTIPO_FLUXO_LABEL[tipoImovelFluxo]
+      ? SUBTIPO_FLUXO_LABEL[tipoImovelFluxo]
+      : null;
   const { user } = useAuth();
   const uid = user?.uid;
   const [showExitModal, setShowExitModal] = useState(false);
@@ -143,9 +153,9 @@ const NewInspection = () => {
                 <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
                   Identificação da Vistoria Técnica
                 </h1>
-                {tipoImovelFluxo === 'apartamento' && (
+                {subtipoLabel && (
                   <p className="w-full text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-300 sm:text-base">
-                    (Apartamento)
+                    ({subtipoLabel})
                   </p>
                 )}
               </div>
