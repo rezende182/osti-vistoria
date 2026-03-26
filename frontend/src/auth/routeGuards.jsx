@@ -31,7 +31,7 @@ export function LoginRoute() {
 
   if (user) {
     return (
-      <Navigate to={getPostLoginRedirect(location.state)} replace />
+      <Navigate to={getPostLoginRedirect()} replace />
     );
   }
 
@@ -50,7 +50,7 @@ export function RegisterRoute() {
   const location = useLocation();
 
   if (user) {
-    return <Navigate to={getPostLoginRedirect(location.state)} replace />;
+    return <Navigate to={getPostLoginRedirect()} replace />;
   }
 
   return (
@@ -68,7 +68,7 @@ export function ForgotPasswordRoute() {
   const location = useLocation();
 
   if (user) {
-    return <Navigate to={getPostLoginRedirect(location.state)} replace />;
+    return <Navigate to={getPostLoginRedirect()} replace />;
   }
 
   return (

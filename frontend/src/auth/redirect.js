@@ -1,18 +1,6 @@
 /**
- * Caminho seguro para redirecionar após login (evita URLs externas / open redirect).
+ * Após login/registo: sempre a página inicial (não restaura a rota anterior).
  */
-export function getPostLoginRedirect(navigationState) {
-  const from = navigationState?.from;
-  if (from && typeof from.pathname === 'string' && from.pathname.startsWith('/')) {
-    const path = `${from.pathname}${from.search || ''}${from.hash || ''}`;
-    if (
-      path.startsWith('/login') ||
-      path.startsWith('/register') ||
-      path.startsWith('/forgot-password')
-    ) {
-      return '/';
-    }
-    return path;
-  }
+export function getPostLoginRedirect() {
   return '/';
 }

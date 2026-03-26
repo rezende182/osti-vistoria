@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle, Download } from 'lucide-react';
+import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle, Download, Plus } from 'lucide-react';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
-import FAB from '../components/FAB';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import ConfirmModal from '../components/ConfirmModal';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth';
@@ -280,8 +286,32 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* FAB */}
-      <FAB onClick={() => navigate('/new-inspection')} />
+      {/* FAB: escolher tipo — só Apartamento abre o fluxo (Identificação em diante) por agora */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            data-testid="fab-new-inspection"
+            aria-haspopup="menu"
+            aria-label="Nova vistoria — escolher tipo de imóvel"
+            className="fixed bottom-20 right-6 bg-blue-600 text-white w-14 h-14 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.08)] flex items-center justify-center transition-all duration-200 hover:bg-blue-700 hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] active:scale-95 z-50"
+          >
+            <Plus size={28} />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="end" sideOffset={10} className="min-w-[12rem]">
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+            Tipo de imóvel
+          </DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => navigate('/new-inspection')}>Apartamento</DropdownMenuItem>
+          <DropdownMenuItem disabled title="Em breve">
+            Casa
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled title="Em breve">
+            Área comum
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal
