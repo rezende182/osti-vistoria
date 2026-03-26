@@ -175,7 +175,7 @@ const Dashboard = () => {
             <div className="flex min-w-0 items-center gap-4">
               <BrandLogo className="h-[5.75rem] w-auto max-w-[13.5rem] shrink-0 object-contain object-left py-1 sm:h-[6.75rem] sm:max-w-[16rem]" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight md:text-2xl">
-                Gestão inteligente de laudos de inspeções técnicas
+                Gestão de laudos de inspeções técnicas
               </h1>
             </div>
             <LogoutHeaderButton />

@@ -15,7 +15,7 @@ const AuthLayout = ({ children }) => (
       <div className={styles.brandGrid} aria-hidden />
       <div className={styles.brandInner}>
         <BrandLogo alt="" className={styles.logo} />
-        <h1 className={styles.headline}>Gestão inteligente de laudos de inspeções técnicas</h1>
+        <h1 className={styles.headline}>Gestão de laudos de inspeções técnicas</h1>
         <p className={styles.lead}>
           Transforme a gestão de vistorias em um processo simples, rápido e 100% digital. Tudo na
           palma da sua mão.
