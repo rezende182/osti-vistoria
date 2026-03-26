@@ -9,7 +9,7 @@ import {
   XCircle,
   Download,
   Plus,
-  Building2,
+  Building,
   Home,
   Trees,
 } from 'lucide-react';
@@ -317,7 +317,7 @@ const Dashboard = () => {
           className="w-auto min-w-0 border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10 sm:p-4"
         >
           <div
-            className="flex items-center gap-3 sm:gap-4"
+            className="flex items-stretch gap-2.5 sm:gap-3"
             role="group"
             aria-label="Nova vistoria por tipo de imóvel"
           >
@@ -328,11 +328,17 @@ const Dashboard = () => {
             >
               <button
                 type="button"
-                title="Apartamento"
-                className="flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:bg-blue-700"
+                className="flex w-[5.85rem] shrink-0 flex-col items-center justify-between gap-2 rounded-2xl bg-blue-600 px-2 pb-2.5 pt-3 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:bg-blue-700 sm:w-[6.25rem]"
                 aria-label="Apartamento — iniciar identificação da vistoria"
               >
-                <Building2 className="h-10 w-10" strokeWidth={2.25} aria-hidden />
+                <Building
+                  className="h-[3.25rem] w-[3.25rem] shrink-0 drop-shadow-sm sm:h-14 sm:w-14"
+                  strokeWidth={2.4}
+                  aria-hidden
+                />
+                <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
+                  Apartamento
+                </span>
               </button>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -341,8 +347,15 @@ const Dashboard = () => {
               className="cursor-not-allowed rounded-2xl p-0 data-[disabled]:opacity-100"
               aria-label="Casa — em breve"
             >
-              <span className="flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-[0_4px_14px_rgba(245,158,11,0.4)] ring-2 ring-amber-300/80 opacity-55 saturate-75">
-                <Home className="h-10 w-10" strokeWidth={2.25} aria-hidden />
+              <span className="flex w-[5.85rem] shrink-0 flex-col items-center justify-between gap-2 rounded-2xl bg-amber-500 px-2 pb-2.5 pt-3 text-white shadow-[0_4px_14px_rgba(245,158,11,0.4)] ring-2 ring-amber-300/80 opacity-55 saturate-75 sm:w-[6.25rem]">
+                <Home
+                  className="h-11 w-11 shrink-0 drop-shadow-sm sm:h-12 sm:w-12"
+                  strokeWidth={2.4}
+                  aria-hidden
+                />
+                <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
+                  Casa
+                </span>
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -351,8 +364,15 @@ const Dashboard = () => {
               className="cursor-not-allowed rounded-2xl p-0 data-[disabled]:opacity-100"
               aria-label="Área comum — em breve"
             >
-              <span className="flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-[0_4px_14px_rgba(5,150,105,0.4)] ring-2 ring-emerald-300/80 opacity-55 saturate-75">
-                <Trees className="h-10 w-10" strokeWidth={2.25} aria-hidden />
+              <span className="flex w-[5.85rem] shrink-0 flex-col items-center justify-between gap-2 rounded-2xl bg-emerald-600 px-2 pb-2.5 pt-3 text-white shadow-[0_4px_14px_rgba(5,150,105,0.4)] ring-2 ring-emerald-300/80 opacity-55 saturate-75 sm:w-[6.25rem]">
+                <Trees
+                  className="h-11 w-11 shrink-0 drop-shadow-sm sm:h-12 sm:w-12"
+                  strokeWidth={2.4}
+                  aria-hidden
+                />
+                <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
+                  Área comum
+                </span>
               </span>
             </DropdownMenuItem>
           </div>
