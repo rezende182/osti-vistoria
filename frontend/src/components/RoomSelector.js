@@ -68,7 +68,7 @@ const RoomSelector = ({
             disabled={!canAddRoom && rooms.length > 0}
             title={
               !canAddRoom && rooms.length > 0
-                ? 'Preencha Existência e Condição em todos os itens antes de adicionar outro cômodo'
+                ? 'Preencha Condição ou observação em todos os itens antes de adicionar outro cômodo'
                 : undefined
             }
             onClick={onAddRoom}

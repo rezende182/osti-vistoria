@@ -283,15 +283,15 @@ const InspectionDetail = () => {
             <h2 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">Inspeção Técnica e Checklist de Verificação</h2>
             {inspection.rooms_checklist.map((room, index) => {
               // Filtrar apenas itens que existem (aprovados ou reprovados)
-              const itensExistentes = room.items.filter(item => item.exists === 'sim');
-              
-              if (itensExistentes.length === 0) return null; // Não mostrar cômodos vazios
+              const itensLista = (room.items || []).filter((item) => item && item.exists !== 'nao');
+
+              if (itensLista.length === 0) return null;
               
               return (
                 <div key={index} className="mb-4 pb-4 border-b border-slate-200 last:border-0">
                   <h3 className="font-bold text-slate-900 mb-2">{room.room_name}</h3>
                   <div className="space-y-1">
-                    {itensExistentes.map((item, itemIndex) => {
+                    {itensLista.map((item, itemIndex) => {
                       const getItemColor = () => {
                         if (item.condition === 'aprovado') return 'text-green-600';
                         if (item.condition === 'reprovado') return 'text-red-600';

@@ -146,7 +146,24 @@ const InspectionChecklist = () => {
   const [deleteRoomTarget, setDeleteRoomTarget] = useState(null);
   /** Edição do nome exibido do cômodo (ex.: "Quarto" → "Suíte") */
   const [roomNameEdit, setRoomNameEdit] = useState(null);
+  /** Modal: adicionar item personalizado ao cômodo */
+  const [addItemForRoomId, setAddItemForRoomId] = useState(null);
+  const [newItemNameDraft, setNewItemNameDraft] = useState('');
   const contentRef = useRef(null);
+
+  const normalizeRoomsChecklist = (roomsChecklist) =>
+    (roomsChecklist || []).map((room) => ({
+      ...room,
+      items: (room.items || [])
+        .filter((it) => it && it.exists !== 'nao')
+        .map((it, idx) => {
+          const { exists: _e, ...rest } = it;
+          return {
+            ...rest,
+            id: it.id || `${room.room_id}_i_${idx}`,
+          };
+        }),
+    }));
 
   useEffect(() => {
     setRoomNameEdit((cur) => (cur && cur.roomId !== selectedRoomId ? null : cur));
@@ -163,7 +180,7 @@ const InspectionChecklist = () => {
         toast.info('Sem servidor — a mostrar dados guardados neste dispositivo.');
       }
       const inspection = res.data;
-      const roomsChecklist = inspection.rooms_checklist || [];
+      const roomsChecklist = normalizeRoomsChecklist(inspection.rooms_checklist || []);
 
       if (roomsChecklist.length === 0) {
         // Sem cômodos padrão - usuário adiciona
@@ -221,18 +238,6 @@ const InspectionChecklist = () => {
     return updatedRooms;
   };
 
-  // Função para contar total de fotos globalmente
-  const getTotalPhotoCount = () => {
-    let count = 0;
-    roomsData.forEach((room) => {
-      room.items.forEach((item) => {
-        const photos = item.photos || [];
-        count += photos.length;
-      });
-    });
-    return count;
-  };
-
   const handleItemChange = (roomIndex, itemIndex, updatedItem, shouldRenumber = false) => {
     const newRoomsData = [...roomsData];
     newRoomsData[roomIndex].items[itemIndex] = updatedItem;
@@ -275,14 +280,56 @@ const InspectionChecklist = () => {
     setRoomsData(renumberedData);
   };
 
-  const itemChecklistCompleto = (item) => {
-    if (!item.exists) return false;
-    if (item.exists === 'nao') return true;
-    if (item.exists === 'sim') {
-      const obs = item.observations && String(item.observations).trim();
-      return Boolean(item.condition || obs);
+  const handleRemoveItem = (roomIndex, itemIndex) => {
+    const item = roomsData[roomIndex]?.items[itemIndex];
+    if (!item) return;
+    if (
+      !window.confirm(
+        `Remover o item "${item.name}"? Use quando este elemento não existir nesta vistoria.`
+      )
+    ) {
+      return;
     }
-    return false;
+    const newRoomsData = [...roomsData];
+    newRoomsData[roomIndex] = {
+      ...newRoomsData[roomIndex],
+      items: newRoomsData[roomIndex].items.filter((_, i) => i !== itemIndex),
+    };
+    setRoomsData(renumberAllPhotos(newRoomsData));
+    toast.success('Item removido.');
+  };
+
+  const cancelAddItemModal = () => {
+    setAddItemForRoomId(null);
+    setNewItemNameDraft('');
+  };
+
+  const confirmAddItem = () => {
+    const name = newItemNameDraft.trim();
+    if (!name || !addItemForRoomId) {
+      toast.error('Indique o nome do item.');
+      return;
+    }
+    const rIdx = roomsData.findIndex((r) => r.room_id === addItemForRoomId);
+    if (rIdx < 0) return;
+    const room = roomsData[rIdx];
+    const newItem = {
+      id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      name,
+      condition: null,
+      observations: '',
+      photos: [],
+    };
+    const newRoomsData = [...roomsData];
+    newRoomsData[rIdx] = { ...room, items: [...room.items, newItem] };
+    setRoomsData(newRoomsData);
+    cancelAddItemModal();
+    toast.success('Item adicionado.');
+  };
+
+  const itemChecklistCompleto = (item) => {
+    const obs = item.observations && String(item.observations).trim();
+    return Boolean(item.condition || obs);
   };
 
   const calculateRoomProgress = (room) => {
@@ -324,12 +371,12 @@ const InspectionChecklist = () => {
       room_id: newId,
       room_name: newName,
       room_type: type,
-      items: template.items.map((itemName) => ({
+      items: template.items.map((itemName, idx) => ({
+        id: `${newId}_i_${idx}`,
         name: itemName,
-        exists: null,
         condition: null,
         observations: '',
-        photos: []
+        photos: [],
       }))
     };
 
@@ -378,19 +425,14 @@ const InspectionChecklist = () => {
     setDeleteRoomTarget(null);
   };
 
-  // Validar se todos os itens estão preenchidos (existência "sim" + observação dispensa condição)
   const validateChecklist = () => {
     const missingItems = [];
 
     roomsData.forEach((room) => {
       room.items.forEach((item) => {
-        if (!item.exists) {
-          missingItems.push(`${room.room_name}: "${item.name}" - Existência`);
-        } else if (item.exists === 'sim') {
-          const obs = item.observations && String(item.observations).trim();
-          if (!item.condition && !obs) {
-            missingItems.push(`${room.room_name}: "${item.name}" - Condição ou observação`);
-          }
+        const obs = item.observations && String(item.observations).trim();
+        if (!item.condition && !obs) {
+          missingItems.push(`${room.room_name}: "${item.name}" - Condição ou observação`);
         }
       });
     });
@@ -436,7 +478,7 @@ const InspectionChecklist = () => {
         const displayItems = missing.slice(0, 5);
         const remaining = missing.length - 5;
         let message =
-          '⚠️ Preencha Existência e, quando o item existir, Condição ou observação antes de adicionar outro cômodo.\n\nItens pendentes:\n' +
+          '⚠️ Preencha Condição ou observação em todos os itens antes de adicionar outro cômodo.\n\nItens pendentes:\n' +
           displayItems.join('\n');
         if (remaining > 0) {
           message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -464,7 +506,7 @@ const InspectionChecklist = () => {
       const remaining = missingItems.length - 5;
       
       let message =
-        '⚠️ Não é possível continuar!\n\nPreencha Existência e, quando o item existir, Condição ou observação.\n\nItens pendentes:\n' +
+        '⚠️ Não é possível continuar!\n\nPreencha Condição ou observação em cada item do checklist.\n\nItens pendentes:\n' +
         displayItems.join('\n');
       if (remaining > 0) {
         message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -608,6 +650,60 @@ const InspectionChecklist = () => {
         </div>
       )}
 
+      {addItemForRoomId && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-item-title"
+            className="w-full max-w-md rounded-t-xl bg-white p-6 shadow-xl sm:rounded-xl"
+          >
+            <h3
+              id="add-item-title"
+              className="mb-2 text-lg font-bold text-slate-900 font-secondary uppercase"
+            >
+              Novo item no cômodo
+            </h3>
+            <p className="mb-4 text-sm text-slate-600">
+              Indique o nome do ponto a verificar (ex.: &quot;Tomada da varanda&quot;).
+            </p>
+            <input
+              type="text"
+              data-testid="add-item-name-input"
+              value={newItemNameDraft}
+              onChange={(e) => setNewItemNameDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  confirmAddItem();
+                }
+                if (e.key === 'Escape') cancelAddItemModal();
+              }}
+              placeholder="Nome do item"
+              className="mb-4 w-full rounded-lg border-2 border-slate-200 px-3 py-2.5 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              autoFocus
+            />
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={cancelAddItemModal}
+                className="min-h-touch w-full rounded-lg border-2 border-slate-200 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50 sm:min-h-0 sm:w-auto"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                data-testid="confirm-add-item-button"
+                onClick={confirmAddItem}
+                className="min-h-touch w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 sm:min-h-0 sm:w-auto"
+              >
+                Adicionar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showAddRoom && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-t-xl bg-white p-6 shadow-xl sm:rounded-lg">
@@ -742,14 +838,32 @@ const InspectionChecklist = () => {
 
             {selectedRoom?.items.map((item, itemIndex) => (
               <ChecklistItem
-                key={`${selectedRoomId}-${itemIndex}`}
+                key={item.id || `${selectedRoomId}-${itemIndex}`}
                 item={item}
-                onChange={(updatedItem, shouldRenumber) => handleItemChange(selectedRoomIndex, itemIndex, updatedItem, shouldRenumber)}
+                onChange={(updatedItem, shouldRenumber) =>
+                  handleItemChange(selectedRoomIndex, itemIndex, updatedItem, shouldRenumber)
+                }
                 onAddPhoto={(photoData) => handleAddPhoto(selectedRoomIndex, itemIndex, photoData)}
                 onRemovePhoto={(photoIndex) => handleRemovePhoto(selectedRoomIndex, itemIndex, photoIndex)}
-                globalPhotoCount={getTotalPhotoCount()}
+                onRemoveItem={() => handleRemoveItem(selectedRoomIndex, itemIndex)}
               />
             ))}
+
+            <div className="mt-2">
+              <button
+                type="button"
+                data-testid="add-checklist-item-button"
+                onClick={() => {
+                  if (!selectedRoom) return;
+                  setAddItemForRoomId(selectedRoom.room_id);
+                  setNewItemNameDraft('');
+                }}
+                className="inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/80 px-4 py-3 text-sm font-semibold text-blue-900 transition-colors hover:border-blue-400 hover:bg-blue-100 sm:min-h-0 sm:w-auto sm:px-5"
+              >
+                <Plus size={20} className="shrink-0" aria-hidden />
+                Adicionar item ao cômodo
+              </button>
+            </div>
           </>
         )}
       </div>
@@ -773,7 +887,7 @@ const InspectionChecklist = () => {
               disabled={!canAddAnotherRoom}
               title={
                 !canAddAnotherRoom
-                  ? 'Preencha Existência e Condição em todos os itens de todos os cômodos antes de adicionar outro'
+                  ? 'Preencha Condição ou observação em todos os itens antes de adicionar outro cômodo'
                   : undefined
               }
               onClick={handleOpenAddRoomModal}

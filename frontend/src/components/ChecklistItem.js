@@ -6,6 +6,7 @@ import {
   Image,
   FolderOpen,
   Smartphone,
+  Trash2,
 } from 'lucide-react';
 import InspectionOrientationModal from './InspectionOrientationModal';
 import { getOrientationForItemName } from '../constants/itemOrientations';
@@ -16,6 +17,7 @@ const ChecklistItem = ({
   onChange,
   onAddPhoto,
   onRemovePhoto,
+  onRemoveItem,
   globalPhotoCount,
 }) => {
   const [showPhotoInput, setShowPhotoInput] = useState(false);
@@ -27,33 +29,15 @@ const ChecklistItem = ({
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  // Itens que não têm campo "Existência" - apenas Condição
-  const itensApenasCondicao = ['Limpeza', 'Dimensões'];
-  const isApenasCondicao = itensApenasCondicao.includes(item.name);
-
-  // Detectar se é dispositivo móvel
   const isMobileDevice = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  };
-
-  const handleExistenceChange = (value) => {
-    const newItem = { ...item, exists: value };
-    if (value === 'nao') {
-      newItem.condition = null;
-    }
-    onChange(newItem);
   };
 
   const handleConditionChange = (value) => {
     if (value === 'reprovado') {
       setShowObservations(true);
     }
-    // Para itens que são apenas condição, marcar automaticamente como "existe"
-    if (isApenasCondicao && item.exists !== 'sim') {
-      onChange({ ...item, exists: 'sim', condition: value });
-    } else {
-      onChange({ ...item, condition: value });
-    }
+    onChange({ ...item, condition: value });
   };
 
   useEffect(() => {
@@ -66,14 +50,12 @@ const ChecklistItem = ({
     onChange({ ...item, observations: value });
   };
 
-  // Escolher arquivo do dispositivo
   const handleChooseFile = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
 
-  // Tirar foto pela câmera
   const handleTakePhoto = () => {
     if (!isMobileDevice()) {
       setShowMobileWarning(true);
@@ -88,26 +70,24 @@ const ChecklistItem = ({
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     setIsCompressing(true);
-    
+
     for (const file of files) {
       try {
-        // Comprimir imagem antes de adicionar
         const compressedImage = await compressImage(file, {
           maxWidth: 1200,
           maxHeight: 1200,
-          quality: 0.7
+          quality: 0.7,
         });
-        
-        // Log da compressão
+
         const originalSize = file.size;
         const compressedSize = getDataUrlSize(compressedImage);
-        console.log(`[Compressão] Original: ${formatFileSize(originalSize)} → Comprimido: ${formatFileSize(compressedSize)}`);
-        
-        // Chamar função do componente pai para adicionar foto com número global
+        console.log(
+          `[Compressão] Original: ${formatFileSize(originalSize)} → Comprimido: ${formatFileSize(compressedSize)}`
+        );
+
         onAddPhoto(compressedImage);
       } catch (error) {
         console.error('Erro ao processar imagem:', error);
-        // Fallback: usar imagem original se compressão falhar
         const reader = new FileReader();
         const base64 = await new Promise((resolve) => {
           reader.onloadend = () => resolve(reader.result);
@@ -116,9 +96,8 @@ const ChecklistItem = ({
         onAddPhoto(base64);
       }
     }
-    
+
     setIsCompressing(false);
-    // Limpar input para permitir selecionar o mesmo arquivo novamente
     e.target.value = '';
   };
 
@@ -129,29 +108,24 @@ const ChecklistItem = ({
   const updatePhotoCaption = (index, caption) => {
     const newPhotos = [...(item.photos || [])];
     const photo = newPhotos[index];
-    
-    // Preserva o número da foto, mas permite editar o texto após "Foto X. "
-    // Se o usuário apagar o prefixo, recoloca automaticamente
+
     let finalCaption = caption;
     const prefixPattern = /^Foto \d+\.\s*/;
-    
+
     if (!prefixPattern.test(caption)) {
-      // Usuário apagou o prefixo, recoloca
       finalCaption = `Foto ${photo.number}. ${caption}`;
     }
-    
+
     newPhotos[index] = { ...photo, caption: finalCaption };
     onChange({ ...item, photos: newPhotos });
   };
 
   const getStatusColor = () => {
-    if (item.exists === 'nao') return 'border-slate-300 bg-slate-50';
     if (item.condition === 'aprovado') return 'border-green-500 bg-green-50';
     if (item.condition === 'reprovado') return 'border-red-500 bg-red-50';
     return 'border-slate-300 bg-white';
   };
 
-  // Converter formato antigo (array de strings) para novo formato (array de objetos)
   const photos = (item.photos || []).map((photo, index) => {
     if (typeof photo === 'string') {
       return { url: photo, caption: `Foto ${index + 1}`, number: index + 1 };
@@ -160,18 +134,35 @@ const ChecklistItem = ({
   });
 
   return (
-    <div data-testid="checklist-item" className={`border-2 rounded-lg p-4 mb-3 transition-all duration-200 ${getStatusColor()}`}>
+    <div
+      data-testid="checklist-item"
+      className={`border-2 rounded-lg p-4 mb-3 transition-all duration-200 ${getStatusColor()}`}
+    >
       <div className="flex items-start justify-between gap-2 mb-3">
         <h4 className="font-bold text-slate-900 flex-1 leading-snug">{item.name}</h4>
-        <button
-          type="button"
-          data-testid={`orientation-info-${item.name}`}
-          onClick={() => setShowOrientationModal(true)}
-          className="shrink-0 px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
-          aria-label="Dicas de inspeção"
-        >
-          Dicas
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {onRemoveItem && (
+            <button
+              type="button"
+              data-testid={`remove-item-${item.name}`}
+              onClick={onRemoveItem}
+              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 active:bg-red-100"
+              aria-label={`Remover item ${item.name} (não existe nesta vistoria)`}
+              title="Remover item (não existe nesta vistoria)"
+            >
+              <Trash2 size={20} aria-hidden />
+            </button>
+          )}
+          <button
+            type="button"
+            data-testid={`orientation-info-${item.name}`}
+            onClick={() => setShowOrientationModal(true)}
+            className="px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
+            aria-label="Dicas de inspeção"
+          >
+            Dicas
+          </button>
+        </div>
       </div>
 
       <InspectionOrientationModal
@@ -181,73 +172,36 @@ const ChecklistItem = ({
         bullets={orientation.bullets}
       />
 
-      {/* Existência - NÃO mostrar para Limpeza e Dimensões */}
-      {!isApenasCondicao && (
-        <div className="mb-3">
-          <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-            Existência
-          </label>
-          <div className="flex gap-2">
-            <button
-              data-testid={`exists-sim-${item.name}`}
-              onClick={() => handleExistenceChange('sim')}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                item.exists === 'sim'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Existe
-            </button>
-            <button
-              data-testid={`exists-nao-${item.name}`}
-              onClick={() => handleExistenceChange('nao')}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                item.exists === 'nao'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Não existe
-            </button>
-          </div>
+      <div className="mb-3">
+        <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+          Condição
+        </label>
+        <div className="flex gap-2">
+          <button
+            data-testid={`condition-aprovado-${item.name}`}
+            onClick={() => handleConditionChange('aprovado')}
+            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
+              item.condition === 'aprovado'
+                ? 'bg-green-600 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Aprovado
+          </button>
+          <button
+            data-testid={`condition-reprovado-${item.name}`}
+            onClick={() => handleConditionChange('reprovado')}
+            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
+              item.condition === 'reprovado'
+                ? 'bg-red-600 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Reprovado
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* Condição - Sempre mostrar para Limpeza/Dimensões, ou quando existe !== 'nao' */}
-      {(isApenasCondicao || item.exists !== 'nao') && (
-        <div className="mb-3">
-          <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-            Condição
-          </label>
-          <div className="flex gap-2">
-            <button
-              data-testid={`condition-aprovado-${item.name}`}
-              onClick={() => handleConditionChange('aprovado')}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                item.condition === 'aprovado'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Aprovado
-            </button>
-            <button
-              data-testid={`condition-reprovado-${item.name}`}
-              onClick={() => handleConditionChange('reprovado')}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                item.condition === 'reprovado'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Reprovado
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Action buttons */}
       <div className="flex gap-2">
         <button
           data-testid={`photo-button-${item.name}`}
@@ -267,14 +221,12 @@ const ChecklistItem = ({
         </button>
       </div>
 
-      {/* Photo upload */}
       {showPhotoInput && (
         <div className="mt-3 p-3 bg-slate-50 rounded-lg">
           <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-3 block">
             Adicionar Fotos
           </label>
-          
-          {/* Inputs escondidos */}
+
           <input
             ref={fileInputRef}
             type="file"
@@ -292,7 +244,6 @@ const ChecklistItem = ({
             className="hidden"
           />
 
-          {/* Botões de ação */}
           <div className="flex gap-2 mb-3">
             <button
               data-testid={`choose-file-${item.name}`}
@@ -332,7 +283,6 @@ const ChecklistItem = ({
             </button>
           </div>
 
-          {/* Aviso de dispositivo móvel */}
           {showMobileWarning && (
             <div className="mb-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
               <p className="text-sm text-yellow-800 font-medium">
@@ -350,10 +300,10 @@ const ChecklistItem = ({
                 <div key={index} className="bg-white rounded-lg p-3 border border-slate-200">
                   <div className="flex gap-3">
                     <div className="relative flex-shrink-0">
-                      <img 
-                        src={photo.url} 
-                        alt={photo.caption} 
-                        className="w-20 h-20 object-cover rounded-lg" 
+                      <img
+                        src={photo.url}
+                        alt={photo.caption}
+                        className="w-20 h-20 object-cover rounded-lg"
                       />
                       <button
                         onClick={() => handleRemovePhoto(index)}
@@ -365,9 +315,7 @@ const ChecklistItem = ({
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <Image size={14} className="text-slate-400" />
-                        <span className="text-xs font-bold text-blue-600">
-                          FOTO {photo.number}
-                        </span>
+                        <span className="text-xs font-bold text-blue-600">FOTO {photo.number}</span>
                       </div>
                       <input
                         type="text"
@@ -385,7 +333,6 @@ const ChecklistItem = ({
         </div>
       )}
 
-      {/* Observations */}
       {showObservations && (
         <div className="mt-3">
           <textarea

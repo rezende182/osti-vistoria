@@ -19,6 +19,8 @@ import {
   PDF_LIST_INDENT_MM,
   PDF_LIST_ITEM_EXTRA_GAP_MM,
   PDF_PARAGRAPH_GAP_MM,
+  PDF_CHAPTER_KEEP_WITH_NEXT_MM,
+  PDF_CHAPTER_KEEP_WITH_SIGNATURE_BLOCK_MM,
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 
@@ -295,7 +297,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA'
+    '1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA',
+    { minFollowingMm: Math.max(PDF_CHAPTER_KEEP_WITH_NEXT_MM, 48) }
   );
 
   const identificacaoData = [
@@ -344,7 +347,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '2. DOCUMENTOS RECEBIDOS E ANALISADOS'
+    '2. DOCUMENTOS RECEBIDOS E ANALISADOS',
+    { minFollowingMm: 28 }
   );
 
   doc.setFont(PDF_FONT, 'normal');
@@ -377,7 +381,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '3. INTRODUÇÃO'
+    '3. INTRODUÇÃO',
+    { minFollowingMm: 45 }
   );
 
   doc.setFont(PDF_FONT, 'normal');
@@ -400,18 +405,20 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO'
+    '4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO',
+    { minFollowingMm: 52 }
   );
 
   if (inspection.rooms_checklist && inspection.rooms_checklist.length > 0) {
     let roomNumber = 1;
 
     for (const room of inspection.rooms_checklist) {
-      // FILTRAR: Apenas itens que EXISTEM (exists === 'sim')
-      const itensExistentes = room.items.filter(item => item.exists === 'sim');
-      
-      // Se não há itens existentes neste cômodo, pular
-      if (itensExistentes.length === 0) {
+      // Itens no laudo: todos exceto legado "não existe" (removidos na app)
+      const itensNoPdf = (room.items || []).filter(
+        (item) => item && item.exists !== 'nao'
+      );
+
+      if (itensNoPdf.length === 0) {
         continue;
       }
 
@@ -430,8 +437,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       doc.text('Itens verificados:', listX, yPos);
       yPos += PDF_BODY_LINE_MM + PDF_LIST_ITEM_EXTRA_GAP_MM;
 
-      // Itens do cômodo (APENAS os que existem)
-      for (const item of itensExistentes) {
+      for (const item of itensNoPdf) {
         // Espaço mínimo para faixa + condição (~30 mm); observações/fotos quebram depois
         checkNewPage(30);
 
@@ -450,9 +456,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         const obsTrim = (item.observations || '').trim();
         const hasCondition =
           item.condition === 'aprovado' || item.condition === 'reprovado';
-        /** Existência + observação preenchida, sem Aprovado/Reprovado (regra do checklist). */
-        const somenteObservacao =
-          item.exists === 'sim' && !hasCondition && obsTrim;
+        /** Observação preenchida sem Aprovado/Reprovado (fluxo do checklist). */
+        const somenteObservacao = !hasCondition && obsTrim;
 
         if (somenteObservacao) {
           yPos = drawBodyParagraphs(
@@ -581,7 +586,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // 5. CONCLUSÃO (espaço antes do título = 12 pt via drawChapterTitle; corpo = drawBodyParagraphs)
   // ============================================================
   checkNewPage(40);
-  yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '5. CONCLUSÃO');
+  yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '5. CONCLUSÃO', {
+    minFollowingMm: 52,
+  });
 
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
@@ -638,7 +645,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '6. RESPONSÁVEL TÉCNICO / ASSINATURA'
+    '6. RESPONSÁVEL TÉCNICO / ASSINATURA',
+    { minFollowingMm: PDF_CHAPTER_KEEP_WITH_SIGNATURE_BLOCK_MM }
   );
 
   const responsavel = inspection.responsavel_final || inspection.responsavel_tecnico || '-';
@@ -674,7 +682,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '7. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS'
+    '7. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS',
+    { minFollowingMm: 42 }
   );
 
   yPos = drawBodyParagraphs(

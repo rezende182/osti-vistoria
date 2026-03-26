@@ -18,6 +18,12 @@ export const PDF_CHAPTER_LINE_MM = (PDF_CHAPTER_TITLE_PT / PDF_BODY_PT) * PDF_BO
 export const PDF_SUBSECTION_BEFORE_MM = 8 * PDF_PT_TO_MM;
 export const PDF_SUBSECTION_AFTER_MM = 4 * PDF_PT_TO_MM;
 
+/** Reserva mínima sob o título para não deixar título órfão no fim da página */
+export const PDF_CHAPTER_KEEP_WITH_NEXT_MM = 36;
+export const PDF_SUBSECTION_KEEP_WITH_NEXT_MM = 40;
+/** Secção 6 (assinatura): bloco ~12+26+10+linhas+rodapé */
+export const PDF_CHAPTER_KEEP_WITH_SIGNATURE_BLOCK_MM = 102;
+
 /** Recuo uniforme para listas e blocos do checklist (a partir da margem esquerda) */
 export const PDF_LIST_INDENT_MM = 5;
 /** Espaço extra entre itens de lista/checklist (valor médio 4–6 pt) */
@@ -163,9 +169,14 @@ const defaultPageOpts = () => ({
 
 /**
  * Título de capítulo numerado: negrito 14 pt; espaço antes 12 pt e depois 6 pt (com quebra de página se necessário).
+ * `options.minFollowingMm` — se não couber título + este espaço para o conteúdo seguinte, quebra antes do título.
  */
-export function drawChapterTitle(doc, margin, contentWidth, yStart, title, pageOpts = {}) {
-  const po = { ...defaultPageOpts(), ...pageOpts };
+export function drawChapterTitle(doc, margin, contentWidth, yStart, title, options = {}) {
+  const {
+    minFollowingMm = PDF_CHAPTER_KEEP_WITH_NEXT_MM,
+    ...pageOptsRest
+  } = options;
+  const po = { ...defaultPageOpts(), ...pageOptsRest };
   const bottomSafe = po.bottomMarginMm;
   const topReset = po.topMarginMm;
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -179,7 +190,7 @@ export function drawChapterTitle(doc, margin, contentWidth, yStart, title, pageO
     PDF_CHAPTER_TITLE_BEFORE_MM + lines.length * lineH + PDF_CHAPTER_TITLE_AFTER_MM;
 
   let y = yStart;
-  if (y + totalNeeded > pageHeight - bottomSafe) {
+  if (y + totalNeeded + minFollowingMm > pageHeight - bottomSafe) {
     doc.addPage();
     y = topReset;
   }
@@ -199,9 +210,14 @@ export function drawChapterTitle(doc, margin, contentWidth, yStart, title, pageO
 
 /**
  * Subtítulo de secção (ex.: nome do cômodo): negrito 12 pt; antes 8 pt / depois 4 pt.
+ * `options.minFollowingMm` — mantém subtítulo junto ao início do conteúdo seguinte.
  */
-export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, pageOpts = {}) {
-  const po = { ...defaultPageOpts(), ...pageOpts };
+export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, options = {}) {
+  const {
+    minFollowingMm = PDF_SUBSECTION_KEEP_WITH_NEXT_MM,
+    ...pageOptsRest
+  } = options;
+  const po = { ...defaultPageOpts(), ...pageOptsRest };
   const bottomSafe = po.bottomMarginMm;
   const topReset = po.topMarginMm;
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -215,7 +231,7 @@ export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, pa
     PDF_SUBSECTION_BEFORE_MM + lines.length * lineH + PDF_SUBSECTION_AFTER_MM;
 
   let y = yStart;
-  if (y + totalNeeded > pageHeight - bottomSafe) {
+  if (y + totalNeeded + minFollowingMm > pageHeight - bottomSafe) {
     doc.addPage();
     y = topReset;
   }
