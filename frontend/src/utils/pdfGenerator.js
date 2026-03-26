@@ -18,7 +18,9 @@ import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 const PDF_LOGO_W_MM = 52;
 const PDF_LOGO_H_MM = 22;
 
-const PDF_TITLE_FULL = 'RELATÓRIO DE VISTORIA DE RECEBIMENTO DE IMÓVEL';
+const PDF_TITLE_LINE1 = 'RELATÓRIO DE VISTORIA';
+const PDF_TITLE_LINE2 = 'RECEBIMENTO DE IMÓVEL';
+const PDF_TITLE_LINES = [PDF_TITLE_LINE1, PDF_TITLE_LINE2];
 
 // Texto legal padrão
 const LEGAL_TEXT =
@@ -243,28 +245,25 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     }
 
     const titleX = margin + PDF_LOGO_W_MM + 8;
-    const titleMaxW = contentWidth - PDF_LOGO_W_MM - 8;
     doc.setFontSize(14);
-    const titleLines = doc.splitTextToSize(PDF_TITLE_FULL, titleMaxW);
     const lineStep = 7;
     let ty = yPos + 8;
-    titleLines.forEach((ln) => {
+    PDF_TITLE_LINES.forEach((ln) => {
       doc.text(ln, titleX, ty);
       ty += lineStep;
     });
 
-    const titleBlockH = titleLines.length * lineStep + 4;
+    const titleBlockH = PDF_TITLE_LINES.length * lineStep + 4;
     yPos += Math.max(PDF_LOGO_H_MM + 8, titleBlockH, 28);
   } else {
     doc.setFontSize(16);
-    const titleLines = doc.splitTextToSize(PDF_TITLE_FULL, contentWidth);
     const lineStep = 8;
     let ty = yPos + 6;
-    titleLines.forEach((ln) => {
+    PDF_TITLE_LINES.forEach((ln) => {
       doc.text(ln, margin, ty);
       ty += lineStep;
     });
-    yPos += titleLines.length * lineStep + 10;
+    yPos += PDF_TITLE_LINES.length * lineStep + 10;
   }
 
   // ============================================================
