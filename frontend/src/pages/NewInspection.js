@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Home, ArrowRight } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
@@ -22,6 +22,23 @@ const SUBTIPO_FLUXO_LABEL = {
   casa: 'Casa',
 };
 
+function isFilled(v) {
+  return v != null && String(v).trim() !== '';
+}
+
+/** Obrigatórios: cliente, data, endereço, cidade, UF, responsável técnico, CREA. */
+function validateIdentificationRequired(fd) {
+  return (
+    isFilled(fd.cliente) &&
+    isFilled(fd.data) &&
+    isFilled(fd.endereco) &&
+    isFilled(fd.cidade) &&
+    isFilled(fd.uf) &&
+    isFilled(fd.responsavel_tecnico) &&
+    isFilled(fd.crea)
+  );
+}
+
 const NewInspection = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -33,6 +50,7 @@ const NewInspection = () => {
   const { user } = useAuth();
   const uid = user?.uid;
   const [showExitModal, setShowExitModal] = useState(false);
+
   const [formData, setFormData] = useState({
     cliente: '',
     data: new Date().toISOString().split('T')[0],
@@ -52,6 +70,12 @@ const NewInspection = () => {
     pdf_empresa_nome: '',
     pdf_empresa_cnpj: '',
   });
+
+  useEffect(() => {
+    if (tipoImovelFluxo === 'casa') {
+      setFormData((prev) => ({ ...prev, unidade: '' }));
+    }
+  }, [tipoImovelFluxo]);
 
   const documentosOptions = [
     'Manual do proprietário',
@@ -78,8 +102,10 @@ const NewInspection = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.cliente || !formData.endereco || !formData.unidade) {
-      toast.error('Preencha todos os campos obrigatórios');
+    if (!validateIdentificationRequired(formData)) {
+      toast.error(
+        'Preencha os campos obrigatórios: cliente, data, endereço, cidade, UF, responsável técnico e CREA.'
+      );
       return;
     }
 
@@ -88,9 +114,16 @@ const NewInspection = () => {
       return;
     }
 
+    const payload = { ...formData };
+    if (tipoImovelFluxo === 'apartamento' || tipoImovelFluxo === 'casa') {
+      payload.tipo_vistoria_fluxo = tipoImovelFluxo;
+    } else {
+      delete payload.tipo_vistoria_fluxo;
+    }
+
     try {
       await initDB().catch(() => {});
-      const result = await inspectionsApi.create(formData, uid);
+      const result = await inspectionsApi.create(payload, uid);
       if (result.ok) {
         toast.success('Vistoria criada com sucesso!');
         navigate(`/inspection/${result.data.id}/checklist`);
@@ -104,7 +137,7 @@ const NewInspection = () => {
       const offlineInspection = {
         id,
         userId: uid,
-        ...formData,
+        ...payload,
         pdf_logo_data_url: formData.pdf_logo_data_url || '',
         pdf_empresa_nome: formData.pdf_empresa_nome || '',
         pdf_empresa_cnpj: formData.pdf_empresa_cnpj || '',
@@ -118,7 +151,7 @@ const NewInspection = () => {
       await enqueueSyncOperation({
         method: 'POST',
         path: '/inspections',
-        payload: { ...formData, userId: uid },
+        payload: { ...payload, userId: uid },
         dedupKey: `POST:/inspections:local:${id}`,
         localInspectionId: id,
         userId: uid,
@@ -260,7 +293,7 @@ const NewInspection = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                Cidade
+                Cidade *
               </label>
               <input
                 data-testid="input-cidade"
@@ -268,18 +301,20 @@ const NewInspection = () => {
                 name="cidade"
                 value={formData.cidade}
                 onChange={handleChange}
+                required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
               <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                UF
+                UF *
               </label>
               <select
                 data-testid="input-uf"
                 name="uf"
                 value={formData.uf}
                 onChange={handleChange}
+                required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="">Selecione</option>
@@ -292,26 +327,27 @@ const NewInspection = () => {
             </div>
           </div>
 
-          {/* Apartamento */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Apartamento *
-            </label>
-            <input
-              data-testid="input-unidade"
-              type="text"
-              name="unidade"
-              value={formData.unidade}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {/* Apartamento — só fluxo apartamento (não Casa) */}
+          {tipoImovelFluxo !== 'casa' && (
+            <div className="mb-4">
+              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                Apartamento (opcional)
+              </label>
+              <input
+                data-testid="input-unidade"
+                type="text"
+                name="unidade"
+                value={formData.unidade}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
 
           {/* Empreendimento */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Empreendimento
+              Empreendimento (opcional)
             </label>
             <input
               data-testid="input-empreendimento"
@@ -326,7 +362,7 @@ const NewInspection = () => {
           {/* Construtora */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Construtora
+              Construtora (opcional)
             </label>
             <input
               data-testid="input-construtora"
@@ -341,7 +377,7 @@ const NewInspection = () => {
           {/* Responsável Técnico */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Responsável Técnico
+              Responsável Técnico *
             </label>
             <input
               data-testid="input-responsavel"
@@ -349,6 +385,7 @@ const NewInspection = () => {
               name="responsavel_tecnico"
               value={formData.responsavel_tecnico}
               onChange={handleChange}
+              required
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -356,7 +393,7 @@ const NewInspection = () => {
           {/* CREA */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              CREA
+              CREA *
             </label>
             <input
               data-testid="input-crea"
@@ -364,6 +401,7 @@ const NewInspection = () => {
               name="crea"
               value={formData.crea}
               onChange={handleChange}
+              required
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -371,7 +409,7 @@ const NewInspection = () => {
           {/* Horário de Início */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Horário de Início
+              Horário de Início (opcional)
             </label>
             <TimePickerField
               data-testid="input-horario-inicio"
@@ -384,7 +422,7 @@ const NewInspection = () => {
           {/* Tipo do Imóvel */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Tipo do Imóvel
+              Tipo do Imóvel (opcional)
             </label>
             <div className="flex gap-2">
               {['novo', 'usado', 'reformado'].map((tipo) => (
@@ -408,7 +446,7 @@ const NewInspection = () => {
           {/* Energia Disponível */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Energia Disponível
+              Energia Disponível (opcional)
             </label>
             <div className="flex gap-2">
               {['sim', 'nao'].map((opcao) => (
@@ -432,7 +470,7 @@ const NewInspection = () => {
           {/* Documentos Recebidos */}
           <div className="mb-6">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Documentos Recebidos
+              Documentos Recebidos (opcional)
             </label>
             <div className="space-y-2">
               {documentosOptions.map((doc) => (

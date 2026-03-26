@@ -79,14 +79,87 @@ function formatPdfIntroLocalizacao(inspection) {
   return cidadeUf || '-';
 }
 
+/** Linha sempre presente na tabela (valor vazio → "—"). */
+function pdfRowRequired(label, value) {
+  const v = value == null ? '' : String(value).trim();
+  return [label, v || '—'];
+}
+
+/** Linha só se houver texto (campos opcionais da identificação). */
+function pdfRowOptional(label, value) {
+  const v = value == null ? '' : String(value).trim();
+  if (!v) return null;
+  return [label, v];
+}
+
+/** Corpo da tabela 1 — obrigatórios sempre; opcionais só se preenchidos. */
+function buildIdentificacaoTableBody(inspection) {
+  const fluxo = String(inspection.tipo_vistoria_fluxo || '').trim();
+  const rows = [];
+
+  rows.push(pdfRowRequired('Cliente', inspection.cliente));
+  rows.push(pdfRowRequired('Endereço', inspection.endereco));
+  rows.push(pdfRowRequired('Cidade', inspection.cidade));
+  rows.push(pdfRowRequired('UF', inspection.uf));
+
+  if (fluxo !== 'casa') {
+    const apt = pdfRowOptional('Apartamento', inspection.unidade);
+    if (apt) rows.push(apt);
+  }
+
+  const emp = pdfRowOptional('Empreendimento', inspection.empreendimento);
+  if (emp) rows.push(emp);
+
+  const cons = pdfRowOptional('Construtora', inspection.construtora);
+  if (cons) rows.push(cons);
+
+  rows.push(pdfRowRequired('Responsável Técnico', inspection.responsavel_tecnico));
+  rows.push(pdfRowRequired('CREA', inspection.crea));
+  rows.push(pdfRowRequired('Data', formatDate(inspection.data)));
+
+  const hi = pdfRowOptional('Horário de Início', inspection.horario_inicio);
+  if (hi) rows.push(hi);
+
+  const ht = pdfRowOptional('Horário de Término', inspection.horario_termino);
+  if (ht) rows.push(ht);
+
+  const tipo = inspection.tipo_imovel;
+  const tipoStr =
+    tipo === 'novo'
+      ? 'Novo'
+      : tipo === 'usado'
+        ? 'Usado'
+        : tipo === 'reformado'
+          ? 'Reformado'
+          : '';
+  const trTipo = pdfRowOptional('Tipo do Imóvel', tipoStr);
+  if (trTipo) rows.push(trTipo);
+
+  const en = inspection.energia_disponivel;
+  const enStr = en === 'sim' ? 'Sim' : en === 'nao' ? 'Não' : '';
+  const trEn = pdfRowOptional('Energia Disponível', enStr);
+  if (trEn) rows.push(trEn);
+
+  return rows;
+}
+
 /** Texto fixo da secção 3. INTRODUÇÃO com dados da identificação. */
 function buildPdfIntroducaoText(inspection) {
   const loc = formatPdfIntroLocalizacao(inspection);
-  const apt = (inspection.unidade || '').trim() || '-';
-  const emp = (inspection.empreendimento || '').trim() || '-';
+  const fluxo = String(inspection.tipo_vistoria_fluxo || '').trim();
+  const apt = (inspection.unidade || '').trim();
+  const emp = (inspection.empreendimento || '').trim();
+
+  let complemento = '';
+  if (fluxo !== 'casa' && apt) {
+    complemento += `, apartamento nº: ${apt}`;
+  }
+  if (emp) {
+    complemento += `, do empreendimento ${emp}`;
+  }
 
   return [
-    `O presente laudo técnico, referente ao imóvel localizado no endereço: ${loc}, apartamento nº: ${apt}, do empreendimento ${emp}, tem como objetivo registrar os resultados da vistoria técnica realizada, avaliando as condições construtivas, acabamentos, instalações prediais e demais elementos relevantes para a utilização segura e adequada do bem.`,
+    `O presente laudo técnico, referente ao imóvel localizado no endereço: ${loc}${complemento}, tem como objetivo registrar os resultados da vistoria técnica realizada, avaliando as condições construtivas, acabamentos, instalações prediais e demais elementos relevantes para a utilização segura e adequada do bem.`,
     'A inspeção foi conduzida de acordo com normas técnicas aplicáveis e procedimentos de engenharia reconhecidos, buscando identificar eventuais irregularidades, vícios aparentes ou não conformidades que possam comprometer o uso, segurança ou desempenho do imóvel.',
     'Este documento constitui registro formal da condição do imóvel no momento da entrega, fornecendo suporte técnico para o recebimento e eventual acionamento de garantias junto à construtora, quando necessário.',
   ].join('\n\n');
@@ -368,22 +441,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     { minFollowingMm: Math.max(PDF_CHAPTER_KEEP_WITH_NEXT_MM, 48) }
   );
 
-  const identificacaoData = [
-    ['Cliente', inspection.cliente || '-'],
-    ['Endereço', inspection.endereco || '-'],
-    ['Cidade', inspection.cidade || '-'],
-    ['UF', inspection.uf || '-'],
-    ['Apartamento', inspection.unidade || '-'],
-    ['Empreendimento', inspection.empreendimento || '-'],
-    ['Construtora', inspection.construtora || '-'],
-    ['Responsável Técnico', inspection.responsavel_tecnico || '-'],
-    ['CREA', inspection.crea || '-'],
-    ['Data', formatDate(inspection.data)],
-    ['Horário de Início', inspection.horario_inicio || '-'],
-    ['Horário de Término', inspection.horario_termino || '-'],
-    ['Tipo do Imóvel', inspection.tipo_imovel === 'novo' ? 'Novo' : inspection.tipo_imovel === 'usado' ? 'Usado' : 'Reformado'],
-    ['Energia Disponível', inspection.energia_disponivel === 'sim' ? 'Sim' : 'Não']
-  ];
+  const identificacaoData = buildIdentificacaoTableBody(inspection);
 
   autoTable(doc, {
     startY: yPos,

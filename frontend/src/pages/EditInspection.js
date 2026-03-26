@@ -12,6 +12,27 @@ import { BRASIL_UFS } from '../constants/brasilEstados';
 import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 
+const SUBTIPO_FLUXO_LABEL = {
+  apartamento: 'Apartamento',
+  casa: 'Casa',
+};
+
+function isFilled(v) {
+  return v != null && String(v).trim() !== '';
+}
+
+function validateIdentificationRequired(fd) {
+  return (
+    isFilled(fd.cliente) &&
+    isFilled(fd.data) &&
+    isFilled(fd.endereco) &&
+    isFilled(fd.cidade) &&
+    isFilled(fd.uf) &&
+    isFilled(fd.responsavel_tecnico) &&
+    isFilled(fd.crea)
+  );
+}
+
 const EditInspection = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -37,6 +58,7 @@ const EditInspection = () => {
     pdf_logo_data_url: '',
     pdf_empresa_nome: '',
     pdf_empresa_cnpj: '',
+    tipo_vistoria_fluxo: '',
   });
   // Removed horario_termino - moved to finalization page
 
@@ -76,6 +98,7 @@ const EditInspection = () => {
         pdf_logo_data_url: data.pdf_logo_data_url || '',
         pdf_empresa_nome: data.pdf_empresa_nome || '',
         pdf_empresa_cnpj: data.pdf_empresa_cnpj || '',
+        tipo_vistoria_fluxo: data.tipo_vistoria_fluxo || '',
       });
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
@@ -107,8 +130,10 @@ const EditInspection = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.cliente || !formData.endereco || !formData.unidade) {
-      toast.error('Preencha todos os campos obrigatórios');
+    if (!validateIdentificationRequired(formData)) {
+      toast.error(
+        'Preencha os campos obrigatórios: cliente, data, endereço, cidade, UF, responsável técnico e CREA.'
+      );
       return;
     }
 
@@ -153,11 +178,19 @@ const EditInspection = () => {
             Página Inicial
           </button>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-4">
               <BrandLogo className="h-16 w-auto max-w-[12rem] shrink-0 object-contain object-left py-1 sm:h-[5.25rem] sm:max-w-[14rem]" />
-              <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
-                Identificação da Vistoria Técnica
-              </h1>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
+                  Identificação da Vistoria Técnica
+                </h1>
+                {formData.tipo_vistoria_fluxo &&
+                  SUBTIPO_FLUXO_LABEL[formData.tipo_vistoria_fluxo] && (
+                    <p className="w-full text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-300 sm:text-base">
+                      ({SUBTIPO_FLUXO_LABEL[formData.tipo_vistoria_fluxo]})
+                    </p>
+                  )}
+              </div>
             </div>
             <LogoutHeaderButton />
           </div>
@@ -259,7 +292,7 @@ const EditInspection = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                Cidade
+                Cidade *
               </label>
               <input
                 data-testid="input-cidade"
@@ -267,18 +300,20 @@ const EditInspection = () => {
                 name="cidade"
                 value={formData.cidade}
                 onChange={handleChange}
+                required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
               <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                UF
+                UF *
               </label>
               <select
                 data-testid="input-uf"
                 name="uf"
                 value={formData.uf}
                 onChange={handleChange}
+                required
                 className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="">Selecione</option>
@@ -291,26 +326,27 @@ const EditInspection = () => {
             </div>
           </div>
 
-          {/* Apartamento */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Apartamento *
-            </label>
-            <input
-              data-testid="input-unidade"
-              type="text"
-              name="unidade"
-              value={formData.unidade}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          {/* Apartamento — oculto em vistoria Casa */}
+          {formData.tipo_vistoria_fluxo !== 'casa' && (
+            <div className="mb-4">
+              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                Apartamento (opcional)
+              </label>
+              <input
+                data-testid="input-unidade"
+                type="text"
+                name="unidade"
+                value={formData.unidade}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
 
           {/* Empreendimento */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Empreendimento
+              Empreendimento (opcional)
             </label>
             <input
               data-testid="input-empreendimento"
@@ -325,7 +361,7 @@ const EditInspection = () => {
           {/* Construtora */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Construtora
+              Construtora (opcional)
             </label>
             <input
               data-testid="input-construtora"
@@ -340,7 +376,7 @@ const EditInspection = () => {
           {/* Responsável Técnico */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Responsável Técnico
+              Responsável Técnico *
             </label>
             <input
               data-testid="input-responsavel"
@@ -348,6 +384,7 @@ const EditInspection = () => {
               name="responsavel_tecnico"
               value={formData.responsavel_tecnico}
               onChange={handleChange}
+              required
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -355,7 +392,7 @@ const EditInspection = () => {
           {/* CREA */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              CREA
+              CREA *
             </label>
             <input
               data-testid="input-crea"
@@ -363,6 +400,7 @@ const EditInspection = () => {
               name="crea"
               value={formData.crea}
               onChange={handleChange}
+              required
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -370,7 +408,7 @@ const EditInspection = () => {
           {/* Horário de Início */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Horário de Início
+              Horário de Início (opcional)
             </label>
             <TimePickerField
               data-testid="input-horario-inicio"
@@ -383,7 +421,7 @@ const EditInspection = () => {
           {/* Tipo do Imóvel */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Tipo do Imóvel
+              Tipo do Imóvel (opcional)
             </label>
             <div className="flex gap-2">
               {['novo', 'usado', 'reformado'].map((tipo) => (
@@ -407,7 +445,7 @@ const EditInspection = () => {
           {/* Energia Disponível */}
           <div className="mb-4">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Energia Disponível
+              Energia Disponível (opcional)
             </label>
             <div className="flex gap-2">
               {['sim', 'nao'].map((opcao) => (
@@ -431,7 +469,7 @@ const EditInspection = () => {
           {/* Documentos Recebidos */}
           <div className="mb-6">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Documentos Recebidos
+              Documentos Recebidos (opcional)
             </label>
             <div className="space-y-2">
               {documentosOptions.map((doc) => (

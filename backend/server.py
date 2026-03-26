@@ -89,21 +89,22 @@ class InspectionCreateIn(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    cliente: str
-    data: str
-    endereco: str
-    cidade: str = ""
-    uf: str = ""
-    unidade: str
-    empreendimento: str
-    construtora: str
-    responsavel_tecnico: str
-    crea: str
-    horario_inicio: str
+    cliente: str = Field(..., min_length=1)
+    data: str = Field(..., min_length=1)
+    endereco: str = Field(..., min_length=1)
+    cidade: str = Field(..., min_length=1)
+    uf: str = Field(..., min_length=1)
+    responsavel_tecnico: str = Field(..., min_length=1)
+    crea: str = Field(..., min_length=1)
+    unidade: str = ""
+    empreendimento: str = ""
+    construtora: str = ""
+    horario_inicio: str = ""
     horario_termino: str = ""
-    tipo_imovel: Literal["novo", "usado", "reformado"]
-    energia_disponivel: Literal["sim", "nao"]
+    tipo_imovel: Literal["novo", "usado", "reformado"] = "novo"
+    energia_disponivel: Literal["sim", "nao"] = "sim"
     documentos_recebidos: List[str] = []
+    tipo_vistoria_fluxo: Optional[Literal["apartamento", "casa"]] = None
     pdf_logo_data_url: Optional[str] = Field(
         default=None,
         max_length=2_500_000,
@@ -210,13 +211,13 @@ class Inspection(BaseModel):
     endereco: str
     cidade: str = ""
     uf: str = ""
-    unidade: str
-    empreendimento: str
-    construtora: str
-    responsavel_tecnico: str
-    crea: str
-    horario_inicio: str
-    horario_termino: str
+    unidade: str = ""
+    empreendimento: str = ""
+    construtora: str = ""
+    responsavel_tecnico: str = ""
+    crea: str = ""
+    horario_inicio: str = ""
+    horario_termino: str = ""
     tipo_imovel: Literal["novo", "usado", "reformado"]
     energia_disponivel: Literal["sim", "nao"]
     documentos_recebidos: List[str] = []
@@ -237,6 +238,7 @@ class Inspection(BaseModel):
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
     pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
     pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
+    tipo_vistoria_fluxo: Optional[Literal["apartamento", "casa"]] = None
 
 
 class UserRegisterBody(BaseModel):
@@ -287,6 +289,7 @@ class IdentificationUpdate(BaseModel):
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
     pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
     pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
+    tipo_vistoria_fluxo: Optional[Literal["apartamento", "casa"]] = None
 
     @field_validator("pdf_logo_data_url", mode="before")
     @classmethod
