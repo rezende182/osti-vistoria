@@ -107,6 +107,26 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   return 'JPEG';
 }
 
+/** Rodapé esquerdo: empresa + CNPJ se preenchido; senão ENG: RESPONSÁVEL (maiúsculas). */
+function buildPdfFooterLeftLine(inspection) {
+  const empresa = String(inspection.pdf_empresa_nome || '').trim();
+  const cnpj = String(inspection.pdf_empresa_cnpj || '').trim();
+  const rt = String(
+    inspection.responsavel_final || inspection.responsavel_tecnico || ''
+  ).trim();
+
+  if (empresa) {
+    let line = empresa;
+    if (cnpj) {
+      line += ` — CNPJ: ${cnpj}`;
+    }
+    return `${line} - Relatório de Vistoria`;
+  }
+
+  const eng = rt && rt !== '-' ? rt.toUpperCase() : '—';
+  return `ENG: ${eng} - Relatório de Vistoria`;
+}
+
 // Formatar data
 const formatDate = (dateString) => {
   if (!dateString) return '-';
@@ -780,14 +800,25 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   // RODAPÉ em todas as páginas
   // ============================================================
+  const footerLeftText = buildPdfFooterLeftLine(inspection);
   const totalPages = doc.internal.getNumberOfPages();
+  const footerBottomY = pageHeight - 10;
+  const footerLineStep = PDF_BODY_LINE_MM * 0.72;
+
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
     doc.setFontSize(PDF_BODY_PT);
     doc.setFont(PDF_FONT, 'normal');
     doc.setTextColor(100, 100, 100);
-    doc.text('OSTI ENGENHARIA - Relatório de Vistoria', margin, pageHeight - 10);
-    doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+    const footerLines = doc.splitTextToSize(footerLeftText, contentWidth - 2);
+    let fy = footerBottomY - (footerLines.length - 1) * footerLineStep;
+    footerLines.forEach((ln) => {
+      doc.text(ln, margin, fy);
+      fy += footerLineStep;
+    });
+    doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, footerBottomY, {
+      align: 'right',
+    });
   }
 
   // Gerar arquivo

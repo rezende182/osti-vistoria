@@ -109,6 +109,16 @@ class InspectionCreateIn(BaseModel):
         max_length=2_500_000,
         description="data:image/png ou data:image/jpeg;base64,... para o cabeçalho do PDF",
     )
+    pdf_empresa_nome: Optional[str] = Field(
+        default=None,
+        max_length=300,
+        description="Nome da empresa (rodapé do PDF; opcional)",
+    )
+    pdf_empresa_cnpj: Optional[str] = Field(
+        default=None,
+        max_length=32,
+        description="CNPJ da empresa (rodapé do PDF; opcional)",
+    )
 
     @field_validator("pdf_logo_data_url", mode="before")
     @classmethod
@@ -129,6 +139,16 @@ class InspectionCreateIn(BaseModel):
             raise ValueError("Logótipo: envie uma data URL de imagem (PNG ou JPEG).")
         return s
 
+    @field_validator("pdf_empresa_nome", "pdf_empresa_cnpj", mode="before")
+    @classmethod
+    def _empty_empresa_create(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            return s if s else None
+        return v
+
 
 class InspectionUpdate(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -147,6 +167,8 @@ class InspectionUpdate(BaseModel):
     outro_somente_conclusao: Optional[bool] = None
     classificacao_escolha_rotulo: Optional[str] = None
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
+    pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
+    pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
 
     @field_validator("pdf_logo_data_url", mode="before")
     @classmethod
@@ -166,6 +188,16 @@ class InspectionUpdate(BaseModel):
         if not s.startswith("data:image/"):
             raise ValueError("Logótipo: envie uma data URL de imagem (PNG ou JPEG).")
         return s
+
+    @field_validator("pdf_empresa_nome", "pdf_empresa_cnpj", mode="before")
+    @classmethod
+    def _empty_empresa_update(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            return s if s else None
+        return v
 
 
 class Inspection(BaseModel):
@@ -203,6 +235,8 @@ class Inspection(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: Literal["em_andamento", "concluida"] = "em_andamento"
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
+    pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
+    pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
 
 
 class UserRegisterBody(BaseModel):
@@ -251,6 +285,8 @@ class IdentificationUpdate(BaseModel):
     energia_disponivel: Optional[Literal["sim", "nao"]] = None
     documentos_recebidos: Optional[List[str]] = None
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
+    pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
+    pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
 
     @field_validator("pdf_logo_data_url", mode="before")
     @classmethod
@@ -270,6 +306,16 @@ class IdentificationUpdate(BaseModel):
         if not s.startswith("data:image/"):
             raise ValueError("Logótipo: envie uma data URL de imagem (PNG ou JPEG).")
         return s
+
+    @field_validator("pdf_empresa_nome", "pdf_empresa_cnpj", mode="before")
+    @classmethod
+    def _empty_empresa_ident(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            return s if s else None
+        return v
 
 
 # --- Rotas /api ---

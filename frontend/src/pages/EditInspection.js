@@ -35,6 +35,8 @@ const EditInspection = () => {
     energia_disponivel: 'sim',
     documentos_recebidos: [],
     pdf_logo_data_url: '',
+    pdf_empresa_nome: '',
+    pdf_empresa_cnpj: '',
   });
   // Removed horario_termino - moved to finalization page
 
@@ -72,6 +74,8 @@ const EditInspection = () => {
         energia_disponivel: data.energia_disponivel || 'sim',
         documentos_recebidos: data.documentos_recebidos || [],
         pdf_logo_data_url: data.pdf_logo_data_url || '',
+        pdf_empresa_nome: data.pdf_empresa_nome || '',
+        pdf_empresa_cnpj: data.pdf_empresa_cnpj || '',
       });
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
@@ -169,6 +173,41 @@ const EditInspection = () => {
               setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
             }
           />
+
+          <div className="mb-6 space-y-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4">
+            <p className="text-xs leading-relaxed text-slate-600">
+              Opcional: se tiver firma aberta, pode indicar nome da empresa e CNPJ para o rodapé do
+              PDF. Se deixar em branco, o rodapé mostrará o responsável técnico (ENG).
+            </p>
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                Nome da empresa (opcional)
+              </label>
+              <input
+                type="text"
+                name="pdf_empresa_nome"
+                value={formData.pdf_empresa_nome}
+                onChange={handleChange}
+                placeholder="Ex.: Nome fantasia ou razão social"
+                className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoComplete="organization"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                CNPJ (opcional)
+              </label>
+              <input
+                type="text"
+                name="pdf_empresa_cnpj"
+                value={formData.pdf_empresa_cnpj}
+                onChange={handleChange}
+                placeholder="00.000.000/0000-00"
+                className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoComplete="off"
+              />
+            </div>
+          </div>
 
           {/* Cliente */}
           <div className="mb-4">
