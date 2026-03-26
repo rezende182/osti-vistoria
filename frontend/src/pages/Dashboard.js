@@ -1,12 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Trash2, Clock, CheckCircle2, AlertCircle, XCircle, Download, Plus } from 'lucide-react';
+import {
+  Search,
+  Trash2,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Download,
+  Plus,
+  Building2,
+  Home,
+  Trees,
+} from 'lucide-react';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ConfirmModal from '../components/ConfirmModal';
@@ -286,7 +297,7 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* FAB: escolher tipo — só Apartamento abre o fluxo (Identificação em diante) por agora */}
+      {/* FAB: ícones por tipo — só Apartamento abre o fluxo por agora */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -299,17 +310,52 @@ const Dashboard = () => {
             <Plus size={28} />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="end" sideOffset={10} className="min-w-[12rem]">
-          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-            Tipo de imóvel
-          </DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => navigate('/new-inspection')}>Apartamento</DropdownMenuItem>
-          <DropdownMenuItem disabled title="Em breve">
-            Casa
-          </DropdownMenuItem>
-          <DropdownMenuItem disabled title="Em breve">
-            Área comum
-          </DropdownMenuItem>
+        <DropdownMenuContent
+          side="top"
+          align="end"
+          sideOffset={12}
+          className="w-auto min-w-0 border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10 sm:p-4"
+        >
+          <div
+            className="flex items-center gap-3 sm:gap-4"
+            role="group"
+            aria-label="Nova vistoria por tipo de imóvel"
+          >
+            <DropdownMenuItem
+              asChild
+              onSelect={() => navigate('/new-inspection')}
+              className="cursor-pointer rounded-2xl p-0 focus:bg-transparent data-[highlighted]:bg-transparent"
+            >
+              <button
+                type="button"
+                title="Apartamento"
+                className="flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:bg-blue-700"
+                aria-label="Apartamento — iniciar identificação da vistoria"
+              >
+                <Building2 className="h-10 w-10" strokeWidth={2.25} aria-hidden />
+              </button>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled
+              title="Em breve"
+              className="cursor-not-allowed rounded-2xl p-0 data-[disabled]:opacity-100"
+              aria-label="Casa — em breve"
+            >
+              <span className="flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-[0_4px_14px_rgba(245,158,11,0.4)] ring-2 ring-amber-300/80 opacity-55 saturate-75">
+                <Home className="h-10 w-10" strokeWidth={2.25} aria-hidden />
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled
+              title="Em breve"
+              className="cursor-not-allowed rounded-2xl p-0 data-[disabled]:opacity-100"
+              aria-label="Área comum — em breve"
+            >
+              <span className="flex h-[4.25rem] w-[4.25rem] shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-[0_4px_14px_rgba(5,150,105,0.4)] ring-2 ring-emerald-300/80 opacity-55 saturate-75">
+                <Trees className="h-10 w-10" strokeWidth={2.25} aria-hidden />
+              </span>
+            </DropdownMenuItem>
+          </div>
         </DropdownMenuContent>
       </DropdownMenu>
 
