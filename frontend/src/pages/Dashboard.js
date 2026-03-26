@@ -9,10 +9,10 @@ import {
   XCircle,
   Download,
   Plus,
-  Hotel,
   Home,
   Trees,
 } from 'lucide-react';
+import { ApartmentBlockIcon } from '@/components/icons/ApartmentBlockIcon';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import {
   DropdownMenu,
@@ -328,14 +328,10 @@ const Dashboard = () => {
             >
               <button
                 type="button"
-                className="flex w-[7.25rem] shrink-0 flex-col items-center justify-between gap-1.5 rounded-2xl bg-blue-600 px-2.5 pb-2.5 pt-2.5 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:bg-blue-700 sm:w-[7.75rem]"
+                className="flex w-[5.85rem] shrink-0 flex-col items-center justify-between gap-2 rounded-2xl bg-blue-600 px-2 pb-2.5 pt-3 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:bg-blue-700 sm:w-[6.25rem]"
                 aria-label="Apartamento — iniciar identificação da vistoria"
               >
-                <Hotel
-                  className="h-[5.25rem] w-[5.25rem] shrink-0 drop-shadow-md sm:h-[5.85rem] sm:w-[5.85rem]"
-                  strokeWidth={2.5}
-                  aria-hidden
-                />
+                <ApartmentBlockIcon className="h-12 w-12 shrink-0 text-white drop-shadow-sm sm:h-14 sm:w-14" />
                 <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
                   Apartamento
                 </span>

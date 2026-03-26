@@ -3,8 +3,8 @@
  * HTML e bundles (/static/js, /static/css) NÃO entram no cache dinâmico, para não
  * ficar com interface antiga (ex.: código já removido do repositório).
  */
-const STATIC_CACHE = 'vistoria-static-v17';
-const DYNAMIC_CACHE = 'vistoria-dynamic-v17';
+const STATIC_CACHE = 'vistoria-static-v18';
+const DYNAMIC_CACHE = 'vistoria-dynamic-v18';
 
 const STATIC_ASSETS = [
   '/manifest.json',
@@ -77,8 +77,11 @@ self.addEventListener('fetch', (event) => {
   const isAppBundle =
     url.pathname.includes('/static/js/') || url.pathname.includes('/static/css/');
 
+  // Sempre rede, sem cache HTTP do browser — evita ficar com JS/CSS antigo após deploy.
   if (isNavigate || isAppBundle) {
-    event.respondWith(fetch(request));
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).catch(() => fetch(request))
+    );
     return;
   }
 
