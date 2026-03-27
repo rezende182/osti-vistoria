@@ -96,12 +96,103 @@ function pdfIdentRowFull(label, value, required = true) {
   return [pdfIdentLabelCell(label), { content: display, colSpan: 3 }];
 }
 
-/** Corpo da tabela 1 — obrigatórios sempre; opcionais só se preenchidos.
- *  Cidade/UF, Empreendimento/Construtora e Tipo do imóvel/Nº pavimentos na mesma linha (4 colunas). */
+/** Corpo da tabela 1 — fluxo Entrega de Imóvel com `imovel_categoria` usa blocos alinhados ao formulário. */
 function buildIdentificacaoTableBody(inspection) {
   const fluxo = String(inspection.tipo_vistoria_fluxo || '').trim();
-  const rows = [];
+  const cat = inspection.imovel_categoria;
+  const entregaForm =
+    fluxo === 'apartamento' && (cat === 'apartamento' || cat === 'casa');
 
+  if (entregaForm) {
+    const rows = [];
+    const empNome = pdfIdentRowFull('Nome da empresa', inspection.pdf_empresa_nome, false);
+    if (empNome) rows.push(empNome);
+    const empCnpj = pdfIdentRowFull('CNPJ da empresa', inspection.pdf_empresa_cnpj, false);
+    if (empCnpj) rows.push(empCnpj);
+    const rtDoc = pdfIdentRowFull(
+      'CPF / CNPJ (responsável técnico)',
+      inspection.responsavel_cpf_cnpj,
+      false
+    );
+    if (rtDoc) rows.push(rtDoc);
+    rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
+    rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
+    rows.push(pdfIdentRowFull('Contratante', inspection.cliente, true));
+    rows.push(
+      pdfIdentRowFull('Tipo do imóvel (contratante)', cat === 'casa' ? 'Casa' : 'Apartamento', true)
+    );
+    if (cat === 'apartamento') {
+      const apt = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
+      if (apt) rows.push(apt);
+    }
+    if (cat === 'casa') {
+      const tipE = inspection.imovel_tipologia;
+      const tipEStr =
+        tipE === 'terreo' ? 'Térrea' : tipE === 'sobrado' ? 'Sobrado' : '—';
+      const np =
+        inspection.imovel_numero_pavimentos == null
+          ? ''
+          : String(inspection.imovel_numero_pavimentos).trim();
+      rows.push([
+        pdfIdentLabelCell('Tipologia (casa)'),
+        { content: tipEStr },
+        pdfIdentLabelCell('Número de pavimentos'),
+        { content: np || '—' },
+      ]);
+    }
+    rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
+    const cid = inspection.cidade == null ? '' : String(inspection.cidade).trim();
+    const uf = inspection.uf == null ? '' : String(inspection.uf).trim();
+    rows.push([
+      pdfIdentLabelCell('Cidade'),
+      { content: cid || '—' },
+      pdfIdentLabelCell('UF'),
+      { content: uf || '—' },
+    ]);
+    const emp = inspection.empreendimento == null ? '' : String(inspection.empreendimento).trim();
+    const cons = inspection.construtora == null ? '' : String(inspection.construtora).trim();
+    if (emp || cons) {
+      rows.push([
+        pdfIdentLabelCell('Nome do empreendimento'),
+        { content: emp || '—' },
+        pdfIdentLabelCell('Construtora'),
+        { content: cons || '—' },
+      ]);
+    }
+    const tipo = inspection.tipo_imovel;
+    const tipoStr =
+      tipo === 'novo'
+        ? 'Novo'
+        : tipo === 'usado'
+          ? 'Usado'
+          : tipo === 'reformado'
+            ? 'Reformado'
+            : '';
+    const trTipo = pdfIdentRowFull('Condição do imóvel', tipoStr, false);
+    if (trTipo) rows.push(trTipo);
+    const en = inspection.energia_disponivel;
+    const enStr = en === 'sim' ? 'Sim' : en === 'nao' ? 'Não' : '';
+    const trEn = pdfIdentRowFull('Energia disponível', enStr, false);
+    if (trEn) rows.push(trEn);
+    rows.push(pdfIdentRowFull('Data da vistoria', formatDate(inspection.data), true));
+    const hi = pdfIdentRowFull('Horário de início', inspection.horario_inicio, false);
+    if (hi) rows.push(hi);
+    const ht = pdfIdentRowFull('Horário de Término', inspection.horario_termino, false);
+    if (ht) rows.push(ht);
+    return rows.filter(Boolean);
+  }
+
+  const rows = [];
+  const empNome = pdfIdentRowFull('Nome da empresa', inspection.pdf_empresa_nome, false);
+  if (empNome) rows.push(empNome);
+  const empCnpj = pdfIdentRowFull('CNPJ da empresa', inspection.pdf_empresa_cnpj, false);
+  if (empCnpj) rows.push(empCnpj);
+  const rtDoc = pdfIdentRowFull(
+    'CPF / CNPJ (responsável técnico)',
+    inspection.responsavel_cpf_cnpj,
+    false
+  );
+  if (rtDoc) rows.push(rtDoc);
   rows.push(pdfIdentRowFull('Cliente', inspection.cliente, true));
   rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
 
@@ -131,7 +222,7 @@ function buildIdentificacaoTableBody(inspection) {
   }
 
   rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
-  rows.push(pdfIdentRowFull('CREA', inspection.crea, true));
+  rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
   rows.push(pdfIdentRowFull('Data', formatDate(inspection.data), true));
 
   const hi = pdfIdentRowFull('Horário de Início', inspection.horario_inicio, false);
@@ -184,8 +275,12 @@ function buildPdfIntroducaoText(inspection) {
   const emp = (inspection.empreendimento || '').trim();
 
   let complemento = '';
-  if (fluxo === 'apartamento' && apt) {
-    complemento += `, entrega de imóvel nº: ${apt}`;
+  if (
+    fluxo === 'apartamento' &&
+    inspection.imovel_categoria === 'apartamento' &&
+    apt
+  ) {
+    complemento += `, apartamento / bloco: ${apt}`;
   }
   if (emp) {
     complemento += `, do empreendimento ${emp}`;

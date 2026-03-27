@@ -222,94 +222,308 @@ const InspectionDetail = () => {
         <div className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6 mb-4">
           <h2 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">Informações</h2>
           <div className="space-y-3 text-sm">
-            <div>
-              <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cliente</span>
-              <p className="text-slate-900">{inspection.cliente}</p>
-            </div>
-            <div>
-              <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Endereço</span>
-              <p className="text-slate-900">{inspection.endereco}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cidade</span>
-                <p className="text-slate-900">{inspection.cidade || '-'}</p>
-              </div>
-              <div>
-                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">UF</span>
-                <p className="text-slate-900">{inspection.uf || '-'}</p>
-              </div>
-            </div>
-            {inspection.tipo_vistoria_fluxo === 'apartamento' ? (
-              <div className="grid grid-cols-2 gap-4">
+            {inspection.tipo_vistoria_fluxo === 'apartamento' &&
+            (inspection.imovel_categoria === 'apartamento' ||
+              inspection.imovel_categoria === 'casa') ? (
+              <>
+                <h3 className="border-b border-slate-200 pb-1 text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Identificação do Responsável Técnico
+                </h3>
+                {inspection.pdf_empresa_nome && (
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Nome da empresa
+                    </span>
+                    <p className="text-slate-900">{inspection.pdf_empresa_nome}</p>
+                  </div>
+                )}
+                {inspection.pdf_empresa_cnpj && (
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      CNPJ da empresa
+                    </span>
+                    <p className="text-slate-900">{inspection.pdf_empresa_cnpj}</p>
+                  </div>
+                )}
                 <div>
                   <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                    Entrega de Imóvel
+                    Nome do Responsável Técnico
                   </span>
-                  <p className="text-slate-900">{inspection.unidade || '—'}</p>
+                  <p className="text-slate-900">{inspection.responsavel_tecnico}</p>
+                </div>
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">CREA / CAU</span>
+                  <p className="text-slate-900">{inspection.crea}</p>
+                </div>
+                {inspection.responsavel_cpf_cnpj && (
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      CPF / CNPJ
+                    </span>
+                    <p className="text-slate-900">{inspection.responsavel_cpf_cnpj}</p>
+                  </div>
+                )}
+
+                <h3 className="mt-4 border-b border-slate-200 pb-1 text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Identificação do contratante
+                </h3>
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Nome</span>
+                  <p className="text-slate-900">{inspection.cliente}</p>
                 </div>
                 <div>
                   <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                    Empreendimento
+                    Tipo do imóvel (contratante)
                   </span>
-                  <p className="text-slate-900">{inspection.empreendimento || '-'}</p>
+                  <p className="text-slate-900">
+                    {inspection.imovel_categoria === 'casa' ? 'Casa' : 'Apartamento'}
+                  </p>
                 </div>
-              </div>
+                {inspection.imovel_categoria === 'apartamento' && (
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Apartamento / Bloco
+                    </span>
+                    <p className="text-slate-900">{inspection.unidade || '—'}</p>
+                  </div>
+                )}
+                {inspection.imovel_categoria === 'casa' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                        Tipologia
+                      </span>
+                      <p className="text-slate-900">
+                        {inspection.imovel_tipologia === 'sobrado'
+                          ? 'Sobrado'
+                          : inspection.imovel_tipologia === 'terreo'
+                            ? 'Térrea'
+                            : '—'}
+                      </p>
+                    </div>
+                    {inspection.imovel_tipologia === 'sobrado' && (
+                      <div>
+                        <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                          Número de pavimentos
+                        </span>
+                        <p className="text-slate-900">{inspection.imovel_numero_pavimentos || '—'}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Endereço</span>
+                  <p className="text-slate-900">{inspection.endereco}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cidade</span>
+                    <p className="text-slate-900">{inspection.cidade || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">UF</span>
+                    <p className="text-slate-900">{inspection.uf || '-'}</p>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                    Nome do empreendimento
+                  </span>
+                  <p className="text-slate-900">{inspection.empreendimento || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Construtora</span>
+                  <p className="text-slate-900">{inspection.construtora || '—'}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Condição do imóvel
+                    </span>
+                    <p className="text-slate-900">
+                      {inspection.tipo_imovel === 'novo'
+                        ? 'Novo'
+                        : inspection.tipo_imovel === 'usado'
+                          ? 'Usado'
+                          : 'Reformado'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Energia disponível
+                    </span>
+                    <p className="text-slate-900">
+                      {inspection.energia_disponivel === 'sim' ? 'Sim' : 'Não'}
+                    </p>
+                  </div>
+                </div>
+
+                <h3 className="mt-4 border-b border-slate-200 pb-1 text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Identificação da vistoria
+                </h3>
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                    Data da vistoria
+                  </span>
+                  <p className="text-slate-900">{inspection.data}</p>
+                </div>
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                    Horário de início
+                  </span>
+                  <p className="text-slate-900">{inspection.horario_inicio || '—'}</p>
+                </div>
+                {inspection.documentos_recebidos?.length > 0 && (
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Documentos recebidos
+                    </span>
+                    <ul className="mt-1 text-slate-900">
+                      {inspection.documentos_recebidos.map((doc, idx) => (
+                        <li key={idx} className="text-sm">
+                          • {doc}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
             ) : (
-              <div>
-                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Empreendimento</span>
-                <p className="text-slate-900">{inspection.empreendimento || '-'}</p>
-              </div>
-            )}
-            <div>
-              <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Construtora</span>
-              <p className="text-slate-900">{inspection.construtora || '-'}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Tipo do imóvel</span>
-                <p className="text-slate-900">
-                  {inspection.imovel_tipologia === 'sobrado'
-                    ? 'Sobrado'
-                    : inspection.imovel_tipologia === 'terreo'
-                      ? 'Térreo'
-                      : '—'}
-                </p>
-              </div>
-              {inspection.imovel_tipologia === 'sobrado' && (
+              <>
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cliente</span>
+                  <p className="text-slate-900">{inspection.cliente}</p>
+                </div>
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Endereço</span>
+                  <p className="text-slate-900">{inspection.endereco}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cidade</span>
+                    <p className="text-slate-900">{inspection.cidade || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">UF</span>
+                    <p className="text-slate-900">{inspection.uf || '-'}</p>
+                  </div>
+                </div>
+                {inspection.tipo_vistoria_fluxo === 'apartamento' ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                        Entrega de Imóvel
+                      </span>
+                      <p className="text-slate-900">{inspection.unidade || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                        Empreendimento
+                      </span>
+                      <p className="text-slate-900">{inspection.empreendimento || '-'}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Empreendimento
+                    </span>
+                    <p className="text-slate-900">{inspection.empreendimento || '-'}</p>
+                  </div>
+                )}
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Construtora</span>
+                  <p className="text-slate-900">{inspection.construtora || '-'}</p>
+                </div>
+                {inspection.responsavel_cpf_cnpj && (
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      CPF / CNPJ (RT)
+                    </span>
+                    <p className="text-slate-900">{inspection.responsavel_cpf_cnpj}</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Responsável Técnico
+                    </span>
+                    <p className="text-slate-900">{inspection.responsavel_tecnico}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">CREA / CAU</span>
+                    <p className="text-slate-900">{inspection.crea}</p>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Data</span>
+                  <p className="text-slate-900">{inspection.data}</p>
+                </div>
                 <div>
                   <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                    Número de pavimentos
+                    Horário de início
                   </span>
-                  <p className="text-slate-900">{inspection.imovel_numero_pavimentos || '—'}</p>
+                  <p className="text-slate-900">{inspection.horario_inicio || '—'}</p>
                 </div>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Condição do imóvel</span>
-                <p className="text-slate-900">
-                  {inspection.tipo_imovel === 'novo'
-                    ? 'Novo'
-                    : inspection.tipo_imovel === 'usado'
-                      ? 'Usado'
-                      : 'Reformado'}
-                </p>
-              </div>
-              <div>
-                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Energia Disponível</span>
-                <p className="text-slate-900">{inspection.energia_disponivel === 'sim' ? 'Sim' : 'Não'}</p>
-              </div>
-            </div>
-            {inspection.documentos_recebidos?.length > 0 && (
-              <div>
-                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Documentos Recebidos</span>
-                <ul className="text-slate-900 mt-1">
-                  {inspection.documentos_recebidos.map((doc, idx) => (
-                    <li key={idx} className="text-sm">• {doc}</li>
-                  ))}
-                </ul>
-              </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Tipo do imóvel
+                    </span>
+                    <p className="text-slate-900">
+                      {inspection.imovel_tipologia === 'sobrado'
+                        ? 'Sobrado'
+                        : inspection.imovel_tipologia === 'terreo'
+                          ? 'Térreo'
+                          : '—'}
+                    </p>
+                  </div>
+                  {inspection.imovel_tipologia === 'sobrado' && (
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                        Número de pavimentos
+                      </span>
+                      <p className="text-slate-900">{inspection.imovel_numero_pavimentos || '—'}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Condição do imóvel
+                    </span>
+                    <p className="text-slate-900">
+                      {inspection.tipo_imovel === 'novo'
+                        ? 'Novo'
+                        : inspection.tipo_imovel === 'usado'
+                          ? 'Usado'
+                          : 'Reformado'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Energia Disponível
+                    </span>
+                    <p className="text-slate-900">
+                      {inspection.energia_disponivel === 'sim' ? 'Sim' : 'Não'}
+                    </p>
+                  </div>
+                </div>
+                {inspection.documentos_recebidos?.length > 0 && (
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                      Documentos Recebidos
+                    </span>
+                    <ul className="mt-1 text-slate-900">
+                      {inspection.documentos_recebidos.map((doc, idx) => (
+                        <li key={idx} className="text-sm">
+                          • {doc}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

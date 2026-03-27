@@ -56,6 +56,26 @@ function validateIdentificationRequired(fd) {
   );
 }
 
+/** Fluxo Entrega de Imóvel: exige categoria (Apartamento/Casa); se Casa, Térreo/Sobrado. */
+function validateEntregaImovel(fd) {
+  if (!validateIdentificationRequired(fd)) return false;
+  if (!isFilled(fd.imovel_categoria)) return false;
+  if (fd.imovel_categoria === 'casa') {
+    if (fd.imovel_tipologia !== 'terreo' && fd.imovel_tipologia !== 'sobrado') {
+      return false;
+    }
+  }
+  return true;
+}
+
+function sectionTitle(text) {
+  return (
+    <h2 className="mb-4 border-b border-slate-200 pb-2 text-sm font-bold uppercase tracking-wider text-slate-800">
+      {text}
+    </h2>
+  );
+}
+
 const NewInspection = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -83,6 +103,7 @@ const NewInspection = () => {
     responsavel_tecnico: '',
     crea: '',
     horario_inicio: '',
+    imovel_categoria: '',
     imovel_tipologia: '',
     imovel_numero_pavimentos: '',
     tipo_imovel: 'novo',
@@ -91,13 +112,18 @@ const NewInspection = () => {
     pdf_logo_data_url: '',
     pdf_empresa_nome: '',
     pdf_empresa_cnpj: '',
+    responsavel_cpf_cnpj: '',
   });
 
   useEffect(() => {
     if (tipoImovelFluxo === 'area_comum') {
-      setFormData((prev) => ({ ...prev, unidade: '', imovel_tipologia: 'terreo' }));
-    } else {
-      setFormData((prev) => ({ ...prev, imovel_tipologia: 'terreo' }));
+      setFormData((prev) => ({
+        ...prev,
+        unidade: '',
+        imovel_categoria: '',
+        imovel_tipologia: 'terreo',
+        imovel_numero_pavimentos: '',
+      }));
     }
   }, [tipoImovelFluxo]);
 
@@ -126,7 +152,14 @@ const NewInspection = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateIdentificationRequired(formData)) {
+    if (tipoImovelFluxo === 'apartamento') {
+      if (!validateEntregaImovel(formData)) {
+        toast.error(
+          'Preencha os campos obrigatórios, incluindo tipo do imóvel (Apartamento ou Casa). Se for Casa, selecione Térreo ou Sobrado.'
+        );
+        return;
+      }
+    } else if (!validateIdentificationRequired(formData)) {
       toast.error(
         'Preencha os campos obrigatórios: cliente, data, endereço, cidade, UF, responsável técnico e CREA.'
       );
@@ -139,13 +172,26 @@ const NewInspection = () => {
     }
 
     const payload = { ...formData };
-    if (payload.imovel_tipologia !== 'terreo' && payload.imovel_tipologia !== 'sobrado') {
-      payload.imovel_tipologia = 'terreo';
-    }
-    if (tipoImovelFluxo === 'apartamento' || tipoImovelFluxo === 'area_comum') {
-      payload.tipo_vistoria_fluxo = tipoImovelFluxo;
+    if (tipoImovelFluxo === 'apartamento') {
+      payload.tipo_vistoria_fluxo = 'apartamento';
+      if (payload.imovel_categoria === 'apartamento') {
+        payload.imovel_tipologia = 'terreo';
+        payload.imovel_numero_pavimentos = '';
+      } else if (payload.imovel_categoria === 'casa' && payload.imovel_tipologia !== 'sobrado') {
+        payload.imovel_numero_pavimentos = '';
+      }
+    } else if (tipoImovelFluxo === 'area_comum') {
+      payload.tipo_vistoria_fluxo = 'area_comum';
+      delete payload.imovel_categoria;
+      if (payload.imovel_tipologia !== 'terreo' && payload.imovel_tipologia !== 'sobrado') {
+        payload.imovel_tipologia = 'terreo';
+      }
     } else {
       delete payload.tipo_vistoria_fluxo;
+      delete payload.imovel_categoria;
+    }
+    if (payload.imovel_tipologia !== 'terreo' && payload.imovel_tipologia !== 'sobrado') {
+      payload.imovel_tipologia = 'terreo';
     }
 
     try {
@@ -228,293 +274,648 @@ const NewInspection = () => {
       {/* Form */}
       <div className="max-w-md mx-auto md:max-w-2xl px-4 py-6">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6">
-          <InspectionPdfLogoField
-            value={formData.pdf_logo_data_url}
-            onChange={(url) =>
-              setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
-            }
-          />
-
-          <div className="mb-6 space-y-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4">
-            <p className="text-xs leading-relaxed text-slate-600">
-              Campo opcional — preencha apenas se tiver empresa.
-            </p>
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                Nome da empresa (opcional)
-              </label>
-              <input
-                type="text"
-                name="pdf_empresa_nome"
-                value={formData.pdf_empresa_nome}
-                onChange={handleChange}
-                placeholder="Ex.: Nome fantasia ou razão social"
-                className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoComplete="organization"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                CNPJ (opcional)
-              </label>
-              <input
-                type="text"
-                name="pdf_empresa_cnpj"
-                value={formData.pdf_empresa_cnpj}
-                onChange={handleChange}
-                placeholder="00.000.000/0000-00"
-                className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoComplete="off"
-              />
-            </div>
-          </div>
-
-          {/* Cliente */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Cliente *
-            </label>
-            <input
-              data-testid="input-cliente"
-              type="text"
-              name="cliente"
-              value={formData.cliente}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Data */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Data *
-            </label>
-            <input
-              data-testid="input-data"
-              type="date"
-              name="data"
-              value={formData.data}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Endereço */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Endereço *
-            </label>
-            <input
-              data-testid="input-endereco"
-              type="text"
-              name="endereco"
-              value={formData.endereco}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                Cidade *
-              </label>
-              <input
-                data-testid="input-cidade"
-                type="text"
-                name="cidade"
-                value={formData.cidade}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                UF *
-              </label>
-              <select
-                data-testid="input-uf"
-                name="uf"
-                value={formData.uf}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">Selecione</option>
-                {BRASIL_UFS.map(({ uf, nome }) => (
-                  <option key={uf} value={uf}>
-                    {uf} — {nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Entrega de Imóvel — só fluxo apartamento (identificação da unidade) */}
-          {tipoImovelFluxo === 'apartamento' && (
-            <div className="mb-4">
-              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                Entrega de Imóvel (opcional)
-              </label>
-              <input
-                data-testid="input-unidade"
-                type="text"
-                name="unidade"
-                value={formData.unidade}
-                onChange={handleChange}
-                placeholder="Ex.: número da unidade"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
-
-          {/* Empreendimento */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Empreendimento (opcional)
-            </label>
-            <input
-              data-testid="input-empreendimento"
-              type="text"
-              name="empreendimento"
-              value={formData.empreendimento}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Construtora */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Construtora (opcional)
-            </label>
-            <input
-              data-testid="input-construtora"
-              type="text"
-              name="construtora"
-              value={formData.construtora}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Responsável Técnico */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Responsável Técnico *
-            </label>
-            <input
-              data-testid="input-responsavel"
-              type="text"
-              name="responsavel_tecnico"
-              value={formData.responsavel_tecnico}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* CREA */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              CREA *
-            </label>
-            <input
-              data-testid="input-crea"
-              type="text"
-              name="crea"
-              value={formData.crea}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Horário de Início */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Horário de Início (opcional)
-            </label>
-            <TimePickerField
-              data-testid="input-horario-inicio"
-              value={formData.horario_inicio}
-              onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
-              className="w-full max-w-xs border border-slate-300 rounded-lg"
-            />
-          </div>
-
-          {/* Condição do imóvel (novo / usado / reformado) */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Condição do imóvel (opcional)
-            </label>
-            <div className="flex gap-2">
-              {['novo', 'usado', 'reformado'].map((tipo) => (
-                <button
-                  key={tipo}
-                  type="button"
-                  data-testid={`tipo-${tipo}`}
-                  onClick={() => setFormData({ ...formData, tipo_imovel: tipo })}
-                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                    formData.tipo_imovel === tipo
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Energia Disponível */}
-          <div className="mb-4">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Energia Disponível (opcional)
-            </label>
-            <div className="flex gap-2">
-              {['sim', 'nao'].map((opcao) => (
-                <button
-                  key={opcao}
-                  type="button"
-                  data-testid={`energia-${opcao}`}
-                  onClick={() => setFormData({ ...formData, energia_disponivel: opcao })}
-                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                    formData.energia_disponivel === opcao
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {opcao === 'sim' ? 'Sim' : 'Não'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Documentos Recebidos */}
-          <div className="mb-6">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Documentos Recebidos (opcional)
-            </label>
-            <div className="space-y-2">
-              {documentosOptions.map((doc) => (
-                <label key={doc} className="flex items-center gap-2 cursor-pointer">
+          {tipoImovelFluxo === 'apartamento' ? (
+            <>
+              {sectionTitle('Identificação do Responsável Técnico')}
+              <div className="mb-6">
+                <InspectionPdfLogoField
+                  value={formData.pdf_logo_data_url}
+                  onChange={(url) =>
+                    setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
+                  }
+                />
+              </div>
+              <div className="mb-6 space-y-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4">
+                <p className="text-xs leading-relaxed text-slate-600">
+                  Dados da empresa (opcional) — aparecem no PDF quando preenchidos.
+                </p>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Nome da empresa (opcional)
+                  </label>
                   <input
-                    type="checkbox"
-                    data-testid={`doc-${doc}`}
-                    checked={formData.documentos_recebidos.includes(doc)}
-                    onChange={() => handleDocumentToggle(doc)}
-                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    type="text"
+                    name="pdf_empresa_nome"
+                    value={formData.pdf_empresa_nome}
+                    onChange={handleChange}
+                    placeholder="Ex.: Nome fantasia ou razão social"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="organization"
                   />
-                  <span className="text-slate-700">{doc}</span>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    CNPJ da empresa (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    name="pdf_empresa_cnpj"
+                    value={formData.pdf_empresa_cnpj}
+                    onChange={handleChange}
+                    placeholder="00.000.000/0000-00"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Nome do Responsável Técnico *
                 </label>
-              ))}
-            </div>
-          </div>
+                <input
+                  data-testid="input-responsavel"
+                  type="text"
+                  name="responsavel_tecnico"
+                  value={formData.responsavel_tecnico}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  CREA / CAU *
+                </label>
+                <input
+                  data-testid="input-crea"
+                  type="text"
+                  name="crea"
+                  value={formData.crea}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  CPF / CNPJ (opcional)
+                </label>
+                <input
+                  type="text"
+                  name="responsavel_cpf_cnpj"
+                  value={formData.responsavel_cpf_cnpj}
+                  onChange={handleChange}
+                  placeholder="CPF ou CNPJ do responsável técnico"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
+                />
+              </div>
+
+              {sectionTitle('Identificação do contratante')}
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Nome *
+                </label>
+                <input
+                  data-testid="input-cliente"
+                  type="text"
+                  name="cliente"
+                  value={formData.cliente}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Tipo do imóvel *
+                </label>
+                <div className="flex gap-2">
+                  {[
+                    { id: 'apartamento', label: 'Apartamento' },
+                    { id: 'casa', label: 'Casa' },
+                  ].map(({ id, label }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      data-testid={`imovel-categoria-${id}`}
+                      onClick={() => {
+                        if (id === 'apartamento') {
+                          setFormData((prev) => ({
+                            ...prev,
+                            imovel_categoria: 'apartamento',
+                            imovel_tipologia: 'terreo',
+                            imovel_numero_pavimentos: '',
+                          }));
+                        } else {
+                          setFormData((prev) => ({
+                            ...prev,
+                            imovel_categoria: 'casa',
+                            unidade: '',
+                            imovel_tipologia: '',
+                            imovel_numero_pavimentos: '',
+                          }));
+                        }
+                      }}
+                      className={`flex-1 rounded-lg py-3 px-4 text-sm font-semibold transition-all duration-200 sm:text-base ${
+                        formData.imovel_categoria === id
+                          ? 'bg-slate-900 text-white shadow-md'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {formData.imovel_categoria === 'apartamento' && (
+                <div className="mb-4">
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Apartamento / Bloco (opcional)
+                  </label>
+                  <input
+                    data-testid="input-unidade"
+                    type="text"
+                    name="unidade"
+                    value={formData.unidade}
+                    onChange={handleChange}
+                    placeholder="Ex.: Torre A, apto 101"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+              {formData.imovel_categoria === 'casa' && (
+                <>
+                  <div className="mb-4">
+                    <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Casa — tipologia *
+                    </label>
+                    <div className="flex gap-2">
+                      {[
+                        { id: 'terreo', label: 'Térrea' },
+                        { id: 'sobrado', label: 'Sobrado' },
+                      ].map(({ id, label }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          data-testid={`imovel-tipologia-${id}`}
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              imovel_tipologia: id,
+                              imovel_numero_pavimentos: id === 'terreo' ? '' : prev.imovel_numero_pavimentos,
+                            }))
+                          }
+                          className={`flex-1 rounded-lg py-3 px-4 text-sm font-semibold transition-all duration-200 sm:text-base ${
+                            formData.imovel_tipologia === id
+                              ? 'bg-slate-900 text-white shadow-md'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {formData.imovel_tipologia === 'sobrado' && (
+                    <div className="mb-4">
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Número de pavimentos (opcional)
+                      </label>
+                      <input
+                        data-testid="input-numero-pavimentos"
+                        type="text"
+                        name="imovel_numero_pavimentos"
+                        inputMode="numeric"
+                        value={formData.imovel_numero_pavimentos}
+                        onChange={handleChange}
+                        placeholder="Ex.: 2"
+                        className="w-full max-w-xs rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoComplete="off"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Endereço *
+                </label>
+                <input
+                  data-testid="input-endereco"
+                  type="text"
+                  name="endereco"
+                  value={formData.endereco}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Cidade *
+                  </label>
+                  <input
+                    data-testid="input-cidade"
+                    type="text"
+                    name="cidade"
+                    value={formData.cidade}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    UF *
+                  </label>
+                  <select
+                    data-testid="input-uf"
+                    name="uf"
+                    value={formData.uf}
+                    onChange={handleChange}
+                    required
+                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Selecione</option>
+                    {BRASIL_UFS.map(({ uf, nome }) => (
+                      <option key={uf} value={uf}>
+                        {uf} — {nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Nome do empreendimento (opcional)
+                </label>
+                <input
+                  data-testid="input-empreendimento"
+                  type="text"
+                  name="empreendimento"
+                  value={formData.empreendimento}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Construtora (opcional)
+                </label>
+                <input
+                  data-testid="input-construtora"
+                  type="text"
+                  name="construtora"
+                  value={formData.construtora}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Condição do imóvel (opcional)
+                </label>
+                <div className="flex gap-2">
+                  {['novo', 'usado', 'reformado'].map((tipo) => (
+                    <button
+                      key={tipo}
+                      type="button"
+                      data-testid={`tipo-${tipo}`}
+                      onClick={() => setFormData({ ...formData, tipo_imovel: tipo })}
+                      className={`flex-1 rounded-lg py-2 px-4 font-semibold transition-all duration-200 ${
+                        formData.tipo_imovel === tipo
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Energia disponível (opcional)
+                </label>
+                <div className="flex gap-2">
+                  {['sim', 'nao'].map((opcao) => (
+                    <button
+                      key={opcao}
+                      type="button"
+                      data-testid={`energia-${opcao}`}
+                      onClick={() => setFormData({ ...formData, energia_disponivel: opcao })}
+                      className={`flex-1 rounded-lg py-2 px-4 font-semibold transition-all duration-200 ${
+                        formData.energia_disponivel === opcao
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {opcao === 'sim' ? 'Sim' : 'Não'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {sectionTitle('Identificação da vistoria')}
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Data da vistoria *
+                </label>
+                <input
+                  data-testid="input-data"
+                  type="date"
+                  name="data"
+                  value={formData.data}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Horário de início (opcional)
+                </label>
+                <TimePickerField
+                  data-testid="input-horario-inicio"
+                  value={formData.horario_inicio}
+                  onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
+                  className="w-full max-w-xs rounded-lg border border-slate-300"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Documentos recebidos (opcional)
+                </label>
+                <div className="space-y-2">
+                  {documentosOptions.map((doc) => (
+                    <label key={doc} className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        data-testid={`doc-${doc}`}
+                        checked={formData.documentos_recebidos.includes(doc)}
+                        onChange={() => handleDocumentToggle(doc)}
+                        className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-slate-700">{doc}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <InspectionPdfLogoField
+                value={formData.pdf_logo_data_url}
+                onChange={(url) =>
+                  setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
+                }
+              />
+              <div className="mb-6 space-y-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4">
+                <p className="text-xs leading-relaxed text-slate-600">
+                  Campo opcional — preencha apenas se tiver empresa.
+                </p>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Nome da empresa (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    name="pdf_empresa_nome"
+                    value={formData.pdf_empresa_nome}
+                    onChange={handleChange}
+                    placeholder="Ex.: Nome fantasia ou razão social"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="organization"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    CNPJ (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    name="pdf_empresa_cnpj"
+                    value={formData.pdf_empresa_cnpj}
+                    onChange={handleChange}
+                    placeholder="00.000.000/0000-00"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Cliente *
+                </label>
+                <input
+                  data-testid="input-cliente"
+                  type="text"
+                  name="cliente"
+                  value={formData.cliente}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Data *
+                </label>
+                <input
+                  data-testid="input-data"
+                  type="date"
+                  name="data"
+                  value={formData.data}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Endereço *
+                </label>
+                <input
+                  data-testid="input-endereco"
+                  type="text"
+                  name="endereco"
+                  value={formData.endereco}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                    Cidade *
+                  </label>
+                  <input
+                    data-testid="input-cidade"
+                    type="text"
+                    name="cidade"
+                    value={formData.cidade}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                    UF *
+                  </label>
+                  <select
+                    data-testid="input-uf"
+                    name="uf"
+                    value={formData.uf}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Selecione</option>
+                    {BRASIL_UFS.map(({ uf, nome }) => (
+                      <option key={uf} value={uf}>
+                        {uf} — {nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Empreendimento (opcional)
+                </label>
+                <input
+                  data-testid="input-empreendimento"
+                  type="text"
+                  name="empreendimento"
+                  value={formData.empreendimento}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Construtora (opcional)
+                </label>
+                <input
+                  data-testid="input-construtora"
+                  type="text"
+                  name="construtora"
+                  value={formData.construtora}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Responsável Técnico *
+                </label>
+                <input
+                  data-testid="input-responsavel"
+                  type="text"
+                  name="responsavel_tecnico"
+                  value={formData.responsavel_tecnico}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  CREA / CAU *
+                </label>
+                <input
+                  data-testid="input-crea"
+                  type="text"
+                  name="crea"
+                  value={formData.crea}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  CPF / CNPJ (opcional)
+                </label>
+                <input
+                  type="text"
+                  name="responsavel_cpf_cnpj"
+                  value={formData.responsavel_cpf_cnpj}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Horário de Início (opcional)
+                </label>
+                <TimePickerField
+                  data-testid="input-horario-inicio"
+                  value={formData.horario_inicio}
+                  onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
+                  className="w-full max-w-xs border border-slate-300 rounded-lg"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Condição do imóvel (opcional)
+                </label>
+                <div className="flex gap-2">
+                  {['novo', 'usado', 'reformado'].map((tipo) => (
+                    <button
+                      key={tipo}
+                      type="button"
+                      data-testid={`tipo-${tipo}`}
+                      onClick={() => setFormData({ ...formData, tipo_imovel: tipo })}
+                      className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
+                        formData.tipo_imovel === tipo
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Energia Disponível (opcional)
+                </label>
+                <div className="flex gap-2">
+                  {['sim', 'nao'].map((opcao) => (
+                    <button
+                      key={opcao}
+                      type="button"
+                      data-testid={`energia-${opcao}`}
+                      onClick={() => setFormData({ ...formData, energia_disponivel: opcao })}
+                      className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
+                        formData.energia_disponivel === opcao
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {opcao === 'sim' ? 'Sim' : 'Não'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mb-6">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Documentos Recebidos (opcional)
+                </label>
+                <div className="space-y-2">
+                  {documentosOptions.map((doc) => (
+                    <label key={doc} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        data-testid={`doc-${doc}`}
+                        checked={formData.documentos_recebidos.includes(doc)}
+                        onChange={() => handleDocumentToggle(doc)}
+                        className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-slate-700">{doc}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Submit Button */}
           <button

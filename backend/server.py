@@ -109,6 +109,8 @@ class InspectionCreateIn(BaseModel):
     tipo_vistoria_fluxo: Optional[
         Literal["apartamento", "casa", "area_comum"]
     ] = None  # casa: legado; novos fluxos: apartamento | area_comum
+    imovel_categoria: Optional[Literal["apartamento", "casa"]] = None
+    responsavel_cpf_cnpj: str = ""
     pdf_logo_data_url: Optional[str] = Field(
         default=None,
         max_length=2_500_000,
@@ -247,6 +249,8 @@ class Inspection(BaseModel):
     tipo_vistoria_fluxo: Optional[
         Literal["apartamento", "casa", "area_comum"]
     ] = None  # casa: legado; novos fluxos: apartamento | area_comum
+    imovel_categoria: Optional[Literal["apartamento", "casa"]] = None
+    responsavel_cpf_cnpj: str = ""
 
 
 class UserRegisterBody(BaseModel):
@@ -300,8 +304,10 @@ class IdentificationUpdate(BaseModel):
     tipo_vistoria_fluxo: Optional[
         Literal["apartamento", "casa", "area_comum"]
     ] = None  # casa: legado; novos fluxos: apartamento | area_comum
+    imovel_categoria: Optional[Literal["apartamento", "casa"]] = None
     imovel_tipologia: Optional[Literal["terreo", "sobrado"]] = None
     imovel_numero_pavimentos: Optional[str] = None
+    responsavel_cpf_cnpj: Optional[str] = None
 
     @field_validator("pdf_logo_data_url", mode="before")
     @classmethod
