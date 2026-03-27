@@ -119,28 +119,21 @@ function buildIdentificacaoTableBody(inspection) {
     rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
     rows.push(pdfIdentRowFull('Contratante', inspection.cliente, true));
     rows.push(
+      pdfIdentRowFull('CPF / CNPJ (contratante)', inspection.contratante_cpf_cnpj, true)
+    );
+    rows.push(
       pdfIdentRowFull('Tipo do imóvel (contratante)', cat === 'casa' ? 'Casa' : 'Apartamento', true)
     );
-    if (cat === 'apartamento') {
-      const apt = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
-      if (apt) rows.push(apt);
-    }
     if (cat === 'casa') {
       const tipE = inspection.imovel_tipologia;
       const tipEStr =
         tipE === 'terreo' ? 'Térrea' : tipE === 'sobrado' ? 'Sobrado' : '—';
-      const np =
-        inspection.imovel_numero_pavimentos == null
-          ? ''
-          : String(inspection.imovel_numero_pavimentos).trim();
-      rows.push([
-        pdfIdentLabelCell('Tipologia (casa)'),
-        { content: tipEStr },
-        pdfIdentLabelCell('Número de pavimentos'),
-        { content: np || '—' },
-      ]);
+      rows.push(pdfIdentRowFull('Tipologia (casa)', tipEStr, true));
     }
     rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
+    if (cat === 'apartamento') {
+      rows.push(pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, true));
+    }
     const cid = inspection.cidade == null ? '' : String(inspection.cidade).trim();
     const uf = inspection.uf == null ? '' : String(inspection.uf).trim();
     rows.push([
@@ -232,16 +225,7 @@ function buildIdentificacaoTableBody(inspection) {
   const tipEStr =
     tipE === 'terreo' ? 'Térreo' : tipE === 'sobrado' ? 'Sobrado' : '';
   if (tipEStr) {
-    const np =
-      inspection.imovel_numero_pavimentos == null
-        ? ''
-        : String(inspection.imovel_numero_pavimentos).trim();
-    rows.push([
-      pdfIdentLabelCell('Tipo do imóvel'),
-      { content: tipEStr },
-      pdfIdentLabelCell('Número de pavimentos'),
-      { content: np || '—' },
-    ]);
+    rows.push(pdfIdentRowFull('Tipo do imóvel', tipEStr, false));
   }
 
   const ht = pdfIdentRowFull('Horário de Término', inspection.horario_termino, false);

@@ -110,6 +110,7 @@ class InspectionCreateIn(BaseModel):
         Literal["apartamento", "casa", "area_comum"]
     ] = None  # casa: legado; novos fluxos: apartamento | area_comum
     imovel_categoria: Optional[Literal["apartamento", "casa"]] = None
+    contratante_cpf_cnpj: str = ""
     responsavel_cpf_cnpj: str = ""
     pdf_logo_data_url: Optional[str] = Field(
         default=None,
@@ -250,6 +251,7 @@ class Inspection(BaseModel):
         Literal["apartamento", "casa", "area_comum"]
     ] = None  # casa: legado; novos fluxos: apartamento | area_comum
     imovel_categoria: Optional[Literal["apartamento", "casa"]] = None
+    contratante_cpf_cnpj: str = ""
     responsavel_cpf_cnpj: str = ""
 
 
@@ -305,6 +307,7 @@ class IdentificationUpdate(BaseModel):
         Literal["apartamento", "casa", "area_comum"]
     ] = None  # casa: legado; novos fluxos: apartamento | area_comum
     imovel_categoria: Optional[Literal["apartamento", "casa"]] = None
+    contratante_cpf_cnpj: Optional[str] = None
     imovel_tipologia: Optional[Literal["terreo", "sobrado"]] = None
     imovel_numero_pavimentos: Optional[str] = None
     responsavel_cpf_cnpj: Optional[str] = None

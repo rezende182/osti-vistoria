@@ -272,12 +272,32 @@ const InspectionDetail = () => {
                   <p className="text-slate-900">{inspection.cliente}</p>
                 </div>
                 <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">CPF / CNPJ</span>
+                  <p className="text-slate-900">{inspection.contratante_cpf_cnpj || '—'}</p>
+                </div>
+                <div>
                   <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
                     Tipo do imóvel (contratante)
                   </span>
                   <p className="text-slate-900">
                     {inspection.imovel_categoria === 'casa' ? 'Casa' : 'Apartamento'}
                   </p>
+                </div>
+                {inspection.imovel_categoria === 'casa' && (
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Tipologia</span>
+                    <p className="text-slate-900">
+                      {inspection.imovel_tipologia === 'sobrado'
+                        ? 'Sobrado'
+                        : inspection.imovel_tipologia === 'terreo'
+                          ? 'Térrea'
+                          : '—'}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Endereço</span>
+                  <p className="text-slate-900">{inspection.endereco}</p>
                 </div>
                 {inspection.imovel_categoria === 'apartamento' && (
                   <div>
@@ -287,34 +307,6 @@ const InspectionDetail = () => {
                     <p className="text-slate-900">{inspection.unidade || '—'}</p>
                   </div>
                 )}
-                {inspection.imovel_categoria === 'casa' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                        Tipologia
-                      </span>
-                      <p className="text-slate-900">
-                        {inspection.imovel_tipologia === 'sobrado'
-                          ? 'Sobrado'
-                          : inspection.imovel_tipologia === 'terreo'
-                            ? 'Térrea'
-                            : '—'}
-                      </p>
-                    </div>
-                    {inspection.imovel_tipologia === 'sobrado' && (
-                      <div>
-                        <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                          Número de pavimentos
-                        </span>
-                        <p className="text-slate-900">{inspection.imovel_numero_pavimentos || '—'}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div>
-                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Endereço</span>
-                  <p className="text-slate-900">{inspection.endereco}</p>
-                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cidade</span>
@@ -465,27 +457,15 @@ const InspectionDetail = () => {
                   </span>
                   <p className="text-slate-900">{inspection.horario_inicio || '—'}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                      Tipo do imóvel
-                    </span>
-                    <p className="text-slate-900">
-                      {inspection.imovel_tipologia === 'sobrado'
-                        ? 'Sobrado'
-                        : inspection.imovel_tipologia === 'terreo'
-                          ? 'Térreo'
-                          : '—'}
-                    </p>
-                  </div>
-                  {inspection.imovel_tipologia === 'sobrado' && (
-                    <div>
-                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                        Número de pavimentos
-                      </span>
-                      <p className="text-slate-900">{inspection.imovel_numero_pavimentos || '—'}</p>
-                    </div>
-                  )}
+                <div>
+                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Tipo do imóvel</span>
+                  <p className="text-slate-900">
+                    {inspection.imovel_tipologia === 'sobrado'
+                      ? 'Sobrado'
+                      : inspection.imovel_tipologia === 'terreo'
+                        ? 'Térreo'
+                        : '—'}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>

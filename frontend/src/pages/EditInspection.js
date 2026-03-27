@@ -35,11 +35,15 @@ function validateIdentificationRequired(fd) {
 
 function validateEntregaImovel(fd) {
   if (!validateIdentificationRequired(fd)) return false;
+  if (!isFilled(fd.contratante_cpf_cnpj)) return false;
   if (!isFilled(fd.imovel_categoria)) return false;
   if (fd.imovel_categoria === 'casa') {
     if (fd.imovel_tipologia !== 'terreo' && fd.imovel_tipologia !== 'sobrado') {
       return false;
     }
+  }
+  if (fd.imovel_categoria === 'apartamento' && !isFilled(fd.unidade)) {
+    return false;
   }
   return true;
 }
@@ -82,6 +86,7 @@ const EditInspection = () => {
     tipo_vistoria_fluxo: '',
     imovel_categoria: '',
     responsavel_cpf_cnpj: '',
+    contratante_cpf_cnpj: '',
   });
   // Removed horario_termino - moved to finalization page
 
@@ -133,6 +138,7 @@ const EditInspection = () => {
                 ? 'apartamento'
                 : '',
         responsavel_cpf_cnpj: data.responsavel_cpf_cnpj || '',
+        contratante_cpf_cnpj: data.contratante_cpf_cnpj || '',
       });
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
@@ -167,7 +173,7 @@ const EditInspection = () => {
     if (formData.tipo_vistoria_fluxo === 'apartamento') {
       if (!validateEntregaImovel(formData)) {
         toast.error(
-          'Preencha os campos obrigatórios, incluindo tipo do imóvel (Apartamento ou Casa). Se for Casa, selecione Térrea ou Sobrado.'
+          'Preencha os campos obrigatórios: CPF/CNPJ do contratante, tipo do imóvel, e Apartamento/Bloco quando for apartamento. Se for Casa, selecione Térrea ou Sobrado.'
         );
         return;
       }
@@ -188,10 +194,8 @@ const EditInspection = () => {
       if (formData.tipo_vistoria_fluxo === 'apartamento') {
         if (payload.imovel_categoria === 'apartamento') {
           payload.imovel_tipologia = 'terreo';
-          payload.imovel_numero_pavimentos = '';
-        } else if (payload.imovel_categoria === 'casa' && payload.imovel_tipologia !== 'sobrado') {
-          payload.imovel_numero_pavimentos = '';
         }
+        payload.imovel_numero_pavimentos = '';
       } else {
         delete payload.imovel_categoria;
       }
@@ -329,7 +333,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-6">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  CPF / CNPJ (opcional)
+                  CPF / CNPJ
                 </label>
                 <input
                   type="text"
@@ -359,6 +363,22 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  CPF / CNPJ *
+                </label>
+                <input
+                  data-testid="input-contratante-cpf-cnpj"
+                  type="text"
+                  name="contratante_cpf_cnpj"
+                  value={formData.contratante_cpf_cnpj}
+                  onChange={handleChange}
+                  required
+                  placeholder="CPF ou CNPJ do contratante"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Tipo do imóvel *
                 </label>
                 <div className="flex gap-2">
@@ -376,7 +396,6 @@ const EditInspection = () => {
                             ...prev,
                             imovel_categoria: 'apartamento',
                             imovel_tipologia: 'terreo',
-                            imovel_numero_pavimentos: '',
                           }));
                         } else {
                           setFormData((prev) => ({
@@ -384,7 +403,6 @@ const EditInspection = () => {
                             imovel_categoria: 'casa',
                             unidade: '',
                             imovel_tipologia: '',
-                            imovel_numero_pavimentos: '',
                           }));
                         }
                       }}
@@ -399,74 +417,37 @@ const EditInspection = () => {
                   ))}
                 </div>
               </div>
-              {formData.imovel_categoria === 'apartamento' && (
+              {formData.imovel_categoria === 'casa' && (
                 <div className="mb-4">
                   <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Apartamento / Bloco (opcional)
+                    Casa — tipologia *
                   </label>
-                  <input
-                    data-testid="input-unidade"
-                    type="text"
-                    name="unidade"
-                    value={formData.unidade}
-                    onChange={handleChange}
-                    placeholder="Ex.: Torre A, apto 101"
-                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              )}
-              {formData.imovel_categoria === 'casa' && (
-                <>
-                  <div className="mb-4">
-                    <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Casa — tipologia *
-                    </label>
-                    <div className="flex gap-2">
-                      {[
-                        { id: 'terreo', label: 'Térrea' },
-                        { id: 'sobrado', label: 'Sobrado' },
-                      ].map(({ id, label }) => (
-                        <button
-                          key={id}
-                          type="button"
-                          data-testid={`imovel-tipologia-${id}`}
-                          onClick={() =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              imovel_tipologia: id,
-                              imovel_numero_pavimentos: id === 'terreo' ? '' : prev.imovel_numero_pavimentos,
-                            }))
-                          }
-                          className={`flex-1 rounded-lg py-3 px-4 text-sm font-semibold transition-all duration-200 sm:text-base ${
-                            formData.imovel_tipologia === id
-                              ? 'bg-slate-900 text-white shadow-md'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="flex gap-2">
+                    {[
+                      { id: 'terreo', label: 'Térrea' },
+                      { id: 'sobrado', label: 'Sobrado' },
+                    ].map(({ id, label }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        data-testid={`imovel-tipologia-${id}`}
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            imovel_tipologia: id,
+                          }))
+                        }
+                        className={`flex-1 rounded-lg py-3 px-4 text-sm font-semibold transition-all duration-200 sm:text-base ${
+                          formData.imovel_tipologia === id
+                            ? 'bg-slate-900 text-white shadow-md'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
-                  {formData.imovel_tipologia === 'sobrado' && (
-                    <div className="mb-4">
-                      <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                        Número de pavimentos (opcional)
-                      </label>
-                      <input
-                        data-testid="input-numero-pavimentos"
-                        type="text"
-                        name="imovel_numero_pavimentos"
-                        inputMode="numeric"
-                        value={formData.imovel_numero_pavimentos}
-                        onChange={handleChange}
-                        placeholder="Ex.: 2"
-                        className="w-full max-w-xs rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        autoComplete="off"
-                      />
-                    </div>
-                  )}
-                </>
+                </div>
               )}
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -482,6 +463,23 @@ const EditInspection = () => {
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              {formData.imovel_categoria === 'apartamento' && (
+                <div className="mb-4">
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Apartamento / Bloco *
+                  </label>
+                  <input
+                    data-testid="input-unidade"
+                    type="text"
+                    name="unidade"
+                    value={formData.unidade}
+                    onChange={handleChange}
+                    required
+                    placeholder="Ex.: Torre A, apto 101"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
               <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -546,7 +544,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Condição do imóvel (opcional)
+                  Condição do imóvel
                 </label>
                 <div className="flex gap-2">
                   {['novo', 'usado', 'reformado'].map((tipo) => (
@@ -568,7 +566,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-6">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Energia disponível (opcional)
+                  Energia disponível
                 </label>
                 <div className="flex gap-2">
                   {['sim', 'nao'].map((opcao) => (
@@ -606,7 +604,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Horário de início (opcional)
+                  Horário de início
                 </label>
                 <TimePickerField
                   data-testid="input-horario-inicio"
@@ -617,7 +615,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-6">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Documentos recebidos (opcional)
+                  Documentos recebidos
                 </label>
                 <div className="space-y-2">
                   {documentosOptions.map((doc) => (
@@ -756,7 +754,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Empreendimento (opcional)
+                  Nome do empreendimento (opcional)
                 </label>
                 <input
                   data-testid="input-empreendimento"
@@ -810,7 +808,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  CPF / CNPJ (opcional)
+                  CPF / CNPJ
                 </label>
                 <input
                   type="text"
@@ -823,7 +821,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Horário de Início (opcional)
+                  Horário de Início
                 </label>
                 <TimePickerField
                   data-testid="input-horario-inicio"
@@ -834,7 +832,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Condição do imóvel (opcional)
+                  Condição do imóvel
                 </label>
                 <div className="flex gap-2">
                   {['novo', 'usado', 'reformado'].map((tipo) => (
@@ -856,7 +854,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Energia Disponível (opcional)
+                  Energia Disponível
                 </label>
                 <div className="flex gap-2">
                   {['sim', 'nao'].map((opcao) => (
@@ -878,7 +876,7 @@ const EditInspection = () => {
               </div>
               <div className="mb-6">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Documentos Recebidos (opcional)
+                  Documentos Recebidos
                 </label>
                 <div className="space-y-2">
                   {documentosOptions.map((doc) => (
