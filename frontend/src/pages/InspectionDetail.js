@@ -35,6 +35,28 @@ function energiaLabel(v) {
   return null;
 }
 
+/** Sigla da UF (ex.: SP), sem nome do estado. */
+function ufSomenteSigla(uf) {
+  const s = tStr(uf);
+  if (!s) return '';
+  const head = s.split(/\s*[—–-]\s*/)[0].trim();
+  if (/^[A-Za-z]{2}$/.test(head)) return head.toUpperCase();
+  return head.slice(0, 2).toUpperCase();
+}
+
+/** Apartamento | Casa térrea | Sobrado */
+function tipoImovelUnificadoLabel(inv) {
+  if (inv.imovel_categoria === 'apartamento') return 'Apartamento';
+  if (inv.imovel_categoria === 'casa') {
+    if (inv.imovel_tipologia === 'sobrado') return 'Sobrado';
+    if (inv.imovel_tipologia === 'terreo') return 'Casa térrea';
+    return null;
+  }
+  if (inv.imovel_tipologia === 'sobrado') return 'Sobrado';
+  if (inv.imovel_tipologia === 'terreo') return 'Casa térrea';
+  return null;
+}
+
 function IdBlock({ title, children }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50/90 to-white p-4 shadow-sm">
@@ -267,12 +289,6 @@ const InspectionDetail = () => {
               inspection.imovel_categoria === 'casa') ? (
               <>
                 <IdBlock title="Identificação do Responsável Técnico">
-                  {tStr(inspection.pdf_empresa_nome) ? (
-                    <IdRow label="Nome da empresa">{inspection.pdf_empresa_nome}</IdRow>
-                  ) : null}
-                  {tStr(inspection.pdf_empresa_cnpj) ? (
-                    <IdRow label="CNPJ da empresa">{inspection.pdf_empresa_cnpj}</IdRow>
-                  ) : null}
                   <IdRow label="Nome do Responsável Técnico">{inspection.responsavel_tecnico}</IdRow>
                   <IdRow label="CREA / CAU">{inspection.crea}</IdRow>
                   {tStr(inspection.responsavel_cpf_cnpj) ? (
@@ -288,22 +304,17 @@ const InspectionDetail = () => {
                 </IdBlock>
 
                 <IdBlock title="Dados do Imóvel">
-                  <IdRow label="Tipo do imóvel (contratante)">
-                    {inspection.imovel_categoria === 'casa' ? 'Casa' : 'Apartamento'}
-                  </IdRow>
-                  {inspection.imovel_categoria === 'casa' &&
-                  (inspection.imovel_tipologia === 'sobrado' ||
-                    inspection.imovel_tipologia === 'terreo') ? (
-                    <IdRow label="Tipologia">
-                      {inspection.imovel_tipologia === 'sobrado' ? 'Sobrado' : 'Térrea'}
-                    </IdRow>
+                  {tipoImovelUnificadoLabel(inspection) ? (
+                    <IdRow label="Tipo do Imóvel">{tipoImovelUnificadoLabel(inspection)}</IdRow>
                   ) : null}
                   <IdRow label="Endereço">{inspection.endereco}</IdRow>
                   {inspection.imovel_categoria === 'apartamento' && tStr(inspection.unidade) ? (
                     <IdRow label="Apartamento / Bloco">{inspection.unidade}</IdRow>
                   ) : null}
                   {tStr(inspection.cidade) ? <IdRow label="Cidade">{inspection.cidade}</IdRow> : null}
-                  {tStr(inspection.uf) ? <IdRow label="UF">{inspection.uf}</IdRow> : null}
+                  {ufSomenteSigla(inspection.uf) ? (
+                    <IdRow label="UF">{ufSomenteSigla(inspection.uf)}</IdRow>
+                  ) : null}
                   {tStr(inspection.empreendimento) ? (
                     <IdRow label="Nome do empreendimento">{inspection.empreendimento}</IdRow>
                   ) : null}
@@ -324,12 +335,24 @@ const InspectionDetail = () => {
 
                 <IdBlock title="Identificação da vistoria">
                   <IdRow label="Data da vistoria">{formatInspectionDate(inspection.data)}</IdRow>
-                  {tStr(inspection.horario_inicio) ? (
-                    <IdRow label="Horário de início">{inspection.horario_inicio}</IdRow>
-                  ) : null}
-                  {tStr(inspection.horario_termino) ? (
-                    <IdRow label="Horário de término">{inspection.horario_termino}</IdRow>
-                  ) : null}
+                  <div className="grid grid-cols-1 gap-4 border-t border-slate-100 py-3 first:border-t-0 first:pt-0 sm:grid-cols-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Horário de início
+                      </span>
+                      <span className="text-sm font-medium text-slate-900">
+                        {tStr(inspection.horario_inicio) || '—'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Horário de término
+                      </span>
+                      <span className="text-sm font-medium text-slate-900">
+                        {tStr(inspection.horario_termino) || '—'}
+                      </span>
+                    </div>
+                  </div>
                   {inspection.documentos_recebidos?.filter((d) => tStr(d)).length > 0 ? (
                     <div className="border-t border-slate-100 pt-3 first:border-t-0 first:pt-0">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -348,22 +371,13 @@ const InspectionDetail = () => {
               </>
             ) : (
               <>
-                {tStr(inspection.pdf_empresa_nome) || tStr(inspection.pdf_empresa_cnpj) ? (
-                  <IdBlock title="Dados da empresa">
-                    {tStr(inspection.pdf_empresa_nome) ? (
-                      <IdRow label="Nome da empresa">{inspection.pdf_empresa_nome}</IdRow>
-                    ) : null}
-                    {tStr(inspection.pdf_empresa_cnpj) ? (
-                      <IdRow label="CNPJ da empresa">{inspection.pdf_empresa_cnpj}</IdRow>
-                    ) : null}
-                  </IdBlock>
-                ) : null}
-
                 <IdBlock title="Contratante e imóvel">
                   <IdRow label="Cliente">{inspection.cliente}</IdRow>
                   <IdRow label="Endereço">{inspection.endereco}</IdRow>
                   {tStr(inspection.cidade) ? <IdRow label="Cidade">{inspection.cidade}</IdRow> : null}
-                  {tStr(inspection.uf) ? <IdRow label="UF">{inspection.uf}</IdRow> : null}
+                  {ufSomenteSigla(inspection.uf) ? (
+                    <IdRow label="UF">{ufSomenteSigla(inspection.uf)}</IdRow>
+                  ) : null}
                   {inspection.tipo_vistoria_fluxo === 'apartamento' && tStr(inspection.unidade) ? (
                     <IdRow label="Entrega de Imóvel">{inspection.unidade}</IdRow>
                   ) : null}
@@ -372,6 +386,9 @@ const InspectionDetail = () => {
                   ) : null}
                   {tStr(inspection.construtora) ? (
                     <IdRow label="Construtora">{inspection.construtora}</IdRow>
+                  ) : null}
+                  {tipoImovelUnificadoLabel(inspection) ? (
+                    <IdRow label="Tipo do Imóvel">{tipoImovelUnificadoLabel(inspection)}</IdRow>
                   ) : null}
                 </IdBlock>
 
@@ -385,18 +402,24 @@ const InspectionDetail = () => {
 
                 <IdBlock title="Identificação da vistoria">
                   <IdRow label="Data">{formatInspectionDate(inspection.data)}</IdRow>
-                  {tStr(inspection.horario_inicio) ? (
-                    <IdRow label="Horário de início">{inspection.horario_inicio}</IdRow>
-                  ) : null}
-                  {tStr(inspection.horario_termino) ? (
-                    <IdRow label="Horário de término">{inspection.horario_termino}</IdRow>
-                  ) : null}
-                  {inspection.imovel_tipologia === 'sobrado' ||
-                  inspection.imovel_tipologia === 'terreo' ? (
-                    <IdRow label="Tipo do imóvel">
-                      {inspection.imovel_tipologia === 'sobrado' ? 'Sobrado' : 'Térrea'}
-                    </IdRow>
-                  ) : null}
+                  <div className="grid grid-cols-1 gap-4 border-t border-slate-100 py-3 first:border-t-0 first:pt-0 sm:grid-cols-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Horário de início
+                      </span>
+                      <span className="text-sm font-medium text-slate-900">
+                        {tStr(inspection.horario_inicio) || '—'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Horário de término
+                      </span>
+                      <span className="text-sm font-medium text-slate-900">
+                        {tStr(inspection.horario_termino) || '—'}
+                      </span>
+                    </div>
+                  </div>
                   {condicaoImovelLabel(inspection.tipo_imovel) ? (
                     <IdRow label="Condição do imóvel">
                       {condicaoImovelLabel(inspection.tipo_imovel)}

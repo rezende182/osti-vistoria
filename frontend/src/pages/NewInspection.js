@@ -114,8 +114,6 @@ const NewInspection = () => {
     energia_disponivel: 'sim',
     documentos_recebidos: [],
     pdf_logo_data_url: '',
-    pdf_empresa_nome: '',
-    pdf_empresa_cnpj: '',
     responsavel_cpf_cnpj: '',
     contratante_cpf_cnpj: '',
   });
@@ -160,7 +158,7 @@ const NewInspection = () => {
     if (tipoImovelFluxo === 'apartamento') {
       if (!validateEntregaImovel(formData)) {
         toast.error(
-          'Preencha os campos obrigatórios: CPF/CNPJ do contratante, tipo do imóvel, e Apartamento/Bloco quando for apartamento. Se for Casa, selecione Térrea ou Sobrado.'
+          'Preencha os campos obrigatórios: CPF/CNPJ do contratante, tipo do imóvel (Apartamento, Casa térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
         );
         return;
       }
@@ -196,6 +194,8 @@ const NewInspection = () => {
     if (payload.imovel_tipologia !== 'terreo' && payload.imovel_tipologia !== 'sobrado') {
       payload.imovel_tipologia = 'terreo';
     }
+    payload.pdf_empresa_nome = '';
+    payload.pdf_empresa_cnpj = '';
 
     try {
       await initDB().catch(() => {});
@@ -215,8 +215,8 @@ const NewInspection = () => {
         userId: uid,
         ...payload,
         pdf_logo_data_url: formData.pdf_logo_data_url || '',
-        pdf_empresa_nome: formData.pdf_empresa_nome || '',
-        pdf_empresa_cnpj: formData.pdf_empresa_cnpj || '',
+        pdf_empresa_nome: '',
+        pdf_empresa_cnpj: '',
         horario_termino: '',
         rooms_checklist: [],
         documentos_recebidos: formData.documentos_recebidos || [],
@@ -287,39 +287,6 @@ const NewInspection = () => {
                     setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
                   }
                 />
-              </div>
-              <div className="mb-6 space-y-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4">
-                <p className="text-xs leading-relaxed text-slate-600">
-                  Dados da empresa (opcional) — aparecem no PDF quando preenchidos.
-                </p>
-                <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Nome da empresa (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    name="pdf_empresa_nome"
-                    value={formData.pdf_empresa_nome}
-                    onChange={handleChange}
-                    placeholder="Ex.: Nome fantasia ou razão social"
-                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoComplete="organization"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    CNPJ da empresa (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    name="pdf_empresa_cnpj"
-                    value={formData.pdf_empresa_cnpj}
-                    onChange={handleChange}
-                    placeholder="00.000.000/0000-00"
-                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoComplete="off"
-                  />
-                </div>
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -400,76 +367,57 @@ const NewInspection = () => {
               <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50/90 p-4">
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Tipo do imóvel *
+                  Tipo do Imóvel *
                 </label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {[
-                    { id: 'apartamento', label: 'Apartamento' },
-                    { id: 'casa', label: 'Casa' },
-                  ].map(({ id, label }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      data-testid={`imovel-categoria-${id}`}
-                      onClick={() => {
-                        if (id === 'apartamento') {
-                          setFormData((prev) => ({
-                            ...prev,
-                            imovel_categoria: 'apartamento',
-                            imovel_tipologia: 'terreo',
-                          }));
-                        } else {
-                          setFormData((prev) => ({
-                            ...prev,
-                            imovel_categoria: 'casa',
-                            unidade: '',
-                            imovel_tipologia: '',
-                          }));
-                        }
-                      }}
-                      className={`flex-1 rounded-lg py-3 px-4 text-sm font-semibold transition-all duration-200 sm:text-base ${
-                        formData.imovel_categoria === id
-                          ? 'bg-slate-900 text-white shadow-md'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {formData.imovel_categoria === 'casa' && (
-                <div className="mb-4">
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Casa — tipologia *
-                  </label>
-                  <div className="flex gap-2">
-                    {[
-                      { id: 'terreo', label: 'Térrea' },
-                      { id: 'sobrado', label: 'Sobrado' },
-                    ].map(({ id, label }) => (
+                    {
+                      categoria: 'apartamento',
+                      tipologia: 'terreo',
+                      label: 'Apartamento',
+                      testid: 'tipo-imovel-apartamento',
+                    },
+                    {
+                      categoria: 'casa',
+                      tipologia: 'terreo',
+                      label: 'Casa térrea',
+                      testid: 'tipo-imovel-casa-terrea',
+                    },
+                    {
+                      categoria: 'casa',
+                      tipologia: 'sobrado',
+                      label: 'Sobrado',
+                      testid: 'tipo-imovel-sobrado',
+                    },
+                  ].map(({ categoria, tipologia, label, testid }) => {
+                    const sel =
+                      formData.imovel_categoria === categoria &&
+                      formData.imovel_tipologia === tipologia;
+                    return (
                       <button
-                        key={id}
+                        key={testid}
                         type="button"
-                        data-testid={`imovel-tipologia-${id}`}
-                        onClick={() =>
+                        data-testid={testid}
+                        onClick={() => {
                           setFormData((prev) => ({
                             ...prev,
-                            imovel_tipologia: id,
-                          }))
-                        }
-                        className={`flex-1 rounded-lg py-3 px-4 text-sm font-semibold transition-all duration-200 sm:text-base ${
-                          formData.imovel_tipologia === id
+                            imovel_categoria: categoria,
+                            imovel_tipologia: tipologia,
+                            unidade: categoria === 'apartamento' ? prev.unidade : '',
+                          }));
+                        }}
+                        className={`rounded-lg py-3 px-3 text-sm font-semibold transition-all duration-200 sm:text-base ${
+                          sel
                             ? 'bg-slate-900 text-white shadow-md'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                       >
                         {label}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Endereço *
@@ -663,39 +611,6 @@ const NewInspection = () => {
                   setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
                 }
               />
-              <div className="mb-6 space-y-4 rounded-lg border border-slate-200 bg-slate-50/90 p-4">
-                <p className="text-xs leading-relaxed text-slate-600">
-                  Campo opcional — preencha apenas se tiver empresa.
-                </p>
-                <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Nome da empresa (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    name="pdf_empresa_nome"
-                    value={formData.pdf_empresa_nome}
-                    onChange={handleChange}
-                    placeholder="Ex.: Nome fantasia ou razão social"
-                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoComplete="organization"
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    CNPJ (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    name="pdf_empresa_cnpj"
-                    value={formData.pdf_empresa_cnpj}
-                    onChange={handleChange}
-                    placeholder="00.000.000/0000-00"
-                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
               <div className="mb-4">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
                   Cliente *
@@ -772,6 +687,36 @@ const NewInspection = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+              <div className="mb-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Tipo do Imóvel *
+                </label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {[
+                    { id: 'terreo', label: 'Casa térrea', testid: 'tipo-imovel-casa-terrea' },
+                    { id: 'sobrado', label: 'Sobrado', testid: 'tipo-imovel-sobrado' },
+                  ].map(({ id, label, testid }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      data-testid={testid}
+                      onClick={() =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          imovel_tipologia: id,
+                        }))
+                      }
+                      className={`rounded-lg py-3 px-4 text-sm font-semibold transition-all duration-200 ${
+                        formData.imovel_tipologia === id
+                          ? 'bg-slate-900 text-white shadow-md'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="mb-4">

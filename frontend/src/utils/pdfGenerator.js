@@ -72,7 +72,7 @@ function fitLogoSizeMm(naturalW, naturalH, maxW, maxH) {
 function formatPdfIntroLocalizacao(inspection) {
   const e = (inspection.endereco || '').trim();
   const c = (inspection.cidade || '').trim();
-  const u = (inspection.uf || '').trim().toUpperCase();
+  const u = pdfUfSomenteSigla(inspection.uf);
   const cidadeUf = u ? (c ? `${c} - ${u}` : u) : c;
   if (e && cidadeUf) return `${e}, ${cidadeUf}`;
   if (e) return e;
@@ -98,6 +98,33 @@ function pdfIdentRowFull(label, value, required = true) {
 
 function pdfTrim(v) {
   return v == null ? '' : String(v).trim();
+}
+
+/** UF só com a sigla (ex.: SP), sem o nome do estado após "—". */
+function pdfUfSomenteSigla(uf) {
+  const s = pdfTrim(uf);
+  if (!s) return '';
+  const antesTraco = s.split(/\s*[—–-]\s*/)[0].trim();
+  const m = antesTraco.match(/^([A-Za-z]{2})$/);
+  if (m) return m[1].toUpperCase();
+  const dois = antesTraco.slice(0, 2);
+  if (/^[A-Za-z]{2}$/.test(dois)) return dois.toUpperCase();
+  return antesTraco;
+}
+
+/** Apartamento | Casa térrea | Sobrado (uma linha no laudo). */
+function pdfTipoImovelUnificado(inspection) {
+  const cat = inspection.imovel_categoria;
+  const tip = inspection.imovel_tipologia;
+  if (cat === 'apartamento') return 'Apartamento';
+  if (cat === 'casa') {
+    if (tip === 'sobrado') return 'Sobrado';
+    if (tip === 'terreo') return 'Casa térrea';
+    return '';
+  }
+  if (tip === 'sobrado') return 'Sobrado';
+  if (tip === 'terreo') return 'Casa térrea';
+  return '';
 }
 
 /** Título de subsecção na tabela de identificação (linha única em 4 colunas). */
@@ -128,10 +155,6 @@ function buildIdentificacaoTableBody(inspection) {
     const rows = [];
 
     rows.push(pdfIdentSectionRow('Identificação do Responsável Técnico'));
-    const empNome = pdfIdentRowFull('Nome da empresa', inspection.pdf_empresa_nome, false);
-    if (empNome) rows.push(empNome);
-    const empCnpj = pdfIdentRowFull('CNPJ da empresa', inspection.pdf_empresa_cnpj, false);
-    if (empCnpj) rows.push(empCnpj);
     rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
     rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
     const rtDoc = pdfIdentRowFull(
@@ -152,28 +175,21 @@ function buildIdentificacaoTableBody(inspection) {
 
     rows.push(pdfIdentSectionRow('Dados do Imóvel'));
     rows.push(
-      pdfIdentRowFull('Tipo do imóvel (contratante)', cat === 'casa' ? 'Casa' : 'Apartamento', true)
+      pdfIdentRowFull('Tipo do Imóvel', pdfTipoImovelUnificado(inspection), true)
     );
-    if (cat === 'casa') {
-      const tipE = inspection.imovel_tipologia;
-      const tipEStr =
-        tipE === 'terreo' ? 'Térrea' : tipE === 'sobrado' ? 'Sobrado' : '';
-      const tipRow = pdfIdentRowFull('Tipologia (casa)', tipEStr, false);
-      if (tipRow) rows.push(tipRow);
-    }
     rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
     if (cat === 'apartamento') {
       const unRow = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
       if (unRow) rows.push(unRow);
     }
     const cid = pdfTrim(inspection.cidade);
-    const uf = pdfTrim(inspection.uf);
-    if (cid || uf) {
+    const ufSigla = pdfUfSomenteSigla(inspection.uf);
+    if (cid || ufSigla) {
       rows.push([
         pdfIdentLabelCell('Cidade'),
         { content: cid || '—' },
         pdfIdentLabelCell('UF'),
-        { content: uf || '—' },
+        { content: ufSigla || '—' },
       ]);
     }
     const empRow = pdfIdentRowFull('Nome do empreendimento', inspection.empreendimento, false);
@@ -198,37 +214,29 @@ function buildIdentificacaoTableBody(inspection) {
 
     rows.push(pdfIdentSectionRow('Identificação da vistoria'));
     rows.push(pdfIdentRowFull('Data da vistoria', formatDate(inspection.data), true));
-    const hi = pdfIdentRowFull('Horário de início', inspection.horario_inicio, false);
-    if (hi) rows.push(hi);
-    const ht = pdfIdentRowFull('Horário de Término', inspection.horario_termino, false);
-    if (ht) rows.push(ht);
+    rows.push([
+      pdfIdentLabelCell('Horário de início'),
+      { content: pdfTrim(inspection.horario_inicio) || '—' },
+      pdfIdentLabelCell('Horário de término'),
+      { content: pdfTrim(inspection.horario_termino) || '—' },
+    ]);
     return rows.filter(Boolean);
   }
 
   const rows = [];
-
-  const hasEmpresa =
-    pdfTrim(inspection.pdf_empresa_nome) || pdfTrim(inspection.pdf_empresa_cnpj);
-  if (hasEmpresa) {
-    rows.push(pdfIdentSectionRow('Dados da empresa'));
-    const empNome = pdfIdentRowFull('Nome da empresa', inspection.pdf_empresa_nome, false);
-    if (empNome) rows.push(empNome);
-    const empCnpj = pdfIdentRowFull('CNPJ da empresa', inspection.pdf_empresa_cnpj, false);
-    if (empCnpj) rows.push(empCnpj);
-  }
 
   rows.push(pdfIdentSectionRow('Contratante e imóvel'));
   rows.push(pdfIdentRowFull('Cliente', inspection.cliente, true));
   rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
 
   const cid = pdfTrim(inspection.cidade);
-  const uf = pdfTrim(inspection.uf);
-  if (cid || uf) {
+  const ufSigla = pdfUfSomenteSigla(inspection.uf);
+  if (cid || ufSigla) {
     rows.push([
       pdfIdentLabelCell('Cidade'),
       { content: cid || '—' },
       pdfIdentLabelCell('UF'),
-      { content: uf || '—' },
+      { content: ufSigla || '—' },
     ]);
   }
 
@@ -241,6 +249,10 @@ function buildIdentificacaoTableBody(inspection) {
   if (empR) rows.push(empR);
   const consR = pdfIdentRowFull('Construtora', inspection.construtora, false);
   if (consR) rows.push(consR);
+
+  const tipoLinhaG = pdfTipoImovelUnificado(inspection);
+  const tipoRowG = pdfIdentRowFull('Tipo do Imóvel', tipoLinhaG, false);
+  if (tipoRowG) rows.push(tipoRowG);
 
   rows.push(pdfIdentSectionRow('Responsável técnico'));
   const rtDoc = pdfIdentRowFull(
@@ -255,18 +267,12 @@ function buildIdentificacaoTableBody(inspection) {
   rows.push(pdfIdentSectionRow('Identificação da vistoria'));
   rows.push(pdfIdentRowFull('Data', formatDate(inspection.data), true));
 
-  const hi = pdfIdentRowFull('Horário de Início', inspection.horario_inicio, false);
-  if (hi) rows.push(hi);
-
-  const tipE = inspection.imovel_tipologia;
-  const tipEStr =
-    tipE === 'terreo' ? 'Térrea' : tipE === 'sobrado' ? 'Sobrado' : '';
-  if (tipEStr) {
-    rows.push(pdfIdentRowFull('Tipo do imóvel', tipEStr, false));
-  }
-
-  const ht = pdfIdentRowFull('Horário de Término', inspection.horario_termino, false);
-  if (ht) rows.push(ht);
+  rows.push([
+    pdfIdentLabelCell('Horário de início'),
+    { content: pdfTrim(inspection.horario_inicio) || '—' },
+    pdfIdentLabelCell('Horário de término'),
+    { content: pdfTrim(inspection.horario_termino) || '—' },
+  ]);
 
   const tipo = inspection.tipo_imovel;
   const tipoStr =
@@ -326,19 +332,8 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   return 'JPEG';
 }
 
-/** Rodapé esquerdo: com empresa → só nome (+ CNPJ se houver); sem empresa → título do laudo + sufixo. */
-function buildPdfFooterLeftLine(inspection) {
-  const empresa = String(inspection.pdf_empresa_nome || '').trim();
-  const cnpj = String(inspection.pdf_empresa_cnpj || '').trim();
-
-  if (empresa) {
-    let line = empresa;
-    if (cnpj) {
-      line += ` — CNPJ: ${cnpj}`;
-    }
-    return line;
-  }
-
+/** Rodapé esquerdo do laudo. */
+function buildPdfFooterLeftLine() {
   return 'Laudo de Inspeção Técnica - Relatório de Vistoria';
 }
 
@@ -983,7 +978,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   // RODAPÉ em todas as páginas
   // ============================================================
-  const footerLeftText = buildPdfFooterLeftLine(inspection);
+  const footerLeftText = buildPdfFooterLeftLine();
   const totalPages = doc.internal.getNumberOfPages();
   const footerBottomY = pageHeight - 10;
   const footerLineStep = PDF_BODY_LINE_MM * 0.72;
