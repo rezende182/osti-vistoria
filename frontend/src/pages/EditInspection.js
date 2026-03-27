@@ -377,6 +377,9 @@ const EditInspection = () => {
                   autoComplete="off"
                 />
               </div>
+
+              {sectionTitle('Dados do Imóvel')}
+              <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50/90 p-4">
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Tipo do imóvel *
@@ -585,6 +588,7 @@ const EditInspection = () => {
                     </button>
                   ))}
                 </div>
+              </div>
               </div>
 
               {sectionTitle('Identificação da vistoria')}

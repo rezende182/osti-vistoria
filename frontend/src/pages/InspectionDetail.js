@@ -275,78 +275,84 @@ const InspectionDetail = () => {
                   <span className="text-xs font-bold tracking-wider uppercase text-slate-500">CPF / CNPJ</span>
                   <p className="text-slate-900">{inspection.contratante_cpf_cnpj || '—'}</p>
                 </div>
-                <div>
-                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                    Tipo do imóvel (contratante)
-                  </span>
-                  <p className="text-slate-900">
-                    {inspection.imovel_categoria === 'casa' ? 'Casa' : 'Apartamento'}
-                  </p>
-                </div>
-                {inspection.imovel_categoria === 'casa' && (
-                  <div>
-                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Tipologia</span>
-                    <p className="text-slate-900">
-                      {inspection.imovel_tipologia === 'sobrado'
-                        ? 'Sobrado'
-                        : inspection.imovel_tipologia === 'terreo'
-                          ? 'Térrea'
-                          : '—'}
-                    </p>
-                  </div>
-                )}
-                <div>
-                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Endereço</span>
-                  <p className="text-slate-900">{inspection.endereco}</p>
-                </div>
-                {inspection.imovel_categoria === 'apartamento' && (
+
+                <h3 className="mt-4 border-b border-slate-200 pb-1 text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Dados do Imóvel
+                </h3>
+                <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50/80 p-4">
                   <div>
                     <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                      Apartamento / Bloco
-                    </span>
-                    <p className="text-slate-900">{inspection.unidade || '—'}</p>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cidade</span>
-                    <p className="text-slate-900">{inspection.cidade || '-'}</p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">UF</span>
-                    <p className="text-slate-900">{inspection.uf || '-'}</p>
-                  </div>
-                </div>
-                <div>
-                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                    Nome do empreendimento
-                  </span>
-                  <p className="text-slate-900">{inspection.empreendimento || '—'}</p>
-                </div>
-                <div>
-                  <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Construtora</span>
-                  <p className="text-slate-900">{inspection.construtora || '—'}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                      Condição do imóvel
+                      Tipo do imóvel (contratante)
                     </span>
                     <p className="text-slate-900">
-                      {inspection.tipo_imovel === 'novo'
-                        ? 'Novo'
-                        : inspection.tipo_imovel === 'usado'
-                          ? 'Usado'
-                          : 'Reformado'}
+                      {inspection.imovel_categoria === 'casa' ? 'Casa' : 'Apartamento'}
                     </p>
+                  </div>
+                  {inspection.imovel_categoria === 'casa' && (
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Tipologia</span>
+                      <p className="text-slate-900">
+                        {inspection.imovel_tipologia === 'sobrado'
+                          ? 'Sobrado'
+                          : inspection.imovel_tipologia === 'terreo'
+                            ? 'Térrea'
+                            : '—'}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Endereço</span>
+                    <p className="text-slate-900">{inspection.endereco}</p>
+                  </div>
+                  {inspection.imovel_categoria === 'apartamento' && (
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                        Apartamento / Bloco
+                      </span>
+                      <p className="text-slate-900">{inspection.unidade || '—'}</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Cidade</span>
+                      <p className="text-slate-900">{inspection.cidade || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">UF</span>
+                      <p className="text-slate-900">{inspection.uf || '-'}</p>
+                    </div>
                   </div>
                   <div>
                     <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
-                      Energia disponível
+                      Nome do empreendimento
                     </span>
-                    <p className="text-slate-900">
-                      {inspection.energia_disponivel === 'sim' ? 'Sim' : 'Não'}
-                    </p>
+                    <p className="text-slate-900">{inspection.empreendimento || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Construtora</span>
+                    <p className="text-slate-900">{inspection.construtora || '—'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                        Condição do imóvel
+                      </span>
+                      <p className="text-slate-900">
+                        {inspection.tipo_imovel === 'novo'
+                          ? 'Novo'
+                          : inspection.tipo_imovel === 'usado'
+                            ? 'Usado'
+                            : 'Reformado'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold tracking-wider uppercase text-slate-500">
+                        Energia disponível
+                      </span>
+                      <p className="text-slate-900">
+                        {inspection.energia_disponivel === 'sim' ? 'Sim' : 'Não'}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
