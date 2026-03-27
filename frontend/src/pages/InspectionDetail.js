@@ -9,10 +9,6 @@ import { generateInspectionPDF } from '../utils/pdfGenerator';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
 import BrandLogo from '@/components/BrandLogo';
-import {
-  RELATO_TEXTO_PLACEHOLDER_TERMINO,
-  substituirPlaceholderHorarioTerminoRelato,
-} from '../constants/laudoEntregaTextos';
 
 function formatInspectionDate(iso) {
   if (!iso) return '—';
@@ -375,11 +371,7 @@ const InspectionDetail = () => {
                       {tStr(inspection.horario_inicio) || '—'}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
-                      O horário de término é preenchido na finalização do laudo e substitui{' '}
-                      <span className="font-medium text-slate-600">
-                        {RELATO_TEXTO_PLACEHOLDER_TERMINO}
-                      </span>{' '}
-                      no relato do PDF.
+                      O horário de término é registrado na finalização do laudo.
                     </p>
                   </div>
                   {inspection.documentos_recebidos?.filter((d) => tStr(d)).length > 0 ? (
@@ -398,13 +390,8 @@ const InspectionDetail = () => {
                   ) : null}
                 </IdBlock>
 
-                {(tStr(inspection.laudo_objetivo) ||
-                  tStr(inspection.laudo_relato_vistoria) ||
-                  tStr(inspection.laudo_relato_adendo_descricao) ||
-                  tStr(inspection.laudo_relato_adendo_retrabalho) ||
-                  tStr(inspection.laudo_relato_adendo_impedimento) ||
-                  tStr(inspection.laudo_metodologia)) && (
-                  <IdBlock title="Objetivo, relato e metodologia (PDF)">
+                {(tStr(inspection.laudo_objetivo) || tStr(inspection.laudo_metodologia)) && (
+                  <IdBlock title="Objetivo e metodologia (PDF)">
                     {tStr(inspection.laudo_objetivo) ? (
                       <div className="border-t border-slate-100 pt-3 first:border-t-0 first:pt-0">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -415,55 +402,6 @@ const InspectionDetail = () => {
                         </p>
                       </div>
                     ) : null}
-                    {tStr(inspection.laudo_relato_vistoria) ? (
-                      <div className="border-t border-slate-100 pt-3">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                          Relato da vistoria
-                        </span>
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
-                          {substituirPlaceholderHorarioTerminoRelato(
-                            inspection.laudo_relato_vistoria,
-                            inspection.horario_termino
-                          )}
-                        </p>
-                      </div>
-                    ) : null}
-                    {(tStr(inspection.laudo_relato_adendo_descricao) ||
-                      tStr(inspection.laudo_relato_adendo_retrabalho) ||
-                      tStr(inspection.laudo_relato_adendo_impedimento)) && (
-                      <div className="space-y-3 border-t border-slate-100 pt-3">
-                        {tStr(inspection.laudo_relato_adendo_descricao) ? (
-                          <div>
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                              Andamento da vistoria
-                            </span>
-                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">
-                              {inspection.laudo_relato_adendo_descricao}
-                            </p>
-                          </div>
-                        ) : null}
-                        {tStr(inspection.laudo_relato_adendo_retrabalho) ? (
-                          <div>
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                              Retrabalhos na vistoria
-                            </span>
-                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">
-                              {inspection.laudo_relato_adendo_retrabalho}
-                            </p>
-                          </div>
-                        ) : null}
-                        {tStr(inspection.laudo_relato_adendo_impedimento) ? (
-                          <div>
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                              Impedimentos à inspeção
-                            </span>
-                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">
-                              {inspection.laudo_relato_adendo_impedimento}
-                            </p>
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
                     {tStr(inspection.laudo_metodologia) ? (
                       <div className="border-t border-slate-100 pt-3">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -524,11 +462,7 @@ const InspectionDetail = () => {
                       {tStr(inspection.horario_inicio) || '—'}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
-                      O horário de término é preenchido na finalização do laudo e substitui{' '}
-                      <span className="font-medium text-slate-600">
-                        {RELATO_TEXTO_PLACEHOLDER_TERMINO}
-                      </span>{' '}
-                      no relato do PDF.
+                      O horário de término é registrado na finalização do laudo.
                     </p>
                   </div>
                   {condicaoImovelLabel(inspection.tipo_imovel) ? (

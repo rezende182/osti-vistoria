@@ -24,11 +24,7 @@ import {
   PDF_PT_TO_MM,
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
-import {
-  applyDynamicMetodologiaIntro,
-  METODOLOGIA_PLACEHOLDER_REG_NC,
-  substituirPlaceholderHorarioTerminoRelato,
-} from '../constants/laudoEntregaTextos';
+import { METODOLOGIA_PLACEHOLDER_REG_NC } from '../constants/laudoEntregaTextos';
 
 /** Cabeçalho: logo à esquerda; só o título à direita, centrado na coluna de texto */
 const PDF_HEADER_LOGO_MAX_W_MM = 52;
@@ -218,6 +214,15 @@ function buildIdentificacaoTableBody(inspection) {
     const trEn = pdfIdentRowFull('Energia disponível', enStr, false);
     if (trEn) rows.push(trEn);
 
+    rows.push(pdfIdentSectionRow('Identificação da vistoria'));
+    rows.push(pdfIdentRowFull('Data da vistoria', formatDate(inspection.data), true));
+    const rcRow = pdfIdentRowFull(
+      'Responsável da Construtora',
+      inspection.responsavel_construtora,
+      false
+    );
+    if (rcRow) rows.push(rcRow);
+    rows.push(pdfIdentRowFull('Horário de início', inspection.horario_inicio, true));
     return rows.filter(Boolean);
   }
 
@@ -313,31 +318,12 @@ function isEntregaImovelLaudoExtended(inspection) {
   return f === 'apartamento' && (c === 'apartamento' || c === 'casa');
 }
 
-function composeLaudoRelatoVistoriaPdf(inspection) {
-  const parts = [];
-  const main = pdfTrim(inspection.laudo_relato_vistoria);
-  if (main) {
-    parts.push(
-      substituirPlaceholderHorarioTerminoRelato(main, inspection.horario_termino)
-    );
-  }
-  const a1 = pdfTrim(inspection.laudo_relato_adendo_descricao);
-  if (a1) parts.push(a1);
-  const a2 = pdfTrim(inspection.laudo_relato_adendo_retrabalho);
-  if (a2) parts.push(a2);
-  const a3 = pdfTrim(inspection.laudo_relato_adendo_impedimento);
-  if (a3) parts.push(a3);
-  return parts.join('\n\n');
-}
-
 function finalizeLaudoMetodologiaPdf(inspection, registroNaoConformidadesItemNum) {
-  const adjusted = applyDynamicMetodologiaIntro(
-    inspection.laudo_metodologia,
-    inspection.documentos_recebidos
-  );
+  const raw = pdfTrim(inspection.laudo_metodologia);
+  if (!raw) return '';
   const esc = METODOLOGIA_PLACEHOLDER_REG_NC.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const re = new RegExp(esc, 'gi');
-  return adjusted.replace(re, `item ${registroNaoConformidadesItemNum}`);
+  return raw.replace(re, `item ${registroNaoConformidadesItemNum}`);
 }
 
 // Texto legal padrão
@@ -642,12 +628,13 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos = doc.lastAutoTable.finalY + 10;
 
   // ============================================================
-  // 2. DOCUMENTOS RECEBIDOS E ANALISADOS (só se houver itens no app)
+  // 2. DOCUMENTOS RECEBIDOS E ANALISADOS (fluxo sem laudo estendido: só se houver itens)
   // ============================================================
   const docsList = Array.isArray(inspection.documentos_recebidos)
     ? inspection.documentos_recebidos.filter((d) => pdfTrim(d))
     : [];
-  if (docsList.length > 0) {
+  const entregaLaudoExtOnP1 = isEntregaImovelLaudoExtended(inspection);
+  if (!entregaLaudoExtOnP1 && docsList.length > 0) {
     yPos = drawChapterTitle(
       doc,
       margin,
@@ -699,23 +686,30 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       );
     }
 
-    const relatoT = composeLaudoRelatoVistoriaPdf(inspection);
-    if (relatoT) {
-      checkNewPage(40);
-      yPos = drawChapterTitle(
-        doc,
-        margin,
-        contentWidth,
-        yPos,
-        '4. RELATO DA VISTORIA',
-        { minFollowingMm: 45 }
-      );
-      doc.setFont(PDF_FONT, 'normal');
-      doc.setFontSize(PDF_BODY_PT);
-      doc.setTextColor(0, 0, 0);
+    checkNewPage(36);
+    yPos = drawChapterTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      '4. DOCUMENTOS RECEBIDOS E ANALISADOS',
+      { minFollowingMm: 28 }
+    );
+    doc.setFont(PDF_FONT, 'normal');
+    doc.setFontSize(PDF_BODY_PT);
+    doc.setTextColor(0, 0, 0);
+    if (docsList.length > 0) {
+      docsList.forEach((docItem, index) => {
+        doc.text(`${index + 1}. ${docItem}`, listX, yPos);
+        yPos += PDF_BODY_LINE_MM;
+        if (index < docsList.length - 1) {
+          yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
+        }
+      });
+    } else {
       yPos = drawBodyParagraphs(
         doc,
-        relatoT,
+        'Nenhum documento foi disponibilizado pela construtora nesta vistoria.',
         margin,
         contentWidth,
         yPos,
@@ -747,7 +741,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      `${checklistChapterNum}. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO`,
+      `${checklistChapterNum}. VERIFICAÇÕES DOS AMBIENTES`,
       { minFollowingMm: 52 }
     );
   } else {

@@ -13,10 +13,7 @@ import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 import {
   LAUDO_OBJETIVO_PRESETS,
-  buildLaudoMetodologiaCompleta,
-  buildRelatoVistoriaArmazenado,
-  buildRelatoVistoriaIntro,
-  extractRelatoEditableSuffix,
+  nextMetodologiaPreset,
   nextObjetivoPreset,
 } from '../constants/laudoEntregaTextos';
 
@@ -150,10 +147,14 @@ const EditInspection = () => {
         horario_termino: data.horario_termino || '',
         responsavel_construtora: data.responsavel_construtora || '',
         laudo_objetivo: data.laudo_objetivo || '',
-        laudo_relato_vistoria: extractRelatoEditableSuffix(data.laudo_relato_vistoria || ''),
-        laudo_relato_adendo_descricao: data.laudo_relato_adendo_descricao || '',
-        laudo_relato_adendo_retrabalho: data.laudo_relato_adendo_retrabalho || '',
-        laudo_relato_adendo_impedimento: data.laudo_relato_adendo_impedimento || '',
+        laudo_relato_vistoria:
+          data.tipo_vistoria_fluxo === 'apartamento' ? '' : data.laudo_relato_vistoria || '',
+        laudo_relato_adendo_descricao:
+          data.tipo_vistoria_fluxo === 'apartamento' ? '' : data.laudo_relato_adendo_descricao || '',
+        laudo_relato_adendo_retrabalho:
+          data.tipo_vistoria_fluxo === 'apartamento' ? '' : data.laudo_relato_adendo_retrabalho || '',
+        laudo_relato_adendo_impedimento:
+          data.tipo_vistoria_fluxo === 'apartamento' ? '' : data.laudo_relato_adendo_impedimento || '',
         laudo_metodologia: data.laudo_metodologia || '',
         imovel_tipologia: data.imovel_tipologia === 'sobrado' ? 'sobrado' : 'terreo',
         imovel_numero_pavimentos: data.imovel_numero_pavimentos || '',
@@ -238,10 +239,10 @@ const EditInspection = () => {
       payload.pdf_empresa_nome = '';
       payload.pdf_empresa_cnpj = '';
       if (formData.tipo_vistoria_fluxo === 'apartamento') {
-        payload.laudo_relato_vistoria = buildRelatoVistoriaArmazenado(
-          payload.laudo_relato_vistoria,
-          payload
-        );
+        payload.laudo_relato_vistoria = '';
+        payload.laudo_relato_adendo_descricao = '';
+        payload.laudo_relato_adendo_retrabalho = '';
+        payload.laudo_relato_adendo_impedimento = '';
       }
       const result = await inspectionsApi.updateIdentification(id, payload, uid);
       if (result.ok) {
@@ -638,47 +639,33 @@ const EditInspection = () => {
                 </div>
               </div>
 
-              {sectionTitle('Objetivo, Relato da Vistoria e Metodologia')}
-              <div className="mb-6 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      laudo_objetivo: nextObjetivoPreset(prev.laudo_objetivo),
-                    }))
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
-                >
-                  <RefreshCw size={16} />
-                  Alternar objetivo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, laudo_objetivo: '' }))}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
-                >
-                  <Eraser size={16} />
-                  Limpar objetivo
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      laudo_metodologia: buildLaudoMetodologiaCompleta(
-                        prev.documentos_recebidos || []
-                      ),
-                    }))
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
-                >
-                  Restaurar metodologia padrão
-                </button>
-              </div>
+              {sectionTitle('Objetivo, Metodologia e Verificações dos Ambientes')}
 
               <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Objetivo')}
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        laudo_objetivo: nextObjetivoPreset(prev.laudo_objetivo),
+                      }))
+                    }
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
+                  >
+                    <RefreshCw size={16} />
+                    Alternar texto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, laudo_objetivo: '' }))}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
+                  >
+                    <Eraser size={16} />
+                    Limpar
+                  </button>
+                </div>
                 <textarea
                   name="laudo_objetivo"
                   value={formData.laudo_objetivo}
@@ -690,42 +677,30 @@ const EditInspection = () => {
               </div>
 
               <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
-                {laudoBlockTitle('Relato da vistoria')}
-                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-600">
-                  <p className="text-slate-700">
-                    Você pode complementar o relato com os campos logo abaixo, quando fizer sentido:
-                  </p>
-                  <ul className="mt-3 list-disc space-y-2 pl-5 marker:text-slate-400">
-                    <li>descrever como foi a vistoria;</li>
-                    <li>informar se algum item foi retrabalhado durante a vistoria;</li>
-                    <li>informar se houve algum impedimento à sua inspeção.</li>
-                  </ul>
-                </div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Texto fixo (conforme a identificação)
-                </p>
-                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-100/80 px-4 py-3.5 text-sm leading-relaxed text-slate-800">
-                  {buildRelatoVistoriaIntro(formData)}
-                </div>
-                <label
-                  htmlFor="edit-laudo-relato-sufixo"
-                  className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500"
-                >
-                  Complemento do relato (editável)
-                </label>
-                <textarea
-                  id="edit-laudo-relato-sufixo"
-                  name="laudo_relato_vistoria"
-                  value={formData.laudo_relato_vistoria}
-                  onChange={handleChange}
-                  rows={5}
-                  placeholder="Texto complementar do relato…"
-                  className={laudoTextareaClass}
-                />
-              </div>
-
-              <div className="mb-6 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Metodologia')}
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        laudo_metodologia: nextMetodologiaPreset(prev.laudo_metodologia),
+                      }))
+                    }
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
+                  >
+                    <RefreshCw size={16} />
+                    Alternar texto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, laudo_metodologia: '' }))}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
+                  >
+                    <Eraser size={16} />
+                    Limpar
+                  </button>
+                </div>
                 <textarea
                   name="laudo_metodologia"
                   value={formData.laudo_metodologia}
@@ -733,6 +708,13 @@ const EditInspection = () => {
                   rows={16}
                   className={laudoTextareaClass}
                 />
+              </div>
+
+              <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm leading-relaxed text-slate-700">
+                <p className="font-semibold text-slate-800">Verificações dos ambientes</p>
+                <p className="mt-2">
+                  As verificações por cômodo são feitas no checklist após guardar estas informações.
+                </p>
               </div>
             </>
           ) : (

@@ -17,9 +17,8 @@ import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 import {
   LAUDO_OBJETIVO_PRESETS,
-  buildLaudoMetodologiaCompleta,
-  buildRelatoVistoriaArmazenado,
-  buildRelatoVistoriaIntro,
+  LAUDO_METODOLOGIA_PRESETS,
+  nextMetodologiaPreset,
   nextObjetivoPreset,
 } from '../constants/laudoEntregaTextos';
 
@@ -171,9 +170,7 @@ const NewInspection = () => {
         changed = true;
       }
       if (!String(prev.laudo_metodologia || '').trim()) {
-        next.laudo_metodologia = buildLaudoMetodologiaCompleta(
-          prev.documentos_recebidos || []
-        );
+        next.laudo_metodologia = LAUDO_METODOLOGIA_PRESETS[0];
         changed = true;
       }
       return changed ? next : prev;
@@ -260,10 +257,10 @@ const NewInspection = () => {
     payload.pdf_empresa_cnpj = '';
 
     if (tipoImovelFluxo === 'apartamento') {
-      payload.laudo_relato_vistoria = buildRelatoVistoriaArmazenado(
-        payload.laudo_relato_vistoria,
-        payload
-      );
+      payload.laudo_relato_vistoria = '';
+      payload.laudo_relato_adendo_descricao = '';
+      payload.laudo_relato_adendo_retrabalho = '';
+      payload.laudo_relato_adendo_impedimento = '';
     }
 
     try {
@@ -330,7 +327,7 @@ const NewInspection = () => {
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
                   {tipoImovelFluxo === 'apartamento' && entregaStep === 2
-                    ? 'Objetivo, Relato da Vistoria e Metodologia'
+                    ? 'Objetivo, Metodologia e Verificações dos Ambientes'
                     : 'Identificação da Vistoria Técnica'}
                 </h1>
                 {subtipoLabel && (
@@ -388,46 +385,32 @@ const NewInspection = () => {
               </div>
 
               <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
-                {laudoBlockTitle('Relato da vistoria')}
-                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-600">
-                  <p className="text-slate-700">
-                    Você pode complementar o relato com os campos logo abaixo, quando fizer sentido:
-                  </p>
-                  <ul className="mt-3 list-disc space-y-2 pl-5 marker:text-slate-400">
-                    <li>descrever como foi a vistoria;</li>
-                    <li>informar se algum item foi retrabalhado durante a vistoria;</li>
-                    <li>informar se houve algum impedimento à sua inspeção.</li>
-                  </ul>
-                </div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Texto fixo (conforme a identificação)
-                </p>
-                <div
-                  className="mb-4 rounded-xl border border-slate-200 bg-slate-100/80 px-4 py-3.5 text-sm leading-relaxed text-slate-800"
-                  data-testid="relato-intro-readonly"
-                >
-                  {buildRelatoVistoriaIntro(formData)}
-                </div>
-                <label
-                  htmlFor="laudo-relato-sufixo"
-                  className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500"
-                >
-                  Complemento do relato (editável)
-                </label>
-                <textarea
-                  id="laudo-relato-sufixo"
-                  name="laudo_relato_vistoria"
-                  data-testid="textarea-laudo-relato"
-                  value={formData.laudo_relato_vistoria}
-                  onChange={handleChange}
-                  rows={6}
-                  placeholder="Texto complementar do relato…"
-                  className={laudoTextareaClass}
-                />
-              </div>
-
-              <div className="mb-6 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Metodologia')}
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    data-testid="laudo-metodologia-alternar"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        laudo_metodologia: nextMetodologiaPreset(prev.laudo_metodologia),
+                      }))
+                    }
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <RefreshCw size={16} />
+                    Alternar texto
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="laudo-metodologia-limpar"
+                    onClick={() => setFormData((prev) => ({ ...prev, laudo_metodologia: '' }))}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    <Eraser size={16} />
+                    Limpar
+                  </button>
+                </div>
                 <textarea
                   name="laudo_metodologia"
                   data-testid="textarea-laudo-metodologia"
@@ -436,6 +419,14 @@ const NewInspection = () => {
                   rows={18}
                   className={laudoTextareaClass}
                 />
+              </div>
+
+              <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm leading-relaxed text-slate-700">
+                <p className="font-semibold text-slate-800">Verificações dos ambientes</p>
+                <p className="mt-2">
+                  Após criar a vistoria, o checklist por cômodo é preenchido na etapa seguinte — é nele que
+                  constam as verificações dos ambientes do imóvel.
+                </p>
               </div>
 
               <button
