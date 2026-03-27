@@ -363,23 +363,16 @@ const InspectionDetail = () => {
                       {inspection.responsavel_construtora}
                     </IdRow>
                   ) : null}
-                  <div className="grid grid-cols-1 gap-4 border-t border-slate-100 py-3 first:border-t-0 first:pt-0 sm:grid-cols-2">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        Horário de início
-                      </span>
-                      <span className="text-sm font-medium text-slate-900">
-                        {tStr(inspection.horario_inicio) || '—'}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        Horário de término
-                      </span>
-                      <span className="text-sm font-medium text-slate-900">
-                        {tStr(inspection.horario_termino) || '—'}
-                      </span>
-                    </div>
+                  <div className="border-t border-slate-100 py-3 first:border-t-0 first:pt-0">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Horário de início
+                    </span>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                      {tStr(inspection.horario_inicio) || '—'}
+                    </p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      O horário de término é registrado na finalização do laudo.
+                    </p>
                   </div>
                   {inspection.documentos_recebidos?.filter((d) => tStr(d)).length > 0 ? (
                     <div className="border-t border-slate-100 pt-3 first:border-t-0 first:pt-0">
@@ -431,7 +424,7 @@ const InspectionDetail = () => {
                         {tStr(inspection.laudo_relato_adendo_descricao) ? (
                           <div>
                             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                              Como foi a vistoria
+                              Andamento da vistoria
                             </span>
                             <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">
                               {inspection.laudo_relato_adendo_descricao}
@@ -441,7 +434,7 @@ const InspectionDetail = () => {
                         {tStr(inspection.laudo_relato_adendo_retrabalho) ? (
                           <div>
                             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                              Retrabalho durante a vistoria
+                              Retrabalhos na vistoria
                             </span>
                             <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">
                               {inspection.laudo_relato_adendo_retrabalho}
@@ -512,23 +505,16 @@ const InspectionDetail = () => {
 
                 <IdBlock title="Identificação da vistoria">
                   <IdRow label="Data">{formatInspectionDate(inspection.data)}</IdRow>
-                  <div className="grid grid-cols-1 gap-4 border-t border-slate-100 py-3 first:border-t-0 first:pt-0 sm:grid-cols-2">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        Horário de início
-                      </span>
-                      <span className="text-sm font-medium text-slate-900">
-                        {tStr(inspection.horario_inicio) || '—'}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        Horário de término
-                      </span>
-                      <span className="text-sm font-medium text-slate-900">
-                        {tStr(inspection.horario_termino) || '—'}
-                      </span>
-                    </div>
+                  <div className="border-t border-slate-100 py-3 first:border-t-0 first:pt-0">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Horário de início
+                    </span>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                      {tStr(inspection.horario_inicio) || '—'}
+                    </p>
+                    <p className="mt-2 text-xs text-slate-500">
+                      O horário de término é registrado na finalização do laudo.
+                    </p>
                   </div>
                   {condicaoImovelLabel(inspection.tipo_imovel) ? (
                     <IdRow label="Condição do imóvel">

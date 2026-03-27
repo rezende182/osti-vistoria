@@ -20,7 +20,17 @@ Adicionalmente, o laudo tem a finalidade de subsidiar tecnicamente a solicitaç�
 
 export const METODOLOGIA_PLACEHOLDER_REG_NC = '[REGISTRO DE NÃO CONFORMIDADES]';
 
-const METODOLOGIA_CORPO_APOS_INTRO = `A inspeção foi fundamentada nas principais normas técnicas aplicáveis à inspeção predial e elaboração de laudos técnicos, com o objetivo de avaliar as características e condições construtivas do imóvel.
+/** Frase que separa o bloco DOCUMENTOS/NBRS do restante (usada no PDF e na lógica dinâmica). */
+export const METODOLOGIA_PONTE_OBJETIVO =
+  'Com o objetivo de avaliar as características e condições construtivas do imóvel.';
+
+const DEFAULT_NBRS_TOPICS = `• NBR 16747 — Inspeção predial de edificações;
+• NBR 15575-1 a 15575-5 — Edificações habitacionais — Desempenho (partes aplicáveis à vistoria);
+• NBR 5410 — Instalações elétricas de baixa tensão (verificações aplicáveis);
+• NBR 5626 — Instalações prediais de água fria e quente;
+• NBR 14565 — Instalações de gás para uso residencial e comercial.`;
+
+const METODOLOGIA_APOS_PONTE = `${METODOLOGIA_PONTE_OBJETIVO}
 
 Foi realizada vistoria in loco, por meio de análise visual dos elementos construtivos acabados, bem como a execução de verificações funcionais e testes de desempenho não destrutivos, quando aplicáveis, nos sistemas e materiais entregues pela construtora.
 
@@ -30,20 +40,24 @@ O presente relatório não contempla a identificação de vícios ocultos, enten
 
 Por fim, este laudo técnico foi elaborado com a finalidade de documentar as condições observadas no imóvel no ato da entrega, caracterizando o estado dos elementos construtivos e registrando eventuais não conformidades que possam comprometer sua qualidade, desempenho e condições adequadas de uso.`;
 
-/** @param {string[]} documentosRecebidos */
-export function buildMetodologiaIntroFromDocumentos(documentosRecebidos) {
+/** Bloco DOCUMENTOS (tópicos) + NBRS (tópicos), sem o parágrafo “Com o objetivo…”. */
+export function buildMetodologiaDocumentosNbrsSection(documentosRecebidos) {
   const docs = Array.isArray(documentosRecebidos)
     ? documentosRecebidos.map((d) => String(d || '').trim()).filter(Boolean)
     : [];
+  let docBlock;
   if (docs.length > 0) {
-    return `Nesta vistoria, considerou-se a análise dos seguintes documentos fornecidos pela construtora: ${docs.join(', ')}.`;
+    docBlock = docs.map((d) => `• ${d}`).join('\n');
+  } else {
+    docBlock =
+      '• Na ausência de fornecimento de documentos técnicos pela construtora, tal condição é expressamente registrada neste relatório.';
   }
-  return 'Na ausência de fornecimento de documentos técnicos, tal condição é expressamente registrada neste relatório.';
+  return `DOCUMENTOS\n${docBlock}\n\nNBRS\n${DEFAULT_NBRS_TOPICS}`;
 }
 
-/** Metodologia completa (intro dinâmica + corpo com placeholder da seção de NC). */
+/** Metodologia completa para novo laudo ou restaurar padrão. */
 export function buildLaudoMetodologiaCompleta(documentosRecebidos) {
-  return `${buildMetodologiaIntroFromDocumentos(documentosRecebidos)}\n\n${METODOLOGIA_CORPO_APOS_INTRO}`;
+  return `${buildMetodologiaDocumentosNbrsSection(documentosRecebidos)}\n\n${METODOLOGIA_APOS_PONTE}`;
 }
 
 export function formatDataLaudoBrasil(dateStr) {
@@ -56,13 +70,12 @@ export function formatDataLaudoBrasil(dateStr) {
 }
 
 /**
- * Parágrafo inicial do relato (presenças conforme dados da identificação).
- * @param {{ data?: string, horario_inicio?: string, horario_termino?: string, cliente?: string, responsavel_tecnico?: string, responsavel_construtora?: string }} p
+ * Parágrafo inicial do relato (sem horário de término — preenchido na finalização do laudo).
+ * @param {{ data?: string, horario_inicio?: string, cliente?: string, responsavel_tecnico?: string, responsavel_construtora?: string }} p
  */
 export function buildRelatoVistoriaIntro(p) {
   const d = formatDataLaudoBrasil(p.data);
   const hi = String(p.horario_inicio || '').trim() || '___:___';
-  const ht = String(p.horario_termino || '').trim() || '___:___';
   const cl = String(p.cliente || '').trim() || '___';
   const rt = String(p.responsavel_tecnico || '').trim() || '___';
   const rc = String(p.responsavel_construtora || '').trim();
@@ -71,7 +84,7 @@ export function buildRelatoVistoriaIntro(p) {
     presencas += ` e ${rc}, responsável da construtora`;
   }
   presencas += '.';
-  return `A vistoria foi realizada no dia ${d}, com início às ${hi} e término às ${ht}. No momento da vistoria estavam presentes ${presencas}`;
+  return `A vistoria foi realizada no dia ${d}, com início às ${hi}. O horário de término será informado na finalização deste laudo. No momento da vistoria estavam presentes ${presencas}`;
 }
 
 /** Próximo preset de objetivo a partir do texto atual (ciclo). */
@@ -82,22 +95,41 @@ export function nextObjetivoPreset(currentText) {
   return LAUDO_OBJETIVO_PRESETS[next];
 }
 
+const OLD_METODOLOGIA_FRASE_REMOVIDA =
+  'A inspeção foi fundamentada nas principais normas técnicas aplicáveis à inspeção predial e elaboração de laudos técnicos';
+
+const SPLIT_MARKER = `\n\n${METODOLOGIA_PONTE_OBJETIVO}\n\n`;
+
 /**
- * Ajusta o primeiro parágrafo da metodologia conforme documentos atuais, se ainda for um dos intros automáticos.
+ * Atualiza o bloco DOCUMENTOS/NBRS conforme documentos selecionados, preservando o texto após “Com o objetivo…”.
  * @param {string} storedText
  * @param {string[]} documentosRecebidos
  */
 export function applyDynamicMetodologiaIntro(storedText, documentosRecebidos) {
   const s = String(storedText || '').trim();
   if (!s) return buildLaudoMetodologiaCompleta(documentosRecebidos);
+
+  if (s.includes(OLD_METODOLOGIA_FRASE_REMOVIDA)) {
+    return buildLaudoMetodologiaCompleta(documentosRecebidos);
+  }
+
+  const t = s.trimStart();
+  if (t.startsWith('DOCUMENTOS')) {
+    const idx = s.indexOf(SPLIT_MARKER);
+    if (idx !== -1) {
+      const tail = s.slice(idx + SPLIT_MARKER.length);
+      return `${buildMetodologiaDocumentosNbrsSection(documentosRecebidos)}${SPLIT_MARKER}${tail}`;
+    }
+  }
+
   const parts = s.split(/\n\n+/);
-  if (parts.length === 0) return buildLaudoMetodologiaCompleta(documentosRecebidos);
-  const p0 = parts[0].trim();
-  const isAutoIntro =
+  const p0 = parts[0]?.trim() || '';
+  const isOldIntro =
     p0.startsWith('Nesta vistoria, considerou-se') ||
     p0.startsWith('Na ausência de fornecimento');
-  if (!isAutoIntro) return s;
-  const rest = parts.slice(1).join('\n\n').trim();
-  const intro = buildMetodologiaIntroFromDocumentos(documentosRecebidos);
-  return rest ? `${intro}\n\n${rest}` : intro;
+  if (isOldIntro) {
+    return buildLaudoMetodologiaCompleta(documentosRecebidos);
+  }
+
+  return s;
 }

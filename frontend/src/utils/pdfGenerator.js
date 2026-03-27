@@ -225,12 +225,7 @@ function buildIdentificacaoTableBody(inspection) {
       false
     );
     if (rcRow) rows.push(rcRow);
-    rows.push([
-      pdfIdentLabelCell('Horário de início'),
-      { content: pdfTrim(inspection.horario_inicio) || '—' },
-      pdfIdentLabelCell('Horário de término'),
-      { content: pdfTrim(inspection.horario_termino) || '—' },
-    ]);
+    rows.push(pdfIdentRowFull('Horário de início', inspection.horario_inicio, true));
     return rows.filter(Boolean);
   }
 
@@ -268,12 +263,7 @@ function buildIdentificacaoTableBody(inspection) {
   rows.push(pdfIdentSectionRow('Identificação da vistoria'));
   rows.push(pdfIdentRowFull('Data', formatDate(inspection.data), true));
 
-  rows.push([
-    pdfIdentLabelCell('Horário de início'),
-    { content: pdfTrim(inspection.horario_inicio) || '—' },
-    pdfIdentLabelCell('Horário de término'),
-    { content: pdfTrim(inspection.horario_termino) || '—' },
-  ]);
+  rows.push(pdfIdentRowFull('Horário de início', inspection.horario_inicio, true));
 
   const tipo = inspection.tipo_imovel;
   const tipoStr =
@@ -336,19 +326,11 @@ function composeLaudoRelatoVistoriaPdf(inspection) {
   const main = pdfTrim(inspection.laudo_relato_vistoria);
   if (main) parts.push(main);
   const a1 = pdfTrim(inspection.laudo_relato_adendo_descricao);
-  if (a1) {
-    parts.push(`DESCREVA COMO FOI A VISTORIA:\n${a1}`);
-  }
+  if (a1) parts.push(a1);
   const a2 = pdfTrim(inspection.laudo_relato_adendo_retrabalho);
-  if (a2) {
-    parts.push(
-      `INFORME SE ALGUM ITEM FOI RETRABALHADO DURANTE A VISTORIA:\n${a2}`
-    );
-  }
+  if (a2) parts.push(a2);
   const a3 = pdfTrim(inspection.laudo_relato_adendo_impedimento);
-  if (a3) {
-    parts.push(`INFORME SE HOUVE ALGUM IMPEDIMENTO À SUA INSPEÇÃO:\n${a3}`);
-  }
+  if (a3) parts.push(a3);
   return parts.join('\n\n');
 }
 

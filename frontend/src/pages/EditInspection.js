@@ -62,6 +62,20 @@ function sectionTitle(text) {
   );
 }
 
+function laudoBlockTitle(text) {
+  return (
+    <div className="mb-4 flex items-center gap-3">
+      <span className="h-9 w-1 shrink-0 rounded-full bg-blue-600" aria-hidden />
+      <h2 className="text-base font-bold uppercase tracking-wide text-slate-900 sm:text-lg">
+        {text}
+      </h2>
+    </div>
+  );
+}
+
+const laudoTextareaClass =
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm leading-relaxed text-slate-800 shadow-inner shadow-slate-100/80 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25';
+
 const EditInspection = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -596,17 +610,6 @@ const EditInspection = () => {
                   className="w-full max-w-xs rounded-lg border border-slate-300"
                 />
               </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Horário de término
-                </label>
-                <TimePickerField
-                  data-testid="input-horario-termino"
-                  value={formData.horario_termino}
-                  onChange={(v) => setFormData({ ...formData, horario_termino: v })}
-                  className="w-full max-w-xs rounded-lg border border-slate-300"
-                />
-              </div>
               <div className="mb-6">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Documentos recebidos
@@ -628,7 +631,7 @@ const EditInspection = () => {
               </div>
 
               {sectionTitle('Objetivo, Relato da Vistoria e Metodologia')}
-              <div className="mb-2 flex flex-wrap gap-2">
+              <div className="mb-6 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() =>
@@ -637,7 +640,7 @@ const EditInspection = () => {
                       laudo_objetivo: nextObjetivoPreset(prev.laudo_objetivo),
                     }))
                   }
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
                 >
                   <RefreshCw size={16} />
                   Alternar objetivo
@@ -645,7 +648,7 @@ const EditInspection = () => {
                 <button
                   type="button"
                   onClick={() => setFormData((prev) => ({ ...prev, laudo_objetivo: '' }))}
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
                 >
                   <Eraser size={16} />
                   Limpar objetivo
@@ -658,7 +661,7 @@ const EditInspection = () => {
                       laudo_relato_vistoria: buildRelatoVistoriaIntro(prev),
                     }))
                   }
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
                 >
                   Atualizar relato (presenças)
                 </button>
@@ -672,82 +675,87 @@ const EditInspection = () => {
                       ),
                     }))
                   }
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
                 >
                   Restaurar metodologia padrão
                 </button>
               </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Objetivo
-                </label>
+
+              <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
+                {laudoBlockTitle('Objetivo')}
                 <textarea
                   name="laudo_objetivo"
                   value={formData.laudo_objetivo}
                   onChange={handleChange}
                   rows={8}
-                  placeholder={LAUDO_OBJETIVO_PRESETS[0].slice(0, 80).concat('…')}
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder={`${LAUDO_OBJETIVO_PRESETS[0].slice(0, 80)}…`}
+                  className={laudoTextareaClass}
                 />
               </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Relato da vistoria
-                </label>
+
+              <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
+                {laudoBlockTitle('Relato da vistoria')}
                 <textarea
                   name="laudo_relato_vistoria"
                   value={formData.laudo_relato_vistoria}
                   onChange={handleChange}
                   rows={5}
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`${laudoTextareaClass} mb-5`}
                 />
+                <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-relaxed text-slate-600">
+                  <p className="mb-3 font-medium text-slate-700">
+                    Complemente o relato, quando fizer sentido, abordando:
+                  </p>
+                  <ul className="list-disc space-y-2 pl-5 marker:text-slate-400">
+                    <li>como foi a vistoria;</li>
+                    <li>se algum item foi retrabalhado durante a vistoria;</li>
+                    <li>se houve impedimento à inspeção.</li>
+                  </ul>
+                  <p className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-snug text-amber-950">
+                    O horário de término é preenchido na finalização do laudo.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <textarea
+                    name="laudo_relato_adendo_descricao"
+                    value={formData.laudo_relato_adendo_descricao}
+                    onChange={handleChange}
+                    rows={2}
+                    placeholder="Andamento da vistoria…"
+                    className={laudoTextareaClass}
+                  />
+                  <textarea
+                    name="laudo_relato_adendo_retrabalho"
+                    value={formData.laudo_relato_adendo_retrabalho}
+                    onChange={handleChange}
+                    rows={2}
+                    placeholder="Retrabalhos durante a vistoria…"
+                    className={laudoTextareaClass}
+                  />
+                  <textarea
+                    name="laudo_relato_adendo_impedimento"
+                    value={formData.laudo_relato_adendo_impedimento}
+                    onChange={handleChange}
+                    rows={2}
+                    placeholder="Impedimentos à inspeção…"
+                    className={laudoTextareaClass}
+                  />
+                </div>
               </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Descreva como foi a vistoria
-                </label>
-                <textarea
-                  name="laudo_relato_adendo_descricao"
-                  value={formData.laudo_relato_adendo_descricao}
-                  onChange={handleChange}
-                  rows={2}
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Informe se algum item foi retrabalhado durante a vistoria
-                </label>
-                <textarea
-                  name="laudo_relato_adendo_retrabalho"
-                  value={formData.laudo_relato_adendo_retrabalho}
-                  onChange={handleChange}
-                  rows={2}
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Informe se houve algum impedimento à sua inspeção
-                </label>
-                <textarea
-                  name="laudo_relato_adendo_impedimento"
-                  value={formData.laudo_relato_adendo_impedimento}
-                  onChange={handleChange}
-                  rows={2}
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="mb-6">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Metodologia
-                </label>
+
+              <div className="mb-6 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
+                {laudoBlockTitle('Metodologia')}
+                <p className="mb-4 text-sm text-slate-600">
+                  Inclui <strong className="font-semibold text-slate-800">DOCUMENTOS</strong> e{' '}
+                  <strong className="font-semibold text-slate-800">NBRS</strong> em tópicos, seguidos do
+                  texto da metodologia. Ajuste as NBRs conforme o escopo do laudo.
+                </p>
                 <textarea
                   name="laudo_metodologia"
                   value={formData.laudo_metodologia}
                   onChange={handleChange}
-                  rows={14}
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={16}
+                  className={laudoTextareaClass}
                 />
               </div>
             </>
