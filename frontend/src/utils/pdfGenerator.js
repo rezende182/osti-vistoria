@@ -79,58 +79,81 @@ function formatPdfIntroLocalizacao(inspection) {
   return cidadeUf || '-';
 }
 
-/** Linha sempre presente na tabela (valor vazio → "—"). */
-function pdfRowRequired(label, value) {
-  const v = value == null ? '' : String(value).trim();
-  return [label, v || '—'];
+const PDF_IDENT_LABEL_FILL = [245, 245, 245];
+
+function pdfIdentLabelCell(text) {
+  return {
+    content: text,
+    styles: { fontStyle: 'bold', fillColor: PDF_IDENT_LABEL_FILL },
+  };
 }
 
-/** Linha só se houver texto (campos opcionais da identificação). */
-function pdfRowOptional(label, value) {
+/** Linha de identificação em largura total: rótulo | valor (colSpan 3). */
+function pdfIdentRowFull(label, value, required = true) {
   const v = value == null ? '' : String(value).trim();
-  if (!v) return null;
-  return [label, v];
+  const display = required ? v || '—' : v;
+  if (!required && !display) return null;
+  return [pdfIdentLabelCell(label), { content: display, colSpan: 3 }];
 }
 
-/** Corpo da tabela 1 — obrigatórios sempre; opcionais só se preenchidos. */
+/** Corpo da tabela 1 — obrigatórios sempre; opcionais só se preenchidos.
+ *  Cidade/UF, Empreendimento/Construtora e Tipo do imóvel/Nº pavimentos na mesma linha (4 colunas). */
 function buildIdentificacaoTableBody(inspection) {
   const fluxo = String(inspection.tipo_vistoria_fluxo || '').trim();
   const rows = [];
 
-  rows.push(pdfRowRequired('Cliente', inspection.cliente));
-  rows.push(pdfRowRequired('Endereço', inspection.endereco));
-  rows.push(pdfRowRequired('Cidade', inspection.cidade));
-  rows.push(pdfRowRequired('UF', inspection.uf));
+  rows.push(pdfIdentRowFull('Cliente', inspection.cliente, true));
+  rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
 
-  if (fluxo !== 'casa') {
-    const apt = pdfRowOptional('Apartamento', inspection.unidade);
+  const cid = inspection.cidade == null ? '' : String(inspection.cidade).trim();
+  const uf = inspection.uf == null ? '' : String(inspection.uf).trim();
+  rows.push([
+    pdfIdentLabelCell('Cidade'),
+    { content: cid || '—' },
+    pdfIdentLabelCell('UF'),
+    { content: uf || '—' },
+  ]);
+
+  if (fluxo === 'apartamento') {
+    const apt = pdfIdentRowFull('Entrega de Imóvel', inspection.unidade, false);
     if (apt) rows.push(apt);
   }
 
-  const emp = pdfRowOptional('Empreendimento', inspection.empreendimento);
-  if (emp) rows.push(emp);
+  const emp = inspection.empreendimento == null ? '' : String(inspection.empreendimento).trim();
+  const cons = inspection.construtora == null ? '' : String(inspection.construtora).trim();
+  if (emp || cons) {
+    rows.push([
+      pdfIdentLabelCell('Empreendimento'),
+      { content: emp || '—' },
+      pdfIdentLabelCell('Construtora'),
+      { content: cons || '—' },
+    ]);
+  }
 
-  const cons = pdfRowOptional('Construtora', inspection.construtora);
-  if (cons) rows.push(cons);
+  rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
+  rows.push(pdfIdentRowFull('CREA', inspection.crea, true));
+  rows.push(pdfIdentRowFull('Data', formatDate(inspection.data), true));
 
-  rows.push(pdfRowRequired('Responsável Técnico', inspection.responsavel_tecnico));
-  rows.push(pdfRowRequired('CREA', inspection.crea));
-  rows.push(pdfRowRequired('Data', formatDate(inspection.data)));
-
-  const hi = pdfRowOptional('Horário de Início', inspection.horario_inicio);
+  const hi = pdfIdentRowFull('Horário de Início', inspection.horario_inicio, false);
   if (hi) rows.push(hi);
 
   const tipE = inspection.imovel_tipologia;
   const tipEStr =
     tipE === 'terreo' ? 'Térreo' : tipE === 'sobrado' ? 'Sobrado' : '';
-  const trTipE = pdfRowOptional('Tipo do imóvel', tipEStr);
-  if (trTipE) rows.push(trTipE);
-  if (tipE === 'sobrado') {
-    const np = pdfRowOptional('Número de pavimentos', inspection.imovel_numero_pavimentos);
-    if (np) rows.push(np);
+  if (tipEStr) {
+    const np =
+      inspection.imovel_numero_pavimentos == null
+        ? ''
+        : String(inspection.imovel_numero_pavimentos).trim();
+    rows.push([
+      pdfIdentLabelCell('Tipo do imóvel'),
+      { content: tipEStr },
+      pdfIdentLabelCell('Número de pavimentos'),
+      { content: np || '—' },
+    ]);
   }
 
-  const ht = pdfRowOptional('Horário de Término', inspection.horario_termino);
+  const ht = pdfIdentRowFull('Horário de Término', inspection.horario_termino, false);
   if (ht) rows.push(ht);
 
   const tipo = inspection.tipo_imovel;
@@ -142,15 +165,15 @@ function buildIdentificacaoTableBody(inspection) {
         : tipo === 'reformado'
           ? 'Reformado'
           : '';
-  const trTipo = pdfRowOptional('Condição do imóvel', tipoStr);
+  const trTipo = pdfIdentRowFull('Condição do imóvel', tipoStr, false);
   if (trTipo) rows.push(trTipo);
 
   const en = inspection.energia_disponivel;
   const enStr = en === 'sim' ? 'Sim' : en === 'nao' ? 'Não' : '';
-  const trEn = pdfRowOptional('Energia Disponível', enStr);
+  const trEn = pdfIdentRowFull('Energia Disponível', enStr, false);
   if (trEn) rows.push(trEn);
 
-  return rows;
+  return rows.filter(Boolean);
 }
 
 /** Texto fixo da secção 3. INTRODUÇÃO com dados da identificação. */
@@ -161,8 +184,8 @@ function buildPdfIntroducaoText(inspection) {
   const emp = (inspection.empreendimento || '').trim();
 
   let complemento = '';
-  if (fluxo !== 'casa' && apt) {
-    complemento += `, apartamento nº: ${apt}`;
+  if (fluxo === 'apartamento' && apt) {
+    complemento += `, entrega de imóvel nº: ${apt}`;
   }
   if (emp) {
     complemento += `, do empreendimento ${emp}`;
@@ -453,6 +476,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const identificacaoData = buildIdentificacaoTableBody(inspection);
 
+  const identLabelColW = 50;
+  const identValuePairW = Math.max(24, (contentWidth - identLabelColW * 2) / 2);
+
   autoTable(doc, {
     startY: yPos,
     body: identificacaoData,
@@ -466,10 +492,20 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       lineWidth: 0.2,
     },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 50, fillColor: [245, 245, 245] },
-      1: { cellWidth: contentWidth - 50 }
+      0: {
+        fontStyle: 'bold',
+        cellWidth: identLabelColW,
+        fillColor: PDF_IDENT_LABEL_FILL,
+      },
+      1: { cellWidth: identValuePairW },
+      2: {
+        fontStyle: 'bold',
+        cellWidth: identLabelColW,
+        fillColor: PDF_IDENT_LABEL_FILL,
+      },
+      3: { cellWidth: identValuePairW },
     },
-    margin: { left: margin, right: margin }
+    margin: { left: margin, right: margin },
   });
 
   yPos = doc.lastAutoTable.finalY + 10;

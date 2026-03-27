@@ -106,7 +106,9 @@ class InspectionCreateIn(BaseModel):
     imovel_tipologia: Literal["terreo", "sobrado"] = "terreo"
     imovel_numero_pavimentos: str = ""
     documentos_recebidos: List[str] = []
-    tipo_vistoria_fluxo: Optional[Literal["apartamento", "casa"]] = None
+    tipo_vistoria_fluxo: Optional[
+        Literal["apartamento", "casa", "area_comum"]
+    ] = None  # casa: legado; novos fluxos: apartamento | area_comum
     pdf_logo_data_url: Optional[str] = Field(
         default=None,
         max_length=2_500_000,
@@ -242,7 +244,9 @@ class Inspection(BaseModel):
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
     pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
     pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
-    tipo_vistoria_fluxo: Optional[Literal["apartamento", "casa"]] = None
+    tipo_vistoria_fluxo: Optional[
+        Literal["apartamento", "casa", "area_comum"]
+    ] = None  # casa: legado; novos fluxos: apartamento | area_comum
 
 
 class UserRegisterBody(BaseModel):
@@ -293,7 +297,9 @@ class IdentificationUpdate(BaseModel):
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
     pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
     pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
-    tipo_vistoria_fluxo: Optional[Literal["apartamento", "casa"]] = None
+    tipo_vistoria_fluxo: Optional[
+        Literal["apartamento", "casa", "area_comum"]
+    ] = None  # casa: legado; novos fluxos: apartamento | area_comum
     imovel_tipologia: Optional[Literal["terreo", "sobrado"]] = None
     imovel_numero_pavimentos: Optional[str] = None
 

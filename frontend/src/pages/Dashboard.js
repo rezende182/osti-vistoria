@@ -9,7 +9,6 @@ import {
   XCircle,
   Download,
   Plus,
-  Home,
   Trees,
 } from 'lucide-react';
 import { ApartmentBlockIcon } from '@/components/icons/ApartmentBlockIcon';
@@ -253,7 +252,10 @@ const Dashboard = () => {
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-slate-900 font-secondary uppercase">{inspection.cliente}</h3>
                       <div className="text-sm text-slate-500 mt-1">
-                        {inspection.unidade} - {inspection.empreendimento}
+                        {[inspection.unidade, inspection.empreendimento]
+                          .map((s) => (s || '').trim())
+                          .filter(Boolean)
+                          .join(' – ') || '—'}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -297,14 +299,14 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* FAB: ícones por tipo — só Apartamento abre o fluxo por agora */}
+      {/* FAB: Entrega de Imóvel | Entrega de Area Comum */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
             data-testid="fab-new-inspection"
             aria-haspopup="menu"
-            aria-label="Nova vistoria — escolher tipo de imóvel"
+            aria-label="Nova vistoria — escolher tipo de entrega"
             className="fixed bottom-20 right-6 bg-blue-600 text-white w-14 h-14 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.08)] flex items-center justify-center transition-all duration-200 hover:bg-blue-700 hover:shadow-[0_12px_32px_rgba(0,0,0,0.12)] active:scale-95 z-50"
           >
             <Plus size={28} />
@@ -319,7 +321,7 @@ const Dashboard = () => {
           <div
             className="flex items-stretch gap-2.5 sm:gap-3"
             role="group"
-            aria-label="Nova vistoria por tipo de imóvel"
+            aria-label="Nova vistoria por tipo de entrega"
           >
             <DropdownMenuItem
               asChild
@@ -329,45 +331,26 @@ const Dashboard = () => {
               <button
                 type="button"
                 className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-blue-600 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(37,99,235,0.45)] ring-2 ring-transparent transition hover:bg-blue-700 hover:shadow-[0_6px_20px_rgba(37,99,235,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 data-[highlighted]:!bg-blue-700 data-[highlighted]:!text-white data-[highlighted]:shadow-[0_6px_20px_rgba(37,99,235,0.5)] sm:w-[6.25rem]"
-                aria-label="Apartamento — iniciar identificação da vistoria"
+                aria-label="Entrega de Imóvel — iniciar identificação da vistoria"
               >
                 <div className="flex min-h-[5.75rem] flex-1 items-center justify-center sm:min-h-[6rem]">
                   <ApartmentBlockIcon className="h-[4.75rem] w-[4.75rem] shrink-0 text-white drop-shadow-sm sm:h-[5.25rem] sm:w-[5.25rem]" />
                 </div>
                 <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
-                  Apartamento
+                  Entrega de Imóvel
                 </span>
               </button>
             </DropdownMenuItem>
             <DropdownMenuItem
               asChild
-              onSelect={() => navigate('/new-inspection?tipo=casa')}
+              onSelect={() => navigate('/new-inspection?tipo=area_comum')}
               className="cursor-pointer rounded-2xl p-0 !text-white focus:bg-transparent focus:!text-white data-[highlighted]:bg-transparent data-[highlighted]:!text-white"
             >
               <button
                 type="button"
-                className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-amber-500 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(245,158,11,0.45)] ring-2 ring-transparent transition hover:bg-amber-600 hover:shadow-[0_6px_20px_rgba(217,119,6,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 data-[highlighted]:!bg-amber-600 data-[highlighted]:!text-white data-[highlighted]:shadow-[0_6px_20px_rgba(217,119,6,0.45)] sm:w-[6.25rem]"
-                aria-label="Casa — iniciar identificação da vistoria"
+                className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-emerald-600 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(5,150,105,0.4)] ring-2 ring-transparent transition hover:bg-emerald-700 hover:shadow-[0_6px_20px_rgba(5,150,105,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 data-[highlighted]:!bg-emerald-700 data-[highlighted]:!text-white data-[highlighted]:shadow-[0_6px_20px_rgba(5,150,105,0.45)] sm:w-[6.25rem]"
+                aria-label="Entrega de Area Comum — iniciar identificação da vistoria"
               >
-                <div className="flex min-h-[5.75rem] flex-1 items-center justify-center sm:min-h-[6rem]">
-                  <Home
-                    className="h-[4.75rem] w-[4.75rem] shrink-0 drop-shadow-sm sm:h-[5.25rem] sm:w-[5.25rem]"
-                    strokeWidth={2.25}
-                    aria-hidden
-                  />
-                </div>
-                <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
-                  Casa
-                </span>
-              </button>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled
-              title="Em breve"
-              className="cursor-not-allowed rounded-2xl p-0 data-[disabled]:opacity-100"
-              aria-label="Área comum — em breve"
-            >
-              <span className="flex w-[5.85rem] shrink-0 flex-col items-stretch gap-1 rounded-2xl bg-emerald-600 px-1.5 pb-2.5 pt-2 text-white shadow-[0_4px_14px_rgba(5,150,105,0.4)] ring-2 ring-emerald-300/80 opacity-55 saturate-75 sm:w-[6.25rem]">
                 <div className="flex min-h-[5.75rem] flex-1 items-center justify-center sm:min-h-[6rem]">
                   <Trees
                     className="h-[4.75rem] w-[4.75rem] shrink-0 drop-shadow-sm sm:h-[5.25rem] sm:w-[5.25rem]"
@@ -376,9 +359,9 @@ const Dashboard = () => {
                   />
                 </div>
                 <span className="w-full text-center text-[10px] font-bold uppercase leading-snug tracking-wide text-white/95 sm:text-[11px]">
-                  Área comum
+                  Entrega de Area Comum
                 </span>
-              </span>
+              </button>
             </DropdownMenuItem>
           </div>
         </DropdownMenuContent>
