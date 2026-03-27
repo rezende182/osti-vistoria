@@ -112,6 +112,13 @@ class InspectionCreateIn(BaseModel):
     imovel_categoria: Optional[Literal["apartamento", "casa"]] = None
     contratante_cpf_cnpj: str = ""
     responsavel_cpf_cnpj: str = ""
+    responsavel_construtora: str = ""
+    laudo_objetivo: str = ""
+    laudo_relato_vistoria: str = ""
+    laudo_relato_adendo_descricao: str = ""
+    laudo_relato_adendo_retrabalho: str = ""
+    laudo_relato_adendo_impedimento: str = ""
+    laudo_metodologia: str = ""
     pdf_logo_data_url: Optional[str] = Field(
         default=None,
         max_length=2_500_000,
@@ -172,6 +179,13 @@ class InspectionUpdate(BaseModel):
     data_final: Optional[str] = None
     local_assinatura_responsavel: Optional[str] = None
     horario_termino: Optional[str] = None
+    responsavel_construtora: Optional[str] = None
+    laudo_objetivo: Optional[str] = None
+    laudo_relato_vistoria: Optional[str] = None
+    laudo_relato_adendo_descricao: Optional[str] = None
+    laudo_relato_adendo_retrabalho: Optional[str] = None
+    laudo_relato_adendo_impedimento: Optional[str] = None
+    laudo_metodologia: Optional[str] = None
     outro_somente_conclusao: Optional[bool] = None
     classificacao_escolha_rotulo: Optional[str] = None
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
@@ -253,6 +267,13 @@ class Inspection(BaseModel):
     imovel_categoria: Optional[Literal["apartamento", "casa"]] = None
     contratante_cpf_cnpj: str = ""
     responsavel_cpf_cnpj: str = ""
+    responsavel_construtora: str = ""
+    laudo_objetivo: str = ""
+    laudo_relato_vistoria: str = ""
+    laudo_relato_adendo_descricao: str = ""
+    laudo_relato_adendo_retrabalho: str = ""
+    laudo_relato_adendo_impedimento: str = ""
+    laudo_metodologia: str = ""
 
 
 class UserRegisterBody(BaseModel):
@@ -311,6 +332,14 @@ class IdentificationUpdate(BaseModel):
     imovel_tipologia: Optional[Literal["terreo", "sobrado"]] = None
     imovel_numero_pavimentos: Optional[str] = None
     responsavel_cpf_cnpj: Optional[str] = None
+    responsavel_construtora: Optional[str] = None
+    horario_termino: Optional[str] = None
+    laudo_objetivo: Optional[str] = None
+    laudo_relato_vistoria: Optional[str] = None
+    laudo_relato_adendo_descricao: Optional[str] = None
+    laudo_relato_adendo_retrabalho: Optional[str] = None
+    laudo_relato_adendo_impedimento: Optional[str] = None
+    laudo_metodologia: Optional[str] = None
 
     @field_validator("pdf_logo_data_url", mode="before")
     @classmethod

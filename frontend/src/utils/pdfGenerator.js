@@ -24,6 +24,10 @@ import {
   PDF_PT_TO_MM,
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
+import {
+  applyDynamicMetodologiaIntro,
+  METODOLOGIA_PLACEHOLDER_REG_NC,
+} from '../constants/laudoEntregaTextos';
 
 /** Cabeçalho: logo à esquerda; só o título à direita, centrado na coluna de texto */
 const PDF_HEADER_LOGO_MAX_W_MM = 52;
@@ -215,6 +219,12 @@ function buildIdentificacaoTableBody(inspection) {
 
     rows.push(pdfIdentSectionRow('Identificação da vistoria'));
     rows.push(pdfIdentRowFull('Data da vistoria', formatDate(inspection.data), true));
+    const rcRow = pdfIdentRowFull(
+      'Responsável da Construtora',
+      inspection.responsavel_construtora,
+      false
+    );
+    if (rcRow) rows.push(rcRow);
     rows.push([
       pdfIdentLabelCell('Horário de início'),
       { content: pdfTrim(inspection.horario_inicio) || '—' },
@@ -312,6 +322,44 @@ function buildPdfIntroducaoText(inspection) {
     'A inspeção foi conduzida de acordo com normas técnicas aplicáveis e procedimentos de engenharia reconhecidos, buscando identificar eventuais irregularidades, vícios aparentes ou não conformidades que possam comprometer o uso, segurança ou desempenho do imóvel.',
     'Este documento constitui registro formal da condição do imóvel no momento da entrega, fornecendo suporte técnico para o recebimento e eventual acionamento de garantias junto à construtora, quando necessário.',
   ].join('\n\n');
+}
+
+/** Fluxo Entrega de Imóvel com blocos Objetivo / Relato / Metodologia no laudo. */
+function isEntregaImovelLaudoExtended(inspection) {
+  const f = String(inspection.tipo_vistoria_fluxo || '').trim();
+  const c = inspection.imovel_categoria;
+  return f === 'apartamento' && (c === 'apartamento' || c === 'casa');
+}
+
+function composeLaudoRelatoVistoriaPdf(inspection) {
+  const parts = [];
+  const main = pdfTrim(inspection.laudo_relato_vistoria);
+  if (main) parts.push(main);
+  const a1 = pdfTrim(inspection.laudo_relato_adendo_descricao);
+  if (a1) {
+    parts.push(`DESCREVA COMO FOI A VISTORIA:\n${a1}`);
+  }
+  const a2 = pdfTrim(inspection.laudo_relato_adendo_retrabalho);
+  if (a2) {
+    parts.push(
+      `INFORME SE ALGUM ITEM FOI RETRABALHADO DURANTE A VISTORIA:\n${a2}`
+    );
+  }
+  const a3 = pdfTrim(inspection.laudo_relato_adendo_impedimento);
+  if (a3) {
+    parts.push(`INFORME SE HOUVE ALGUM IMPEDIMENTO À SUA INSPEÇÃO:\n${a3}`);
+  }
+  return parts.join('\n\n');
+}
+
+function finalizeLaudoMetodologiaPdf(inspection, registroNaoConformidadesItemNum) {
+  const adjusted = applyDynamicMetodologiaIntro(
+    inspection.laudo_metodologia,
+    inspection.documentos_recebidos
+  );
+  const esc = METODOLOGIA_PLACEHOLDER_REG_NC.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(esc, 'gi');
+  return adjusted.replace(re, `item ${registroNaoConformidadesItemNum}`);
 }
 
 // Texto legal padrão
@@ -647,41 +695,120 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   doc.addPage();
   yPos = margin;
 
-  // ============================================================
-  // 3. INTRODUÇÃO
-  // ============================================================
-  yPos = drawChapterTitle(
-    doc,
-    margin,
-    contentWidth,
-    yPos,
-    '3. INTRODUÇÃO',
-    { minFollowingMm: 45 }
-  );
+  const entregaLaudoExt = isEntregaImovelLaudoExtended(inspection);
+  const checklistChapterNum = entregaLaudoExt ? 6 : 4;
+  const conclusaoChapterNum = entregaLaudoExt ? 7 : 5;
+  const assinaturaChapterNum = entregaLaudoExt ? 8 : 6;
+  const legalChapterNum = entregaLaudoExt ? 9 : 7;
 
-  doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_BODY_PT);
-  doc.setTextColor(0, 0, 0);
-  yPos = drawBodyParagraphs(
-    doc,
-    buildPdfIntroducaoText(inspection),
-    margin,
-    contentWidth,
-    yPos,
-    checkNewPage
-  );
+  if (entregaLaudoExt) {
+    const metaText = finalizeLaudoMetodologiaPdf(inspection, checklistChapterNum);
+    const objT = pdfTrim(inspection.laudo_objetivo);
+    if (objT) {
+      yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '3. OBJETIVO', {
+        minFollowingMm: 45,
+      });
+      doc.setFont(PDF_FONT, 'normal');
+      doc.setFontSize(PDF_BODY_PT);
+      doc.setTextColor(0, 0, 0);
+      yPos = drawBodyParagraphs(
+        doc,
+        objT,
+        margin,
+        contentWidth,
+        yPos,
+        checkNewPage
+      );
+    }
 
-  // ============================================================
-  // 4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO (em seguida à introdução)
-  // ============================================================
-  yPos = drawChapterTitle(
-    doc,
-    margin,
-    contentWidth,
-    yPos,
-    '4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO',
-    { minFollowingMm: 52 }
-  );
+    const relatoT = composeLaudoRelatoVistoriaPdf(inspection);
+    if (relatoT) {
+      checkNewPage(40);
+      yPos = drawChapterTitle(
+        doc,
+        margin,
+        contentWidth,
+        yPos,
+        '4. RELATO DA VISTORIA',
+        { minFollowingMm: 45 }
+      );
+      doc.setFont(PDF_FONT, 'normal');
+      doc.setFontSize(PDF_BODY_PT);
+      doc.setTextColor(0, 0, 0);
+      yPos = drawBodyParagraphs(
+        doc,
+        relatoT,
+        margin,
+        contentWidth,
+        yPos,
+        checkNewPage
+      );
+    }
+
+    if (pdfTrim(metaText)) {
+      checkNewPage(40);
+      yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '5. METODOLOGIA', {
+        minFollowingMm: 45,
+      });
+      doc.setFont(PDF_FONT, 'normal');
+      doc.setFontSize(PDF_BODY_PT);
+      doc.setTextColor(0, 0, 0);
+      yPos = drawBodyParagraphs(
+        doc,
+        metaText,
+        margin,
+        contentWidth,
+        yPos,
+        checkNewPage
+      );
+    }
+
+    checkNewPage(52);
+    yPos = drawChapterTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      `${checklistChapterNum}. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO`,
+      { minFollowingMm: 52 }
+    );
+  } else {
+    // ============================================================
+    // 3. INTRODUÇÃO
+    // ============================================================
+    yPos = drawChapterTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      '3. INTRODUÇÃO',
+      { minFollowingMm: 45 }
+    );
+
+    doc.setFont(PDF_FONT, 'normal');
+    doc.setFontSize(PDF_BODY_PT);
+    doc.setTextColor(0, 0, 0);
+    yPos = drawBodyParagraphs(
+      doc,
+      buildPdfIntroducaoText(inspection),
+      margin,
+      contentWidth,
+      yPos,
+      checkNewPage
+    );
+
+    // ============================================================
+    // 4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO
+    // ============================================================
+    yPos = drawChapterTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      `${checklistChapterNum}. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO`,
+      { minFollowingMm: 52 }
+    );
+  }
 
   if (inspection.rooms_checklist && inspection.rooms_checklist.length > 0) {
     let roomNumber = 1;
@@ -703,7 +830,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         margin,
         contentWidth,
         yPos,
-        `4.${roomNumber} ${room.room_name.toUpperCase()}`
+        `${checklistChapterNum}.${roomNumber} ${room.room_name.toUpperCase()}`
       );
 
       doc.setFont(PDF_FONT, 'normal');
@@ -860,9 +987,16 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // 5. CONCLUSÃO (espaço antes do título = 12 pt via drawChapterTitle; corpo = drawBodyParagraphs)
   // ============================================================
   checkNewPage(40);
-  yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '5. CONCLUSÃO', {
-    minFollowingMm: 52,
-  });
+  yPos = drawChapterTitle(
+    doc,
+    margin,
+    contentWidth,
+    yPos,
+    `${conclusaoChapterNum}. CONCLUSÃO`,
+    {
+      minFollowingMm: 52,
+    }
+  );
 
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
@@ -919,7 +1053,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '6. RESPONSÁVEL TÉCNICO / ASSINATURA',
+    `${assinaturaChapterNum}. RESPONSÁVEL TÉCNICO / ASSINATURA`,
     { minFollowingMm: PDF_CHAPTER_KEEP_WITH_SIGNATURE_BLOCK_MM }
   );
 
@@ -956,7 +1090,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '7. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS',
+    `${legalChapterNum}. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS`,
     { minFollowingMm: 42 }
   );
 

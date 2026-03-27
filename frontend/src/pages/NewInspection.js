@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Home, ArrowRight } from 'lucide-react';
+import { Home, ArrowRight, RefreshCw, Eraser } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
@@ -15,6 +15,12 @@ import TimePickerField from '../components/TimePickerField';
 import { BRASIL_UFS } from '../constants/brasilEstados';
 import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
+import {
+  LAUDO_OBJETIVO_PRESETS,
+  buildLaudoMetodologiaCompleta,
+  buildRelatoVistoriaIntro,
+  nextObjetivoPreset,
+} from '../constants/laudoEntregaTextos';
 
 /** Subtítulo do header conforme `?tipo=` na URL. */
 const SUBTIPO_FLUXO_LABEL = {
@@ -94,6 +100,8 @@ const NewInspection = () => {
   const { user } = useAuth();
   const uid = user?.uid;
   const [showExitModal, setShowExitModal] = useState(false);
+  /** Fluxo Entrega de Imóvel: 1 = identificação, 2 = objetivo / relato / metodologia. */
+  const [entregaStep, setEntregaStep] = useState(1);
 
   const [formData, setFormData] = useState({
     cliente: '',
@@ -107,6 +115,14 @@ const NewInspection = () => {
     responsavel_tecnico: '',
     crea: '',
     horario_inicio: '',
+    horario_termino: '',
+    responsavel_construtora: '',
+    laudo_objetivo: '',
+    laudo_relato_vistoria: '',
+    laudo_relato_adendo_descricao: '',
+    laudo_relato_adendo_retrabalho: '',
+    laudo_relato_adendo_impedimento: '',
+    laudo_metodologia: '',
     imovel_categoria: '',
     imovel_tipologia: '',
     imovel_numero_pavimentos: '',
@@ -129,6 +145,29 @@ const NewInspection = () => {
       }));
     }
   }, [tipoImovelFluxo]);
+
+  useEffect(() => {
+    if (tipoImovelFluxo !== 'apartamento' || entregaStep !== 2) return;
+    setFormData((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (!String(prev.laudo_objetivo || '').trim()) {
+        next.laudo_objetivo = LAUDO_OBJETIVO_PRESETS[0];
+        changed = true;
+      }
+      if (!String(prev.laudo_relato_vistoria || '').trim()) {
+        next.laudo_relato_vistoria = buildRelatoVistoriaIntro(prev);
+        changed = true;
+      }
+      if (!String(prev.laudo_metodologia || '').trim()) {
+        next.laudo_metodologia = buildLaudoMetodologiaCompleta(
+          prev.documentos_recebidos || []
+        );
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [tipoImovelFluxo, entregaStep]);
 
   const documentosOptions = [
     'Manual do proprietário',
@@ -154,6 +193,18 @@ const NewInspection = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (tipoImovelFluxo === 'apartamento' && entregaStep === 1) {
+      if (!validateEntregaImovel(formData)) {
+        toast.error(
+          'Preencha os campos obrigatórios: CPF/CNPJ do contratante, tipo do imóvel (Apartamento, Casa Térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
+        );
+        return;
+      }
+      setEntregaStep(2);
+      window.scrollTo(0, 0);
+      return;
+    }
 
     if (tipoImovelFluxo === 'apartamento') {
       if (!validateEntregaImovel(formData)) {
@@ -260,7 +311,9 @@ const NewInspection = () => {
               <BrandLogo className="h-16 w-auto max-w-[12rem] shrink-0 object-contain object-left py-1 sm:h-[5.25rem] sm:max-w-[14rem]" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
-                  Identificação da Vistoria Técnica
+                  {tipoImovelFluxo === 'apartamento' && entregaStep === 2
+                    ? 'Objetivo, Relato da Vistoria e Metodologia'
+                    : 'Identificação da Vistoria Técnica'}
                 </h1>
                 {subtipoLabel && (
                   <p className="w-full text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-300 sm:text-base">
@@ -277,7 +330,121 @@ const NewInspection = () => {
       {/* Form */}
       <div className="max-w-md mx-auto md:max-w-2xl px-4 py-6">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6">
-          {tipoImovelFluxo === 'apartamento' ? (
+          {tipoImovelFluxo === 'apartamento' && entregaStep === 2 ? (
+            <>
+              {sectionTitle('Objetivo')}
+              <div className="mb-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  data-testid="laudo-objetivo-alternar"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      laudo_objetivo: nextObjetivoPreset(prev.laudo_objetivo),
+                    }))
+                  }
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                >
+                  <RefreshCw size={16} />
+                  Alternar texto
+                </button>
+                <button
+                  type="button"
+                  data-testid="laudo-objetivo-limpar"
+                  onClick={() => setFormData((prev) => ({ ...prev, laudo_objetivo: '' }))}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                >
+                  <Eraser size={16} />
+                  Limpar
+                </button>
+              </div>
+              <div className="mb-6">
+                <textarea
+                  name="laudo_objetivo"
+                  data-testid="textarea-laudo-objetivo"
+                  value={formData.laudo_objetivo}
+                  onChange={handleChange}
+                  rows={10}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {sectionTitle('Relato da vistoria')}
+              <div className="mb-4">
+                <textarea
+                  name="laudo_relato_vistoria"
+                  data-testid="textarea-laudo-relato"
+                  value={formData.laudo_relato_vistoria}
+                  onChange={handleChange}
+                  rows={6}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Descreva como foi a vistoria
+                </label>
+                <textarea
+                  name="laudo_relato_adendo_descricao"
+                  data-testid="textarea-relato-adendo-descricao"
+                  value={formData.laudo_relato_adendo_descricao}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Informe se algum item foi retrabalhado durante a vistoria
+                </label>
+                <textarea
+                  name="laudo_relato_adendo_retrabalho"
+                  data-testid="textarea-relato-adendo-retrabalho"
+                  value={formData.laudo_relato_adendo_retrabalho}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Informe se houve algum impedimento à sua inspeção
+                </label>
+                <textarea
+                  name="laudo_relato_adendo_impedimento"
+                  data-testid="textarea-relato-adendo-impedimento"
+                  value={formData.laudo_relato_adendo_impedimento}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {sectionTitle('Metodologia')}
+              <div className="mb-6">
+                <textarea
+                  name="laudo_metodologia"
+                  data-testid="textarea-laudo-metodologia"
+                  value={formData.laudo_metodologia}
+                  onChange={handleChange}
+                  rows={16}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <button
+                type="button"
+                data-testid="entrega-voltar-identificacao"
+                onClick={() => {
+                  setEntregaStep(1);
+                  window.scrollTo(0, 0);
+                }}
+                className="mb-4 w-full rounded-lg border-2 border-slate-300 py-3 font-bold font-secondary uppercase tracking-wide text-slate-700 transition-colors hover:bg-slate-50"
+              >
+                Voltar à identificação
+              </button>
+            </>
+          ) : tipoImovelFluxo === 'apartamento' ? (
             <>
               {sectionTitle('Identificação do Responsável Técnico')}
               <div className="mb-6">
@@ -571,12 +738,38 @@ const NewInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Responsável da Construtora (quem acompanhou a vistoria)
+                </label>
+                <input
+                  data-testid="input-responsavel-construtora"
+                  type="text"
+                  name="responsavel_construtora"
+                  value={formData.responsavel_construtora}
+                  onChange={handleChange}
+                  placeholder="Nome do representante da construtora (opcional)"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Horário de início
                 </label>
                 <TimePickerField
                   data-testid="input-horario-inicio"
                   value={formData.horario_inicio}
                   onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
+                  className="w-full max-w-xs rounded-lg border border-slate-300"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Horário de término
+                </label>
+                <TimePickerField
+                  data-testid="input-horario-termino"
+                  value={formData.horario_termino}
+                  onChange={(v) => setFormData({ ...formData, horario_termino: v })}
                   className="w-full max-w-xs rounded-lg border border-slate-300"
                 />
               </div>
@@ -863,7 +1056,9 @@ const NewInspection = () => {
             type="submit"
             className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 flex items-center justify-center gap-2"
           >
-            Iniciar Checklist
+            {tipoImovelFluxo === 'apartamento' && entregaStep === 1
+              ? 'Salvar e continuar'
+              : 'Iniciar Checklist'}
             <ArrowRight size={20} />
           </button>
         </form>

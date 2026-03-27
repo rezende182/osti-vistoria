@@ -358,6 +358,11 @@ const InspectionDetail = () => {
 
                 <IdBlock title="Identificação da vistoria">
                   <IdRow label="Data da vistoria">{formatInspectionDate(inspection.data)}</IdRow>
+                  {tStr(inspection.responsavel_construtora) ? (
+                    <IdRow label="Responsável da Construtora">
+                      {inspection.responsavel_construtora}
+                    </IdRow>
+                  ) : null}
                   <div className="grid grid-cols-1 gap-4 border-t border-slate-100 py-3 first:border-t-0 first:pt-0 sm:grid-cols-2">
                     <div className="flex flex-col gap-1">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -391,6 +396,82 @@ const InspectionDetail = () => {
                     </div>
                   ) : null}
                 </IdBlock>
+
+                {(tStr(inspection.laudo_objetivo) ||
+                  tStr(inspection.laudo_relato_vistoria) ||
+                  tStr(inspection.laudo_relato_adendo_descricao) ||
+                  tStr(inspection.laudo_relato_adendo_retrabalho) ||
+                  tStr(inspection.laudo_relato_adendo_impedimento) ||
+                  tStr(inspection.laudo_metodologia)) && (
+                  <IdBlock title="Objetivo, relato e metodologia (PDF)">
+                    {tStr(inspection.laudo_objetivo) ? (
+                      <div className="border-t border-slate-100 pt-3 first:border-t-0 first:pt-0">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          Objetivo
+                        </span>
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
+                          {inspection.laudo_objetivo}
+                        </p>
+                      </div>
+                    ) : null}
+                    {tStr(inspection.laudo_relato_vistoria) ? (
+                      <div className="border-t border-slate-100 pt-3">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          Relato da vistoria
+                        </span>
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
+                          {inspection.laudo_relato_vistoria}
+                        </p>
+                      </div>
+                    ) : null}
+                    {(tStr(inspection.laudo_relato_adendo_descricao) ||
+                      tStr(inspection.laudo_relato_adendo_retrabalho) ||
+                      tStr(inspection.laudo_relato_adendo_impedimento)) && (
+                      <div className="space-y-3 border-t border-slate-100 pt-3">
+                        {tStr(inspection.laudo_relato_adendo_descricao) ? (
+                          <div>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                              Como foi a vistoria
+                            </span>
+                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">
+                              {inspection.laudo_relato_adendo_descricao}
+                            </p>
+                          </div>
+                        ) : null}
+                        {tStr(inspection.laudo_relato_adendo_retrabalho) ? (
+                          <div>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                              Retrabalho durante a vistoria
+                            </span>
+                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">
+                              {inspection.laudo_relato_adendo_retrabalho}
+                            </p>
+                          </div>
+                        ) : null}
+                        {tStr(inspection.laudo_relato_adendo_impedimento) ? (
+                          <div>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                              Impedimentos à inspeção
+                            </span>
+                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">
+                              {inspection.laudo_relato_adendo_impedimento}
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                    {tStr(inspection.laudo_metodologia) ? (
+                      <div className="border-t border-slate-100 pt-3">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                          Metodologia
+                        </span>
+                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
+                          {inspection.laudo_metodologia}
+                        </p>
+                      </div>
+                    ) : null}
+                  </IdBlock>
+                )}
               </>
             ) : (
               <>

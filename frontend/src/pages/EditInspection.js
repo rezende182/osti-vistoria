@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Home, ArrowRight } from 'lucide-react';
+import { Home, ArrowRight, RefreshCw, Eraser } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
@@ -11,6 +11,12 @@ import TimePickerField from '../components/TimePickerField';
 import { BRASIL_UFS } from '../constants/brasilEstados';
 import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
+import {
+  LAUDO_OBJETIVO_PRESETS,
+  buildLaudoMetodologiaCompleta,
+  buildRelatoVistoriaIntro,
+  nextObjetivoPreset,
+} from '../constants/laudoEntregaTextos';
 
 const SUBTIPO_FLUXO_LABEL = {
   apartamento: 'Entrega de Imóvel',
@@ -75,6 +81,14 @@ const EditInspection = () => {
     responsavel_tecnico: '',
     crea: '',
     horario_inicio: '',
+    horario_termino: '',
+    responsavel_construtora: '',
+    laudo_objetivo: '',
+    laudo_relato_vistoria: '',
+    laudo_relato_adendo_descricao: '',
+    laudo_relato_adendo_retrabalho: '',
+    laudo_relato_adendo_impedimento: '',
+    laudo_metodologia: '',
     imovel_tipologia: '',
     imovel_numero_pavimentos: '',
     tipo_imovel: 'novo',
@@ -86,7 +100,6 @@ const EditInspection = () => {
     responsavel_cpf_cnpj: '',
     contratante_cpf_cnpj: '',
   });
-  // Removed horario_termino - moved to finalization page
 
   const documentosOptions = [
     'Manual do proprietário',
@@ -118,6 +131,14 @@ const EditInspection = () => {
         responsavel_tecnico: data.responsavel_tecnico || '',
         crea: data.crea || '',
         horario_inicio: data.horario_inicio || '',
+        horario_termino: data.horario_termino || '',
+        responsavel_construtora: data.responsavel_construtora || '',
+        laudo_objetivo: data.laudo_objetivo || '',
+        laudo_relato_vistoria: data.laudo_relato_vistoria || '',
+        laudo_relato_adendo_descricao: data.laudo_relato_adendo_descricao || '',
+        laudo_relato_adendo_retrabalho: data.laudo_relato_adendo_retrabalho || '',
+        laudo_relato_adendo_impedimento: data.laudo_relato_adendo_impedimento || '',
+        laudo_metodologia: data.laudo_metodologia || '',
         imovel_tipologia: data.imovel_tipologia === 'sobrado' ? 'sobrado' : 'terreo',
         imovel_numero_pavimentos: data.imovel_numero_pavimentos || '',
         tipo_imovel: data.tipo_imovel || 'novo',
@@ -551,12 +572,38 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Responsável da Construtora (quem acompanhou a vistoria)
+                </label>
+                <input
+                  data-testid="input-responsavel-construtora"
+                  type="text"
+                  name="responsavel_construtora"
+                  value={formData.responsavel_construtora}
+                  onChange={handleChange}
+                  placeholder="Nome do representante da construtora (opcional)"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Horário de início
                 </label>
                 <TimePickerField
                   data-testid="input-horario-inicio"
                   value={formData.horario_inicio}
                   onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
+                  className="w-full max-w-xs rounded-lg border border-slate-300"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Horário de término
+                </label>
+                <TimePickerField
+                  data-testid="input-horario-termino"
+                  value={formData.horario_termino}
+                  onChange={(v) => setFormData({ ...formData, horario_termino: v })}
                   className="w-full max-w-xs rounded-lg border border-slate-300"
                 />
               </div>
@@ -578,6 +625,130 @@ const EditInspection = () => {
                     </label>
                   ))}
                 </div>
+              </div>
+
+              {sectionTitle('Objetivo, Relato da Vistoria e Metodologia')}
+              <div className="mb-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      laudo_objetivo: nextObjetivoPreset(prev.laudo_objetivo),
+                    }))
+                  }
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                >
+                  <RefreshCw size={16} />
+                  Alternar objetivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, laudo_objetivo: '' }))}
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                >
+                  <Eraser size={16} />
+                  Limpar objetivo
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      laudo_relato_vistoria: buildRelatoVistoriaIntro(prev),
+                    }))
+                  }
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                >
+                  Atualizar relato (presenças)
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      laudo_metodologia: buildLaudoMetodologiaCompleta(
+                        prev.documentos_recebidos || []
+                      ),
+                    }))
+                  }
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+                >
+                  Restaurar metodologia padrão
+                </button>
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Objetivo
+                </label>
+                <textarea
+                  name="laudo_objetivo"
+                  value={formData.laudo_objetivo}
+                  onChange={handleChange}
+                  rows={8}
+                  placeholder={LAUDO_OBJETIVO_PRESETS[0].slice(0, 80).concat('…')}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Relato da vistoria
+                </label>
+                <textarea
+                  name="laudo_relato_vistoria"
+                  value={formData.laudo_relato_vistoria}
+                  onChange={handleChange}
+                  rows={5}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Descreva como foi a vistoria
+                </label>
+                <textarea
+                  name="laudo_relato_adendo_descricao"
+                  value={formData.laudo_relato_adendo_descricao}
+                  onChange={handleChange}
+                  rows={2}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Informe se algum item foi retrabalhado durante a vistoria
+                </label>
+                <textarea
+                  name="laudo_relato_adendo_retrabalho"
+                  value={formData.laudo_relato_adendo_retrabalho}
+                  onChange={handleChange}
+                  rows={2}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Informe se houve algum impedimento à sua inspeção
+                </label>
+                <textarea
+                  name="laudo_relato_adendo_impedimento"
+                  value={formData.laudo_relato_adendo_impedimento}
+                  onChange={handleChange}
+                  rows={2}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Metodologia
+                </label>
+                <textarea
+                  name="laudo_metodologia"
+                  value={formData.laudo_metodologia}
+                  onChange={handleChange}
+                  rows={14}
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 font-sans text-sm leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </>
           ) : (
