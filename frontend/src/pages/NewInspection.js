@@ -17,8 +17,8 @@ import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 import {
   LAUDO_OBJETIVO_PRESETS,
-  RELATO_TEXTO_PLACEHOLDER_TERMINO,
   buildLaudoMetodologiaCompleta,
+  buildRelatoVistoriaArmazenado,
   buildRelatoVistoriaIntro,
   nextObjetivoPreset,
 } from '../constants/laudoEntregaTextos';
@@ -170,10 +170,6 @@ const NewInspection = () => {
         next.laudo_objetivo = LAUDO_OBJETIVO_PRESETS[0];
         changed = true;
       }
-      if (!String(prev.laudo_relato_vistoria || '').trim()) {
-        next.laudo_relato_vistoria = buildRelatoVistoriaIntro(prev);
-        changed = true;
-      }
       if (!String(prev.laudo_metodologia || '').trim()) {
         next.laudo_metodologia = buildLaudoMetodologiaCompleta(
           prev.documentos_recebidos || []
@@ -262,6 +258,13 @@ const NewInspection = () => {
     }
     payload.pdf_empresa_nome = '';
     payload.pdf_empresa_cnpj = '';
+
+    if (tipoImovelFluxo === 'apartamento') {
+      payload.laudo_relato_vistoria = buildRelatoVistoriaArmazenado(
+        payload.laudo_relato_vistoria,
+        payload
+      );
+    }
 
     try {
       await initDB().catch(() => {});
@@ -386,69 +389,45 @@ const NewInspection = () => {
 
               <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Relato da vistoria')}
-                <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-600">
-                  <p className="mb-3 text-slate-700">
-                    O texto principal do relato pode ser editado livremente. Além dele, você pode
-                    complementar o relato com os campos logo abaixo, quando fizer sentido:
+                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-600">
+                  <p className="text-slate-700">
+                    Você pode complementar o relato com os campos logo abaixo, quando fizer sentido:
                   </p>
-                  <ul className="mb-4 list-disc space-y-2 pl-5 marker:text-slate-400">
+                  <ul className="mt-3 list-disc space-y-2 pl-5 marker:text-slate-400">
                     <li>descrever como foi a vistoria;</li>
                     <li>informar se algum item foi retrabalhado durante a vistoria;</li>
                     <li>informar se houve algum impedimento à sua inspeção.</li>
                   </ul>
-                  <p className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-xs leading-snug text-amber-950">
-                    No texto principal, o horário de término aparece como{' '}
-                    <span className="font-semibold">{RELATO_TEXTO_PLACEHOLDER_TERMINO}</span> até você
-                    preencher o <strong>Horário de término</strong> na finalização do laudo (etapa de
-                    conclusão da vistoria). Depois disso, esse horário passa a aparecer automaticamente
-                    no texto do relato no PDF.
-                  </p>
                 </div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Texto fixo (conforme a identificação)
+                </p>
+                <div
+                  className="mb-4 rounded-xl border border-slate-200 bg-slate-100/80 px-4 py-3.5 text-sm leading-relaxed text-slate-800"
+                  data-testid="relato-intro-readonly"
+                >
+                  {buildRelatoVistoriaIntro(formData)}
+                </div>
+                <label
+                  htmlFor="laudo-relato-sufixo"
+                  className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500"
+                >
+                  Complemento do relato (editável)
+                </label>
                 <textarea
+                  id="laudo-relato-sufixo"
                   name="laudo_relato_vistoria"
                   data-testid="textarea-laudo-relato"
                   value={formData.laudo_relato_vistoria}
                   onChange={handleChange}
                   rows={6}
-                  className={`${laudoTextareaClass} mb-5`}
+                  placeholder="Texto complementar do relato…"
+                  className={laudoTextareaClass}
                 />
-                <div className="space-y-4">
-                  <textarea
-                    name="laudo_relato_adendo_descricao"
-                    data-testid="textarea-relato-adendo-descricao"
-                    value={formData.laudo_relato_adendo_descricao}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder="Complementos sobre o andamento da vistoria…"
-                    className={laudoTextareaClass}
-                  />
-                  <textarea
-                    name="laudo_relato_adendo_retrabalho"
-                    data-testid="textarea-relato-adendo-retrabalho"
-                    value={formData.laudo_relato_adendo_retrabalho}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder="Retrabalhos ocorridos durante a vistoria, se houver…"
-                    className={laudoTextareaClass}
-                  />
-                  <textarea
-                    name="laudo_relato_adendo_impedimento"
-                    data-testid="textarea-relato-adendo-impedimento"
-                    value={formData.laudo_relato_adendo_impedimento}
-                    onChange={handleChange}
-                    rows={3}
-                    placeholder="Impedimentos à inspeção, se houver…"
-                    className={laudoTextareaClass}
-                  />
-                </div>
               </div>
 
               <div className="mb-6 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Metodologia')}
-                <p className="mb-4 text-sm leading-relaxed text-slate-600">
-                  O trecho inicial lista os documentos recebidos e as NBRs de referência; você pode editar
-                  todo o texto livremente.
-                </p>
                 <textarea
                   name="laudo_metodologia"
                   data-testid="textarea-laudo-metodologia"

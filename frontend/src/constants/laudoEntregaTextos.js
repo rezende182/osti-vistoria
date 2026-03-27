@@ -112,6 +112,36 @@ export function substituirPlaceholderHorarioTerminoRelato(text, horarioTermino) 
   return out;
 }
 
+/** Parte editável do relato (tudo após o 1.º parágrafo fixo), para o formulário. */
+export function extractRelatoEditableSuffix(fullText) {
+  const t = String(fullText || '').trim();
+  if (!t) return '';
+  const idx = t.indexOf('\n\n');
+  const firstPara = idx === -1 ? t : t.slice(0, idx).trim();
+  if (firstPara.startsWith('A vistoria foi realizada')) {
+    return idx === -1 ? '' : t.slice(idx + 2).trim();
+  }
+  return t;
+}
+
+function relatoCamposParaIntro(p) {
+  return {
+    data: p.data,
+    horario_inicio: p.horario_inicio,
+    horario_termino: p.horario_termino,
+    cliente: p.cliente,
+    responsavel_tecnico: p.responsavel_tecnico,
+    responsavel_construtora: p.responsavel_construtora,
+  };
+}
+
+/** Texto completo guardado no backend: parágrafo fixo + complemento opcional. */
+export function buildRelatoVistoriaArmazenado(sufixo, p) {
+  const intro = buildRelatoVistoriaIntro(relatoCamposParaIntro(p)).trim();
+  const s = String(sufixo || '').trim();
+  return s ? `${intro}\n\n${s}` : intro;
+}
+
 /** Próximo preset de objetivo a partir do texto atual (ciclo). */
 export function nextObjetivoPreset(currentText) {
   const t = String(currentText || '').trim();

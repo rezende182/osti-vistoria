@@ -13,9 +13,10 @@ import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 import {
   LAUDO_OBJETIVO_PRESETS,
-  RELATO_TEXTO_PLACEHOLDER_TERMINO,
   buildLaudoMetodologiaCompleta,
+  buildRelatoVistoriaArmazenado,
   buildRelatoVistoriaIntro,
+  extractRelatoEditableSuffix,
   nextObjetivoPreset,
 } from '../constants/laudoEntregaTextos';
 
@@ -149,7 +150,7 @@ const EditInspection = () => {
         horario_termino: data.horario_termino || '',
         responsavel_construtora: data.responsavel_construtora || '',
         laudo_objetivo: data.laudo_objetivo || '',
-        laudo_relato_vistoria: data.laudo_relato_vistoria || '',
+        laudo_relato_vistoria: extractRelatoEditableSuffix(data.laudo_relato_vistoria || ''),
         laudo_relato_adendo_descricao: data.laudo_relato_adendo_descricao || '',
         laudo_relato_adendo_retrabalho: data.laudo_relato_adendo_retrabalho || '',
         laudo_relato_adendo_impedimento: data.laudo_relato_adendo_impedimento || '',
@@ -236,6 +237,12 @@ const EditInspection = () => {
       }
       payload.pdf_empresa_nome = '';
       payload.pdf_empresa_cnpj = '';
+      if (formData.tipo_vistoria_fluxo === 'apartamento') {
+        payload.laudo_relato_vistoria = buildRelatoVistoriaArmazenado(
+          payload.laudo_relato_vistoria,
+          payload
+        );
+      }
       const result = await inspectionsApi.updateIdentification(id, payload, uid);
       if (result.ok) {
         toast.success('Informações atualizadas!');
@@ -659,18 +666,6 @@ const EditInspection = () => {
                   onClick={() =>
                     setFormData((prev) => ({
                       ...prev,
-                      laudo_relato_vistoria: buildRelatoVistoriaIntro(prev),
-                    }))
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm hover:bg-slate-50"
-                >
-                  Atualizar relato (presenças)
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({
-                      ...prev,
                       laudo_metodologia: buildLaudoMetodologiaCompleta(
                         prev.documentos_recebidos || []
                       ),
@@ -696,66 +691,41 @@ const EditInspection = () => {
 
               <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Relato da vistoria')}
-                <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-600">
-                  <p className="mb-3 text-slate-700">
-                    O texto principal do relato pode ser editado livremente. Além dele, você pode
-                    complementar o relato com os campos logo abaixo, quando fizer sentido:
+                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-600">
+                  <p className="text-slate-700">
+                    Você pode complementar o relato com os campos logo abaixo, quando fizer sentido:
                   </p>
-                  <ul className="mb-4 list-disc space-y-2 pl-5 marker:text-slate-400">
+                  <ul className="mt-3 list-disc space-y-2 pl-5 marker:text-slate-400">
                     <li>descrever como foi a vistoria;</li>
                     <li>informar se algum item foi retrabalhado durante a vistoria;</li>
                     <li>informar se houve algum impedimento à sua inspeção.</li>
                   </ul>
-                  <p className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-xs leading-snug text-amber-950">
-                    No texto principal, o horário de término aparece como{' '}
-                    <span className="font-semibold">{RELATO_TEXTO_PLACEHOLDER_TERMINO}</span> até você
-                    preencher o <strong>Horário de término</strong> na finalização do laudo (etapa de
-                    conclusão da vistoria). Depois disso, esse horário passa a aparecer automaticamente
-                    no texto do relato no PDF.
-                  </p>
                 </div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Texto fixo (conforme a identificação)
+                </p>
+                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-100/80 px-4 py-3.5 text-sm leading-relaxed text-slate-800">
+                  {buildRelatoVistoriaIntro(formData)}
+                </div>
+                <label
+                  htmlFor="edit-laudo-relato-sufixo"
+                  className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500"
+                >
+                  Complemento do relato (editável)
+                </label>
                 <textarea
+                  id="edit-laudo-relato-sufixo"
                   name="laudo_relato_vistoria"
                   value={formData.laudo_relato_vistoria}
                   onChange={handleChange}
                   rows={5}
-                  className={`${laudoTextareaClass} mb-5`}
+                  placeholder="Texto complementar do relato…"
+                  className={laudoTextareaClass}
                 />
-                <div className="space-y-4">
-                  <textarea
-                    name="laudo_relato_adendo_descricao"
-                    value={formData.laudo_relato_adendo_descricao}
-                    onChange={handleChange}
-                    rows={2}
-                    placeholder="Andamento da vistoria…"
-                    className={laudoTextareaClass}
-                  />
-                  <textarea
-                    name="laudo_relato_adendo_retrabalho"
-                    value={formData.laudo_relato_adendo_retrabalho}
-                    onChange={handleChange}
-                    rows={2}
-                    placeholder="Retrabalhos durante a vistoria…"
-                    className={laudoTextareaClass}
-                  />
-                  <textarea
-                    name="laudo_relato_adendo_impedimento"
-                    value={formData.laudo_relato_adendo_impedimento}
-                    onChange={handleChange}
-                    rows={2}
-                    placeholder="Impedimentos à inspeção…"
-                    className={laudoTextareaClass}
-                  />
-                </div>
               </div>
 
               <div className="mb-6 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Metodologia')}
-                <p className="mb-4 text-sm text-slate-600">
-                  Inclui <strong className="font-semibold text-slate-800">DOCUMENTOS</strong> e{' '}
-                  <strong className="font-semibold text-slate-800">NBRS</strong> em tópicos, seguidos do
-                  texto da metodologia. Ajuste as NBRs conforme o escopo do laudo.
-                </p>
                 <textarea
                   name="laudo_metodologia"
                   value={formData.laudo_metodologia}

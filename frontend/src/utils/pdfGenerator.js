@@ -218,15 +218,6 @@ function buildIdentificacaoTableBody(inspection) {
     const trEn = pdfIdentRowFull('Energia disponível', enStr, false);
     if (trEn) rows.push(trEn);
 
-    rows.push(pdfIdentSectionRow('Identificação da vistoria'));
-    rows.push(pdfIdentRowFull('Data da vistoria', formatDate(inspection.data), true));
-    const rcRow = pdfIdentRowFull(
-      'Responsável da Construtora',
-      inspection.responsavel_construtora,
-      false
-    );
-    if (rcRow) rows.push(rcRow);
-    rows.push(pdfIdentRowFull('Horário de início', inspection.horario_inicio, true));
     return rows.filter(Boolean);
   }
 
