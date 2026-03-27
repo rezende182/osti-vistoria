@@ -158,7 +158,7 @@ const NewInspection = () => {
     if (tipoImovelFluxo === 'apartamento') {
       if (!validateEntregaImovel(formData)) {
         toast.error(
-          'Preencha os campos obrigatórios: CPF/CNPJ do contratante, tipo do imóvel (Apartamento, Casa térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
+          'Preencha os campos obrigatórios: CPF/CNPJ do contratante, tipo do imóvel (Apartamento, Casa Térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
         );
         return;
       }
@@ -380,7 +380,7 @@ const NewInspection = () => {
                     {
                       categoria: 'casa',
                       tipologia: 'terreo',
-                      label: 'Casa térrea',
+                      label: 'Casa Térrea',
                       testid: 'tipo-imovel-casa-terrea',
                     },
                     {
@@ -486,29 +486,26 @@ const NewInspection = () => {
                 </div>
               </div>
               <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Nome do empreendimento (opcional)
-                </label>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Empreendimento/Construtora (opcional)
+                </p>
                 <input
                   data-testid="input-empreendimento"
                   type="text"
                   name="empreendimento"
                   value={formData.empreendimento}
                   onChange={handleChange}
+                  placeholder="Empreendimento"
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-              </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Construtora (opcional)
-                </label>
                 <input
                   data-testid="input-construtora"
                   type="text"
                   name="construtora"
                   value={formData.construtora}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Construtora"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="mb-4">
@@ -695,7 +692,7 @@ const NewInspection = () => {
                 </label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {[
-                    { id: 'terreo', label: 'Casa térrea', testid: 'tipo-imovel-casa-terrea' },
+                    { id: 'terreo', label: 'Casa Térrea', testid: 'tipo-imovel-casa-terrea' },
                     { id: 'sobrado', label: 'Sobrado', testid: 'tipo-imovel-sobrado' },
                   ].map(({ id, label, testid }) => (
                     <button
@@ -720,29 +717,26 @@ const NewInspection = () => {
                 </div>
               </div>
               <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Nome do empreendimento (opcional)
-                </label>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Empreendimento/Construtora (opcional)
+                </p>
                 <input
                   data-testid="input-empreendimento"
                   type="text"
                   name="empreendimento"
                   value={formData.empreendimento}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Empreendimento"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-              </div>
-              <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Construtora (opcional)
-                </label>
                 <input
                   data-testid="input-construtora"
                   type="text"
                   name="construtora"
                   value={formData.construtora}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Construtora"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="mb-4">

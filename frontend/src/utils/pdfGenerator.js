@@ -71,9 +71,7 @@ function fitLogoSizeMm(naturalW, naturalH, maxW, maxH) {
 /** Endereço, cidade e UF para a secção 3. Introdução (identificação da vistoria). */
 function formatPdfIntroLocalizacao(inspection) {
   const e = (inspection.endereco || '').trim();
-  const c = (inspection.cidade || '').trim();
-  const u = pdfUfSomenteSigla(inspection.uf);
-  const cidadeUf = u ? (c ? `${c} - ${u}` : u) : c;
+  const cidadeUf = pdfCidadeUfTexto(inspection.cidade, inspection.uf);
   if (e && cidadeUf) return `${e}, ${cidadeUf}`;
   if (e) return e;
   return cidadeUf || '-';
@@ -112,18 +110,35 @@ function pdfUfSomenteSigla(uf) {
   return antesTraco;
 }
 
-/** Apartamento | Casa térrea | Sobrado (uma linha no laudo). */
+/** Ex.: "Praia Grande, SP" (cidade + sigla da UF). */
+function pdfCidadeUfTexto(cidade, uf) {
+  const c = pdfTrim(cidade);
+  const u = pdfUfSomenteSigla(uf);
+  if (c && u) return `${c}, ${u}`;
+  if (c) return c;
+  if (u) return u;
+  return '';
+}
+
+function pdfEmpreendimentoConstrutoraTexto(empreendimento, construtora) {
+  const e = pdfTrim(empreendimento);
+  const k = pdfTrim(construtora);
+  if (e && k) return `${e} / ${k}`;
+  return e || k || '';
+}
+
+/** Apartamento | Casa Térrea | Sobrado (uma linha no laudo). */
 function pdfTipoImovelUnificado(inspection) {
   const cat = inspection.imovel_categoria;
   const tip = inspection.imovel_tipologia;
   if (cat === 'apartamento') return 'Apartamento';
   if (cat === 'casa') {
     if (tip === 'sobrado') return 'Sobrado';
-    if (tip === 'terreo') return 'Casa térrea';
+    if (tip === 'terreo') return 'Casa Térrea';
     return '';
   }
   if (tip === 'sobrado') return 'Sobrado';
-  if (tip === 'terreo') return 'Casa térrea';
+  if (tip === 'terreo') return 'Casa Térrea';
   return '';
 }
 
@@ -157,20 +172,12 @@ function buildIdentificacaoTableBody(inspection) {
     rows.push(pdfIdentSectionRow('Identificação do Responsável Técnico'));
     rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
     rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
-    const rtDoc = pdfIdentRowFull(
-      'CPF / CNPJ (responsável técnico)',
-      inspection.responsavel_cpf_cnpj,
-      false
-    );
+    const rtDoc = pdfIdentRowFull('CPF / CNPJ', inspection.responsavel_cpf_cnpj, false);
     if (rtDoc) rows.push(rtDoc);
 
     rows.push(pdfIdentSectionRow('Identificação do contratante'));
     rows.push(pdfIdentRowFull('Contratante', inspection.cliente, true));
-    const cDoc = pdfIdentRowFull(
-      'CPF / CNPJ (contratante)',
-      inspection.contratante_cpf_cnpj,
-      false
-    );
+    const cDoc = pdfIdentRowFull('CPF / CNPJ', inspection.contratante_cpf_cnpj, false);
     if (cDoc) rows.push(cDoc);
 
     rows.push(pdfIdentSectionRow('Dados do Imóvel'));
@@ -182,20 +189,14 @@ function buildIdentificacaoTableBody(inspection) {
       const unRow = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
       if (unRow) rows.push(unRow);
     }
-    const cid = pdfTrim(inspection.cidade);
-    const ufSigla = pdfUfSomenteSigla(inspection.uf);
-    if (cid || ufSigla) {
-      rows.push([
-        pdfIdentLabelCell('Cidade'),
-        { content: cid || '—' },
-        pdfIdentLabelCell('UF'),
-        { content: ufSigla || '—' },
-      ]);
-    }
-    const empRow = pdfIdentRowFull('Nome do empreendimento', inspection.empreendimento, false);
-    if (empRow) rows.push(empRow);
-    const consRow = pdfIdentRowFull('Construtora', inspection.construtora, false);
-    if (consRow) rows.push(consRow);
+    const cidUf = pdfCidadeUfTexto(inspection.cidade, inspection.uf);
+    rows.push(pdfIdentRowFull('Cidade', cidUf || '—', true));
+    const empCons = pdfIdentRowFull(
+      'Empreendimento/Construtora',
+      pdfEmpreendimentoConstrutoraTexto(inspection.empreendimento, inspection.construtora),
+      false
+    );
+    if (empCons) rows.push(empCons);
     const tipo = inspection.tipo_imovel;
     const tipoStr =
       tipo === 'novo'
@@ -229,37 +230,27 @@ function buildIdentificacaoTableBody(inspection) {
   rows.push(pdfIdentRowFull('Cliente', inspection.cliente, true));
   rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
 
-  const cid = pdfTrim(inspection.cidade);
-  const ufSigla = pdfUfSomenteSigla(inspection.uf);
-  if (cid || ufSigla) {
-    rows.push([
-      pdfIdentLabelCell('Cidade'),
-      { content: cid || '—' },
-      pdfIdentLabelCell('UF'),
-      { content: ufSigla || '—' },
-    ]);
-  }
+  const cidUfG = pdfCidadeUfTexto(inspection.cidade, inspection.uf);
+  rows.push(pdfIdentRowFull('Cidade', cidUfG || '—', true));
 
   if (fluxo === 'apartamento') {
     const apt = pdfIdentRowFull('Entrega de Imóvel', inspection.unidade, false);
     if (apt) rows.push(apt);
   }
 
-  const empR = pdfIdentRowFull('Nome do empreendimento', inspection.empreendimento, false);
-  if (empR) rows.push(empR);
-  const consR = pdfIdentRowFull('Construtora', inspection.construtora, false);
-  if (consR) rows.push(consR);
+  const empConsG = pdfIdentRowFull(
+    'Empreendimento/Construtora',
+    pdfEmpreendimentoConstrutoraTexto(inspection.empreendimento, inspection.construtora),
+    false
+  );
+  if (empConsG) rows.push(empConsG);
 
   const tipoLinhaG = pdfTipoImovelUnificado(inspection);
   const tipoRowG = pdfIdentRowFull('Tipo do Imóvel', tipoLinhaG, false);
   if (tipoRowG) rows.push(tipoRowG);
 
   rows.push(pdfIdentSectionRow('Responsável técnico'));
-  const rtDoc = pdfIdentRowFull(
-    'CPF / CNPJ (responsável técnico)',
-    inspection.responsavel_cpf_cnpj,
-    false
-  );
+  const rtDoc = pdfIdentRowFull('CPF / CNPJ', inspection.responsavel_cpf_cnpj, false);
   if (rtDoc) rows.push(rtDoc);
   rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
   rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
@@ -299,7 +290,10 @@ function buildPdfIntroducaoText(inspection) {
   const loc = formatPdfIntroLocalizacao(inspection);
   const fluxo = String(inspection.tipo_vistoria_fluxo || '').trim();
   const apt = (inspection.unidade || '').trim();
-  const emp = (inspection.empreendimento || '').trim();
+  const empConsIntro = pdfEmpreendimentoConstrutoraTexto(
+    inspection.empreendimento,
+    inspection.construtora
+  );
 
   let complemento = '';
   if (
@@ -309,8 +303,8 @@ function buildPdfIntroducaoText(inspection) {
   ) {
     complemento += `, apartamento / bloco: ${apt}`;
   }
-  if (emp) {
-    complemento += `, do empreendimento ${emp}`;
+  if (empConsIntro) {
+    complemento += `, empreendimento/construtora: ${empConsIntro}`;
   }
 
   return [

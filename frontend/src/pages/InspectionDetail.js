@@ -44,17 +44,34 @@ function ufSomenteSigla(uf) {
   return head.slice(0, 2).toUpperCase();
 }
 
-/** Apartamento | Casa térrea | Sobrado */
+/** Apartamento | Casa Térrea | Sobrado */
 function tipoImovelUnificadoLabel(inv) {
   if (inv.imovel_categoria === 'apartamento') return 'Apartamento';
   if (inv.imovel_categoria === 'casa') {
     if (inv.imovel_tipologia === 'sobrado') return 'Sobrado';
-    if (inv.imovel_tipologia === 'terreo') return 'Casa térrea';
+    if (inv.imovel_tipologia === 'terreo') return 'Casa Térrea';
     return null;
   }
   if (inv.imovel_tipologia === 'sobrado') return 'Sobrado';
-  if (inv.imovel_tipologia === 'terreo') return 'Casa térrea';
+  if (inv.imovel_tipologia === 'terreo') return 'Casa Térrea';
   return null;
+}
+
+function cidadeUfExibicao(cidade, uf) {
+  const c = tStr(cidade);
+  const u = ufSomenteSigla(uf);
+  if (c && u) return `${c}, ${u}`;
+  if (c) return c;
+  if (u) return u;
+  return '';
+}
+
+function empreendimentoConstrutoraExibicao(emp, cons) {
+  const e = tStr(emp);
+  const k = tStr(cons);
+  if (e && k) return `${e} / ${k}`;
+  if (e || k) return e || k;
+  return '';
 }
 
 function IdBlock({ title, children }) {
@@ -311,15 +328,21 @@ const InspectionDetail = () => {
                   {inspection.imovel_categoria === 'apartamento' && tStr(inspection.unidade) ? (
                     <IdRow label="Apartamento / Bloco">{inspection.unidade}</IdRow>
                   ) : null}
-                  {tStr(inspection.cidade) ? <IdRow label="Cidade">{inspection.cidade}</IdRow> : null}
-                  {ufSomenteSigla(inspection.uf) ? (
-                    <IdRow label="UF">{ufSomenteSigla(inspection.uf)}</IdRow>
+                  {cidadeUfExibicao(inspection.cidade, inspection.uf) ? (
+                    <IdRow label="Cidade">
+                      {cidadeUfExibicao(inspection.cidade, inspection.uf)}
+                    </IdRow>
                   ) : null}
-                  {tStr(inspection.empreendimento) ? (
-                    <IdRow label="Nome do empreendimento">{inspection.empreendimento}</IdRow>
-                  ) : null}
-                  {tStr(inspection.construtora) ? (
-                    <IdRow label="Construtora">{inspection.construtora}</IdRow>
+                  {empreendimentoConstrutoraExibicao(
+                    inspection.empreendimento,
+                    inspection.construtora
+                  ) ? (
+                    <IdRow label="Empreendimento/Construtora">
+                      {empreendimentoConstrutoraExibicao(
+                        inspection.empreendimento,
+                        inspection.construtora
+                      )}
+                    </IdRow>
                   ) : null}
                   {condicaoImovelLabel(inspection.tipo_imovel) ? (
                     <IdRow label="Condição do imóvel">
@@ -374,18 +397,24 @@ const InspectionDetail = () => {
                 <IdBlock title="Contratante e imóvel">
                   <IdRow label="Cliente">{inspection.cliente}</IdRow>
                   <IdRow label="Endereço">{inspection.endereco}</IdRow>
-                  {tStr(inspection.cidade) ? <IdRow label="Cidade">{inspection.cidade}</IdRow> : null}
-                  {ufSomenteSigla(inspection.uf) ? (
-                    <IdRow label="UF">{ufSomenteSigla(inspection.uf)}</IdRow>
+                  {cidadeUfExibicao(inspection.cidade, inspection.uf) ? (
+                    <IdRow label="Cidade">
+                      {cidadeUfExibicao(inspection.cidade, inspection.uf)}
+                    </IdRow>
                   ) : null}
                   {inspection.tipo_vistoria_fluxo === 'apartamento' && tStr(inspection.unidade) ? (
                     <IdRow label="Entrega de Imóvel">{inspection.unidade}</IdRow>
                   ) : null}
-                  {tStr(inspection.empreendimento) ? (
-                    <IdRow label="Nome do empreendimento">{inspection.empreendimento}</IdRow>
-                  ) : null}
-                  {tStr(inspection.construtora) ? (
-                    <IdRow label="Construtora">{inspection.construtora}</IdRow>
+                  {empreendimentoConstrutoraExibicao(
+                    inspection.empreendimento,
+                    inspection.construtora
+                  ) ? (
+                    <IdRow label="Empreendimento/Construtora">
+                      {empreendimentoConstrutoraExibicao(
+                        inspection.empreendimento,
+                        inspection.construtora
+                      )}
+                    </IdRow>
                   ) : null}
                   {tipoImovelUnificadoLabel(inspection) ? (
                     <IdRow label="Tipo do Imóvel">{tipoImovelUnificadoLabel(inspection)}</IdRow>
