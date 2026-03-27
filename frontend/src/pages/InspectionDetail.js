@@ -9,6 +9,10 @@ import { generateInspectionPDF } from '../utils/pdfGenerator';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
 import BrandLogo from '@/components/BrandLogo';
+import {
+  RELATO_TEXTO_PLACEHOLDER_TERMINO,
+  substituirPlaceholderHorarioTerminoRelato,
+} from '../constants/laudoEntregaTextos';
 
 function formatInspectionDate(iso) {
   if (!iso) return '—';
@@ -371,7 +375,11 @@ const InspectionDetail = () => {
                       {tStr(inspection.horario_inicio) || '—'}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
-                      O horário de término é registrado na finalização do laudo.
+                      O horário de término é preenchido na finalização do laudo e substitui{' '}
+                      <span className="font-medium text-slate-600">
+                        {RELATO_TEXTO_PLACEHOLDER_TERMINO}
+                      </span>{' '}
+                      no relato do PDF.
                     </p>
                   </div>
                   {inspection.documentos_recebidos?.filter((d) => tStr(d)).length > 0 ? (
@@ -413,7 +421,10 @@ const InspectionDetail = () => {
                           Relato da vistoria
                         </span>
                         <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
-                          {inspection.laudo_relato_vistoria}
+                          {substituirPlaceholderHorarioTerminoRelato(
+                            inspection.laudo_relato_vistoria,
+                            inspection.horario_termino
+                          )}
                         </p>
                       </div>
                     ) : null}
@@ -513,7 +524,11 @@ const InspectionDetail = () => {
                       {tStr(inspection.horario_inicio) || '—'}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
-                      O horário de término é registrado na finalização do laudo.
+                      O horário de término é preenchido na finalização do laudo e substitui{' '}
+                      <span className="font-medium text-slate-600">
+                        {RELATO_TEXTO_PLACEHOLDER_TERMINO}
+                      </span>{' '}
+                      no relato do PDF.
                     </p>
                   </div>
                   {condicaoImovelLabel(inspection.tipo_imovel) ? (

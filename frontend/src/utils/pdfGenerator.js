@@ -27,6 +27,7 @@ import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 import {
   applyDynamicMetodologiaIntro,
   METODOLOGIA_PLACEHOLDER_REG_NC,
+  substituirPlaceholderHorarioTerminoRelato,
 } from '../constants/laudoEntregaTextos';
 
 /** Cabeçalho: logo à esquerda; só o título à direita, centrado na coluna de texto */
@@ -324,7 +325,11 @@ function isEntregaImovelLaudoExtended(inspection) {
 function composeLaudoRelatoVistoriaPdf(inspection) {
   const parts = [];
   const main = pdfTrim(inspection.laudo_relato_vistoria);
-  if (main) parts.push(main);
+  if (main) {
+    parts.push(
+      substituirPlaceholderHorarioTerminoRelato(main, inspection.horario_termino)
+    );
+  }
   const a1 = pdfTrim(inspection.laudo_relato_adendo_descricao);
   if (a1) parts.push(a1);
   const a2 = pdfTrim(inspection.laudo_relato_adendo_retrabalho);

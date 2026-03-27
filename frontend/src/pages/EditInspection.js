@@ -13,6 +13,7 @@ import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 import {
   LAUDO_OBJETIVO_PRESETS,
+  RELATO_TEXTO_PLACEHOLDER_TERMINO,
   buildLaudoMetodologiaCompleta,
   buildRelatoVistoriaIntro,
   nextObjetivoPreset,
@@ -695,6 +696,24 @@ const EditInspection = () => {
 
               <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Relato da vistoria')}
+                <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-600">
+                  <p className="mb-3 text-slate-700">
+                    O texto principal do relato pode ser editado livremente. Além dele, você pode
+                    complementar o relato com os campos logo abaixo, quando fizer sentido:
+                  </p>
+                  <ul className="mb-4 list-disc space-y-2 pl-5 marker:text-slate-400">
+                    <li>descrever como foi a vistoria;</li>
+                    <li>informar se algum item foi retrabalhado durante a vistoria;</li>
+                    <li>informar se houve algum impedimento à sua inspeção.</li>
+                  </ul>
+                  <p className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2.5 text-xs leading-snug text-amber-950">
+                    No texto principal, o horário de término aparece como{' '}
+                    <span className="font-semibold">{RELATO_TEXTO_PLACEHOLDER_TERMINO}</span> até você
+                    preencher o <strong>Horário de término</strong> na finalização do laudo (etapa de
+                    conclusão da vistoria). Depois disso, esse horário passa a aparecer automaticamente
+                    no texto do relato no PDF.
+                  </p>
+                </div>
                 <textarea
                   name="laudo_relato_vistoria"
                   value={formData.laudo_relato_vistoria}
@@ -702,19 +721,6 @@ const EditInspection = () => {
                   rows={5}
                   className={`${laudoTextareaClass} mb-5`}
                 />
-                <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/80 p-4 text-sm leading-relaxed text-slate-600">
-                  <p className="mb-3 font-medium text-slate-700">
-                    Complemente o relato, quando fizer sentido, abordando:
-                  </p>
-                  <ul className="list-disc space-y-2 pl-5 marker:text-slate-400">
-                    <li>como foi a vistoria;</li>
-                    <li>se algum item foi retrabalhado durante a vistoria;</li>
-                    <li>se houve impedimento à inspeção.</li>
-                  </ul>
-                  <p className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-snug text-amber-950">
-                    O horário de término é preenchido na finalização do laudo.
-                  </p>
-                </div>
                 <div className="space-y-4">
                   <textarea
                     name="laudo_relato_adendo_descricao"

@@ -70,12 +70,19 @@ export function formatDataLaudoBrasil(dateStr) {
 }
 
 /**
- * Parágrafo inicial do relato (sem horário de término — preenchido na finalização do laudo).
- * @param {{ data?: string, horario_inicio?: string, cliente?: string, responsavel_tecnico?: string, responsavel_construtora?: string }} p
+ * No texto do relato, até a finalização: aparece literalmente; no PDF/exibição com horário salvo, é trocado pelo valor.
+ */
+export const RELATO_TEXTO_PLACEHOLDER_TERMINO = '(será preenchido na finalização do laudo)';
+
+/**
+ * Parágrafo inicial do relato. Horário de término: valor já salvo ou placeholder até a finalização.
+ * @param {{ data?: string, horario_inicio?: string, horario_termino?: string, cliente?: string, responsavel_tecnico?: string, responsavel_construtora?: string }} p
  */
 export function buildRelatoVistoriaIntro(p) {
   const d = formatDataLaudoBrasil(p.data);
   const hi = String(p.horario_inicio || '').trim() || '___:___';
+  const ht = String(p.horario_termino || '').trim();
+  const terminoPart = ht || RELATO_TEXTO_PLACEHOLDER_TERMINO;
   const cl = String(p.cliente || '').trim() || '___';
   const rt = String(p.responsavel_tecnico || '').trim() || '___';
   const rc = String(p.responsavel_construtora || '').trim();
@@ -84,7 +91,25 @@ export function buildRelatoVistoriaIntro(p) {
     presencas += ` e ${rc}, responsável da construtora`;
   }
   presencas += '.';
-  return `A vistoria foi realizada no dia ${d}, com início às ${hi}. O horário de término será informado na finalização deste laudo. No momento da vistoria estavam presentes ${presencas}`;
+  return `A vistoria foi realizada no dia ${d}, com início às ${hi} e término às ${terminoPart}. No momento da vistoria estavam presentes ${presencas}`;
+}
+
+/**
+ * Substitui o placeholder do término pelo horário da finalização (PDF e telas de detalhe).
+ * @param {string} text
+ * @param {string} [horarioTermino]
+ */
+export function substituirPlaceholderHorarioTerminoRelato(text, horarioTermino) {
+  const t = String(text || '');
+  const ht = String(horarioTermino || '').trim();
+  if (!t || !ht) return t;
+  let out = t.split(RELATO_TEXTO_PLACEHOLDER_TERMINO).join(ht);
+  out = out.split('(será definido na finalização do laudo)').join(ht);
+  out = out.replace(
+    /\. O horário de término será informado na finalização deste laudo\.\s*No momento/gi,
+    ` e término às ${ht}. No momento`
+  );
+  return out;
 }
 
 /** Próximo preset de objetivo a partir do texto atual (ciclo). */
