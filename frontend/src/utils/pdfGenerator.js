@@ -96,6 +96,27 @@ function pdfIdentRowFull(label, value, required = true) {
   return [pdfIdentLabelCell(label), { content: display, colSpan: 3 }];
 }
 
+function pdfTrim(v) {
+  return v == null ? '' : String(v).trim();
+}
+
+/** Título de subsecção na tabela de identificação (linha única em 4 colunas). */
+function pdfIdentSectionRow(title) {
+  return [
+    {
+      content: title,
+      colSpan: 4,
+      styles: {
+        fontStyle: 'bold',
+        fontSize: PDF_BODY_PT + 0.5,
+        fillColor: [226, 232, 240],
+        textColor: [51, 65, 85],
+        cellPadding: { top: 4.5, bottom: 4.5, left: 4, right: 4 },
+      },
+    },
+  ];
+}
+
 /** Corpo da tabela 1 — fluxo Entrega de Imóvel com `imovel_categoria` usa blocos alinhados ao formulário. */
 function buildIdentificacaoTableBody(inspection) {
   const fluxo = String(inspection.tipo_vistoria_fluxo || '').trim();
@@ -105,53 +126,60 @@ function buildIdentificacaoTableBody(inspection) {
 
   if (entregaForm) {
     const rows = [];
+
+    rows.push(pdfIdentSectionRow('Identificação do Responsável Técnico'));
     const empNome = pdfIdentRowFull('Nome da empresa', inspection.pdf_empresa_nome, false);
     if (empNome) rows.push(empNome);
     const empCnpj = pdfIdentRowFull('CNPJ da empresa', inspection.pdf_empresa_cnpj, false);
     if (empCnpj) rows.push(empCnpj);
+    rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
+    rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
     const rtDoc = pdfIdentRowFull(
       'CPF / CNPJ (responsável técnico)',
       inspection.responsavel_cpf_cnpj,
       false
     );
     if (rtDoc) rows.push(rtDoc);
-    rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
-    rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
+
+    rows.push(pdfIdentSectionRow('Identificação do contratante'));
     rows.push(pdfIdentRowFull('Contratante', inspection.cliente, true));
-    rows.push(
-      pdfIdentRowFull('CPF / CNPJ (contratante)', inspection.contratante_cpf_cnpj, true)
+    const cDoc = pdfIdentRowFull(
+      'CPF / CNPJ (contratante)',
+      inspection.contratante_cpf_cnpj,
+      false
     );
+    if (cDoc) rows.push(cDoc);
+
+    rows.push(pdfIdentSectionRow('Dados do Imóvel'));
     rows.push(
       pdfIdentRowFull('Tipo do imóvel (contratante)', cat === 'casa' ? 'Casa' : 'Apartamento', true)
     );
     if (cat === 'casa') {
       const tipE = inspection.imovel_tipologia;
       const tipEStr =
-        tipE === 'terreo' ? 'Térrea' : tipE === 'sobrado' ? 'Sobrado' : '—';
-      rows.push(pdfIdentRowFull('Tipologia (casa)', tipEStr, true));
+        tipE === 'terreo' ? 'Térrea' : tipE === 'sobrado' ? 'Sobrado' : '';
+      const tipRow = pdfIdentRowFull('Tipologia (casa)', tipEStr, false);
+      if (tipRow) rows.push(tipRow);
     }
     rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
     if (cat === 'apartamento') {
-      rows.push(pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, true));
+      const unRow = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
+      if (unRow) rows.push(unRow);
     }
-    const cid = inspection.cidade == null ? '' : String(inspection.cidade).trim();
-    const uf = inspection.uf == null ? '' : String(inspection.uf).trim();
-    rows.push([
-      pdfIdentLabelCell('Cidade'),
-      { content: cid || '—' },
-      pdfIdentLabelCell('UF'),
-      { content: uf || '—' },
-    ]);
-    const emp = inspection.empreendimento == null ? '' : String(inspection.empreendimento).trim();
-    const cons = inspection.construtora == null ? '' : String(inspection.construtora).trim();
-    if (emp || cons) {
+    const cid = pdfTrim(inspection.cidade);
+    const uf = pdfTrim(inspection.uf);
+    if (cid || uf) {
       rows.push([
-        pdfIdentLabelCell('Nome do empreendimento'),
-        { content: emp || '—' },
-        pdfIdentLabelCell('Construtora'),
-        { content: cons || '—' },
+        pdfIdentLabelCell('Cidade'),
+        { content: cid || '—' },
+        pdfIdentLabelCell('UF'),
+        { content: uf || '—' },
       ]);
     }
+    const empRow = pdfIdentRowFull('Nome do empreendimento', inspection.empreendimento, false);
+    if (empRow) rows.push(empRow);
+    const consRow = pdfIdentRowFull('Construtora', inspection.construtora, false);
+    if (consRow) rows.push(consRow);
     const tipo = inspection.tipo_imovel;
     const tipoStr =
       tipo === 'novo'
@@ -167,6 +195,8 @@ function buildIdentificacaoTableBody(inspection) {
     const enStr = en === 'sim' ? 'Sim' : en === 'nao' ? 'Não' : '';
     const trEn = pdfIdentRowFull('Energia disponível', enStr, false);
     if (trEn) rows.push(trEn);
+
+    rows.push(pdfIdentSectionRow('Identificação da vistoria'));
     rows.push(pdfIdentRowFull('Data da vistoria', formatDate(inspection.data), true));
     const hi = pdfIdentRowFull('Horário de início', inspection.horario_inicio, false);
     if (hi) rows.push(hi);
@@ -176,46 +206,53 @@ function buildIdentificacaoTableBody(inspection) {
   }
 
   const rows = [];
-  const empNome = pdfIdentRowFull('Nome da empresa', inspection.pdf_empresa_nome, false);
-  if (empNome) rows.push(empNome);
-  const empCnpj = pdfIdentRowFull('CNPJ da empresa', inspection.pdf_empresa_cnpj, false);
-  if (empCnpj) rows.push(empCnpj);
-  const rtDoc = pdfIdentRowFull(
-    'CPF / CNPJ (responsável técnico)',
-    inspection.responsavel_cpf_cnpj,
-    false
-  );
-  if (rtDoc) rows.push(rtDoc);
+
+  const hasEmpresa =
+    pdfTrim(inspection.pdf_empresa_nome) || pdfTrim(inspection.pdf_empresa_cnpj);
+  if (hasEmpresa) {
+    rows.push(pdfIdentSectionRow('Dados da empresa'));
+    const empNome = pdfIdentRowFull('Nome da empresa', inspection.pdf_empresa_nome, false);
+    if (empNome) rows.push(empNome);
+    const empCnpj = pdfIdentRowFull('CNPJ da empresa', inspection.pdf_empresa_cnpj, false);
+    if (empCnpj) rows.push(empCnpj);
+  }
+
+  rows.push(pdfIdentSectionRow('Contratante e imóvel'));
   rows.push(pdfIdentRowFull('Cliente', inspection.cliente, true));
   rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
 
-  const cid = inspection.cidade == null ? '' : String(inspection.cidade).trim();
-  const uf = inspection.uf == null ? '' : String(inspection.uf).trim();
-  rows.push([
-    pdfIdentLabelCell('Cidade'),
-    { content: cid || '—' },
-    pdfIdentLabelCell('UF'),
-    { content: uf || '—' },
-  ]);
+  const cid = pdfTrim(inspection.cidade);
+  const uf = pdfTrim(inspection.uf);
+  if (cid || uf) {
+    rows.push([
+      pdfIdentLabelCell('Cidade'),
+      { content: cid || '—' },
+      pdfIdentLabelCell('UF'),
+      { content: uf || '—' },
+    ]);
+  }
 
   if (fluxo === 'apartamento') {
     const apt = pdfIdentRowFull('Entrega de Imóvel', inspection.unidade, false);
     if (apt) rows.push(apt);
   }
 
-  const emp = inspection.empreendimento == null ? '' : String(inspection.empreendimento).trim();
-  const cons = inspection.construtora == null ? '' : String(inspection.construtora).trim();
-  if (emp || cons) {
-    rows.push([
-      pdfIdentLabelCell('Empreendimento'),
-      { content: emp || '—' },
-      pdfIdentLabelCell('Construtora'),
-      { content: cons || '—' },
-    ]);
-  }
+  const empR = pdfIdentRowFull('Nome do empreendimento', inspection.empreendimento, false);
+  if (empR) rows.push(empR);
+  const consR = pdfIdentRowFull('Construtora', inspection.construtora, false);
+  if (consR) rows.push(consR);
 
+  rows.push(pdfIdentSectionRow('Responsável técnico'));
+  const rtDoc = pdfIdentRowFull(
+    'CPF / CNPJ (responsável técnico)',
+    inspection.responsavel_cpf_cnpj,
+    false
+  );
+  if (rtDoc) rows.push(rtDoc);
   rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
   rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
+
+  rows.push(pdfIdentSectionRow('Identificação da vistoria'));
   rows.push(pdfIdentRowFull('Data', formatDate(inspection.data), true));
 
   const hi = pdfIdentRowFull('Horário de Início', inspection.horario_inicio, false);
@@ -223,7 +260,7 @@ function buildIdentificacaoTableBody(inspection) {
 
   const tipE = inspection.imovel_tipologia;
   const tipEStr =
-    tipE === 'terreo' ? 'Térreo' : tipE === 'sobrado' ? 'Sobrado' : '';
+    tipE === 'terreo' ? 'Térrea' : tipE === 'sobrado' ? 'Sobrado' : '';
   if (tipEStr) {
     rows.push(pdfIdentRowFull('Tipo do imóvel', tipEStr, false));
   }
@@ -245,7 +282,7 @@ function buildIdentificacaoTableBody(inspection) {
 
   const en = inspection.energia_disponivel;
   const enStr = en === 'sim' ? 'Sim' : en === 'nao' ? 'Não' : '';
-  const trEn = pdfIdentRowFull('Energia Disponível', enStr, false);
+  const trEn = pdfIdentRowFull('Energia disponível', enStr, false);
   if (trEn) rows.push(trEn);
 
   return rows.filter(Boolean);
@@ -590,33 +627,31 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos = doc.lastAutoTable.finalY + 10;
 
   // ============================================================
-  // 2. DOCUMENTOS RECEBIDOS E ANALISADOS
+  // 2. DOCUMENTOS RECEBIDOS E ANALISADOS (só se houver itens no app)
   // ============================================================
-  yPos = drawChapterTitle(
-    doc,
-    margin,
-    contentWidth,
-    yPos,
-    '2. DOCUMENTOS RECEBIDOS E ANALISADOS',
-    { minFollowingMm: 28 }
-  );
+  const docsList = Array.isArray(inspection.documentos_recebidos)
+    ? inspection.documentos_recebidos.filter((d) => pdfTrim(d))
+    : [];
+  if (docsList.length > 0) {
+    yPos = drawChapterTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      '2. DOCUMENTOS RECEBIDOS E ANALISADOS',
+      { minFollowingMm: 28 }
+    );
 
-  doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_BODY_PT);
-  
-  if (inspection.documentos_recebidos && inspection.documentos_recebidos.length > 0) {
-    const docs = inspection.documentos_recebidos;
-    docs.forEach((docItem, index) => {
+    doc.setFont(PDF_FONT, 'normal');
+    doc.setFontSize(PDF_BODY_PT);
+
+    docsList.forEach((docItem, index) => {
       doc.text(`${index + 1}. ${docItem}`, listX, yPos);
       yPos += PDF_BODY_LINE_MM;
-      if (index < docs.length - 1) {
+      if (index < docsList.length - 1) {
         yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
       }
     });
-  } else {
-    doc.setFont(PDF_FONT, 'italic');
-    doc.text('Nenhum documento recebido registrado.', listX, yPos);
-    yPos += PDF_BODY_LINE_MM;
   }
 
   // Primeira página: só cabeçalho + secções 1 e 2. O restante começa na página seguinte.
