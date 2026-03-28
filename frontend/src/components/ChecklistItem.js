@@ -192,7 +192,7 @@ const ChecklistItem = ({
         'rounded-lg border transition-[box-shadow,border-color] duration-200',
         'shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
         existsNao
-          ? 'border-amber-200/90 bg-gradient-to-b from-amber-50/70 to-amber-50/30'
+          ? 'border-stone-300/90 bg-gradient-to-b from-stone-100/80 to-stone-50/50'
           : 'border-slate-200/90 bg-white hover:shadow-[0_1px_4px_rgba(15,23,42,0.05)]',
       ].join(' ')}
     >
@@ -226,7 +226,7 @@ const ChecklistItem = ({
               className={[
                 'whitespace-nowrap rounded-[5px] px-1.5 py-0.5 text-[10px] font-semibold leading-none transition-colors sm:px-2 sm:py-1 sm:text-[11px]',
                 existsNao
-                  ? 'bg-white text-amber-900 shadow-sm ring-1 ring-amber-200/80'
+                  ? 'bg-stone-600 text-white shadow-sm'
                   : 'text-slate-500 hover:text-slate-700',
               ].join(' ')}
             >
@@ -247,48 +247,52 @@ const ChecklistItem = ({
           )}
         </div>
 
-        {/* Linha 2: itens verificados */}
+        {/* Linha 2: critérios de referência (destaque) */}
         <div className={`mt-1 ${lockMeta}`}>
           <button
             type="button"
             data-testid={`verification-points-${item.name}`}
             onClick={() => setShowVerificationsModal(true)}
-            className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-slate-200/80 bg-slate-50/70 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-800 sm:w-auto sm:px-2 sm:py-1"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-blue-200 bg-blue-50/90 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-blue-900 shadow-sm ring-2 ring-blue-300/35 ring-offset-1 ring-offset-white transition-colors hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:w-auto sm:px-3 sm:py-1.5"
             aria-label="Itens verificados"
           >
-            <ClipboardList size={12} strokeWidth={2.25} className="shrink-0 text-slate-500" aria-hidden />
+            <ClipboardList size={12} strokeWidth={2.25} className="shrink-0 text-blue-600" aria-hidden />
             Itens verificados
           </button>
         </div>
 
         {existsNao && (
-          <p className="mt-1 rounded border border-amber-100/90 bg-white/50 px-2 py-1 text-[11px] leading-snug text-amber-950/90">
-            Inexistente aqui — indisponível até <span className="font-semibold">Existe</span>. Fora do PDF.
+          <p className="mt-1 rounded border border-stone-200/90 bg-white/70 px-2 py-1.5 text-[11px] leading-snug text-stone-800">
+            Item inexistente — Não irá constar no Laudo.
           </p>
         )}
 
         {!existsNao && (
           <>
-            <div className="mt-1">
+            <div className="mt-1.5 space-y-1">
               <button
                 type="button"
                 data-testid={`nc-button-${item.name}`}
                 onClick={() => setShowNcPanel(!showNcPanel)}
                 className={[
-                  'inline-flex w-full items-center justify-center gap-1.5 rounded-md border py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors sm:py-1.5 sm:text-[11px]',
+                  'inline-flex w-full items-center justify-center gap-1.5 rounded-md border py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors sm:text-[11px]',
                   showNcPanel
-                    ? 'border-amber-300/90 bg-amber-100/70 text-amber-950'
-                    : 'border-amber-200/80 bg-amber-50/50 text-amber-900 hover:bg-amber-50/90',
+                    ? 'border-rose-400/90 bg-rose-100 text-rose-950 shadow-inner'
+                    : 'border-rose-300/80 bg-rose-50 text-rose-900 hover:border-rose-400 hover:bg-rose-100/80',
                 ].join(' ')}
               >
-                <AlertTriangle size={13} strokeWidth={2.25} className="shrink-0 opacity-90" aria-hidden />
+                <AlertTriangle size={13} strokeWidth={2.25} className="shrink-0 text-rose-600" aria-hidden />
                 Não conformidades
                 {photos.length > 0 ? (
-                  <span className="rounded-full bg-amber-200/90 px-1.5 py-px text-[9px] font-bold tabular-nums text-amber-950">
+                  <span className="rounded-full bg-rose-200/90 px-1.5 py-px text-[9px] font-bold tabular-nums text-rose-950">
                     {photos.length}
                   </span>
                 ) : null}
               </button>
+              <p className="text-center text-[10px] leading-snug text-slate-500 sm:text-left">
+                <span className="font-semibold text-rose-800/90">Conformidade do item:</span> registe
+                aqui as fotos que comprovam estado conforme ou as não conformidades para o laudo.
+              </p>
             </div>
 
             {showNcPanel && (
@@ -427,31 +431,25 @@ const ChecklistItem = ({
               aria-labelledby="vp-modal-title"
               className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl ring-1 ring-slate-200/60 sm:rounded-2xl"
             >
-              <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
                 <h3
                   id="vp-modal-title"
-                  className="font-secondary text-lg font-semibold capitalize leading-snug text-slate-900"
+                  className="font-secondary text-xl font-semibold leading-snug text-slate-900"
                 >
-                  Itens verificados — {item.name}
+                  {item.name}
                 </h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">
-                  Texto de referência dos pontos de verificação deste elemento.
-                </p>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                   Elementos e verificações
                 </p>
-                <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4 text-[13px] leading-relaxed text-slate-700 whitespace-pre-wrap">
+                <div className="mt-2 text-[15px] leading-relaxed text-slate-800 whitespace-pre-wrap">
                   {verificationBody || (
                     <span className="text-slate-400 italic">
-                      Nenhum texto definido. Registe não conformidades (fotos) quando o elemento
-                      existir.
+                      Sem texto de referência para este elemento.
                     </span>
                   )}
                 </div>
               </div>
-              <div className="border-t border-slate-100 p-4 sm:px-5">
+              <div className="border-t border-slate-100 p-4 sm:px-6">
                 <button
                   type="button"
                   onClick={() => setShowVerificationsModal(false)}
