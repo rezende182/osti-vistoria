@@ -141,6 +141,8 @@ const InspectionChecklist = () => {
   const [roomsData, setRoomsData] = useState([]);
   const [roomsList, setRoomsList] = useState([]);
   const [loading, setLoading] = useState(true);
+  /** Fluxo da vistoria (ex.: entrega de imóvel) — define o destino do botão «voltar». */
+  const [tipoVistoriaFluxo, setTipoVistoriaFluxo] = useState('');
   const [showAddRoom, setShowAddRoom] = useState(false);
   /** Confirmação antes de excluir cômodo (mobile + desktop) */
   const [deleteRoomTarget, setDeleteRoomTarget] = useState(null);
@@ -182,6 +184,7 @@ const InspectionChecklist = () => {
         toast.info('Sem servidor — a mostrar dados guardados neste dispositivo.');
       }
       const inspection = res.data;
+      setTipoVistoriaFluxo(inspection.tipo_vistoria_fluxo || '');
       const roomsChecklist = normalizeRoomsChecklist(inspection.rooms_checklist || []);
 
       if (roomsChecklist.length === 0) {
@@ -643,12 +646,22 @@ const InspectionChecklist = () => {
         <div className="mx-auto w-full max-w-app-readable xl:max-w-app-wide">
           <button
             type="button"
-            data-testid="back-to-identification-button"
-            onClick={() => navigate(`/inspection/${id}/edit`)}
+            data-testid="back-from-checklist-button"
+            onClick={() =>
+              navigate(
+                tipoVistoriaFluxo === 'apartamento'
+                  ? `/inspection/${id}/edit#objetivo-metodologia`
+                  : `/inspection/${id}/edit`
+              )
+            }
             className="mb-4 flex min-h-touch items-center gap-2 text-slate-300 transition-colors hover:text-white sm:min-h-0"
           >
             <ArrowLeft size={20} className="shrink-0" />
-            <span className="text-left text-sm sm:text-base">Voltar para Identificação</span>
+            <span className="text-left text-sm sm:text-base">
+              {tipoVistoriaFluxo === 'apartamento'
+                ? 'Voltar para Objetivo e Metodologia'
+                : 'Voltar para Identificação'}
+            </span>
           </button>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">

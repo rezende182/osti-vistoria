@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Home, ArrowRight, RefreshCw, Eraser } from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
@@ -78,6 +78,7 @@ const laudoTextareaClass =
 const EditInspection = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const uid = user?.uid;
   const [showExitModal, setShowExitModal] = useState(false);
@@ -185,6 +186,18 @@ const EditInspection = () => {
   useEffect(() => {
     loadInspection();
   }, [loadInspection]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (location.hash !== '#objetivo-metodologia') return;
+    if (formData.tipo_vistoria_fluxo !== 'apartamento') return;
+    const el = document.getElementById('objetivo-metodologia');
+    if (el) {
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [loading, location.hash, formData.tipo_vistoria_fluxo]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -639,9 +652,10 @@ const EditInspection = () => {
                 </div>
               </div>
 
-              {sectionTitle('Objetivo e Metodologia')}
+              <div id="objetivo-metodologia" className="scroll-mt-20">
+                {sectionTitle('Objetivo e Metodologia')}
 
-              <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
+                <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Objetivo')}
                 <div className="mb-4 flex flex-wrap gap-2">
                   <button
@@ -712,6 +726,7 @@ const EditInspection = () => {
                   rows={16}
                   className={laudoTextareaClass}
                 />
+              </div>
               </div>
             </>
           ) : (
@@ -977,7 +992,7 @@ const EditInspection = () => {
             type="submit"
             className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 flex items-center justify-center gap-2"
           >
-            Verificação dos ambientes
+            VERIFICAÇÃO DOS AMBIENTES E NÃO CONFORMIDADES
             <ArrowRight size={20} />
           </button>
         </form>

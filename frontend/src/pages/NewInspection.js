@@ -1036,7 +1036,7 @@ const NewInspection = () => {
           >
             {tipoImovelFluxo === 'apartamento' && entregaStep === 1
               ? 'Salvar e continuar'
-              : 'Verificação dos ambientes'}
+              : 'VERIFICAÇÃO DOS AMBIENTES E NÃO CONFORMIDADES'}
             <ArrowRight size={20} />
           </button>
         </form>
