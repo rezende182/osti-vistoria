@@ -639,7 +639,7 @@ export function buildItemsFromRoomType(roomType, roomIdPrefix) {
     id: `${roomIdPrefix}_i_${idx}`,
     name: el.name,
     verification_text: el.verificationText,
-    exists: 'sim',
+    exists: itemSkipsExistsToggle(el.name) ? 'sim' : null,
     photos: [],
   }));
 }

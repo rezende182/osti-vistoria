@@ -778,7 +778,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     for (const room of inspection.rooms_checklist) {
       // Itens no laudo: exclui "Não existe" (não entra no PDF)
       const itensNoPdf = (room.items || []).filter(
-        (item) => item && item.exists !== 'nao'
+        (item) => item && item.exists === 'sim'
       );
 
       if (itensNoPdf.length === 0) {

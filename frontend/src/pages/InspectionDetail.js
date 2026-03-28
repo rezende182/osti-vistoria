@@ -501,7 +501,7 @@ const InspectionDetail = () => {
             <h2 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">Inspeção Técnica e Checklist de Verificação</h2>
             {inspection.rooms_checklist.map((room, index) => {
               // Filtrar apenas itens que existem (aprovados ou reprovados)
-              const itensLista = (room.items || []).filter((item) => item && item.exists !== 'nao');
+              const itensLista = (room.items || []).filter((item) => item && item.exists === 'sim');
 
               if (itensLista.length === 0) return null;
               

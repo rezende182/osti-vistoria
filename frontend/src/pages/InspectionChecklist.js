@@ -56,9 +56,15 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
   }
   verification_text = capitalizeFirst(verification_text);
 
-  let exists = item.exists === 'nao' ? 'nao' : 'sim';
+  let exists;
   if (itemSkipsExistsToggle(item.name)) {
     exists = 'sim';
+  } else if (item.exists === 'nao') {
+    exists = 'nao';
+  } else if (item.exists === 'sim') {
+    exists = 'sim';
+  } else {
+    exists = null;
   }
 
   const {
@@ -325,7 +331,7 @@ const InspectionChecklist = () => {
       id: itemId,
       name: capitalizeFirst(name),
       verification_text: '',
-      exists: 'sim',
+      exists: null,
       photos: [],
     };
     const newRoomsData = [...roomsData];
@@ -335,9 +341,11 @@ const InspectionChecklist = () => {
     toast.success('Item adicionado.');
   };
 
-  /** Obrigatório para concluir o passo: apenas situação Existe ou Não existe. */
-  const itemChecklistCompleto = (item) =>
-    item.exists === 'sim' || item.exists === 'nao';
+  /** Obrigatório: Existe ou Não existe escolhido (itens sem toggle contam como ok). */
+  const itemChecklistCompleto = (item) => {
+    if (itemSkipsExistsToggle(item.name)) return true;
+    return item.exists === 'sim' || item.exists === 'nao';
+  };
 
   const calculateRoomProgress = (room) => {
     const totalItems = room.items.length;
@@ -431,6 +439,7 @@ const InspectionChecklist = () => {
 
     roomsData.forEach((room) => {
       room.items.forEach((item) => {
+        if (itemSkipsExistsToggle(item.name)) return;
         if (item.exists === 'sim' || item.exists === 'nao') return;
         missingItems.push(
           `${room.room_name}: "${item.name || 'Item'}" — indique Existe ou Não existe`

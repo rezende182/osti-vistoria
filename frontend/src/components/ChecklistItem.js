@@ -38,6 +38,7 @@ const ChecklistItem = ({
   const cameraInputRef = useRef(null);
 
   const skipExistsToggle = itemSkipsExistsToggle(item.name);
+  const existsSim = !skipExistsToggle && item.exists === 'sim';
   const existsNao = !skipExistsToggle && item.exists === 'nao';
 
   useEffect(() => {
@@ -215,9 +216,9 @@ const ChecklistItem = ({
                 onClick={() => setExists('sim')}
                 className={[
                   'whitespace-nowrap rounded-md border px-2 py-1 text-[10px] font-semibold leading-none transition-colors sm:py-1.5 sm:text-[11px]',
-                  !existsNao
+                  existsSim
                     ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
                 ].join(' ')}
               >
                 Existe
@@ -230,7 +231,7 @@ const ChecklistItem = ({
                   'whitespace-nowrap rounded-md border px-2 py-1 text-[10px] font-semibold leading-none transition-colors sm:py-1.5 sm:text-[11px]',
                   existsNao
                     ? 'border-red-600 bg-red-600 text-white shadow-sm'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
                 ].join(' ')}
               >
                 Não existe
@@ -271,7 +272,7 @@ const ChecklistItem = ({
           </p>
         )}
 
-        {!existsNao && (
+        {(skipExistsToggle || existsSim) && !existsNao && (
           <>
             <div className="mt-2 sm:mt-2.5">
               <button
