@@ -311,7 +311,7 @@ export function drawChapterTitle(doc, margin, contentWidth, yStart, title, optio
 }
 
 /**
- * Subtítulo de secção (ex.: nome do cômodo): negrito 12 pt; antes 8 pt / depois 4 pt.
+ * Subtítulo de secção (ex.: nome do ambiente): negrito 12 pt; antes 8 pt / depois 4 pt.
  * `options.minFollowingMm` — mantém subtítulo junto ao início do conteúdo seguinte.
  */
 export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, options = {}) {

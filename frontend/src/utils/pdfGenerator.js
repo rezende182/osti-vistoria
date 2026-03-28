@@ -941,7 +941,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   } else {
     doc.setFont(PDF_FONT, 'italic');
     doc.setFontSize(PDF_BODY_PT);
-    doc.text('Nenhum cômodo foi adicionado ao checklist.', listX, yPos);
+    doc.text('Nenhum ambiente foi adicionado ao checklist.', listX, yPos);
     yPos += PDF_BODY_LINE_MM;
   }
 

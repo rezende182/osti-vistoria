@@ -41,7 +41,7 @@ const RoomSelector = ({
                   <div className="absolute bottom-0 left-0 h-1 bg-blue-500 rounded-full" style={{ width: `${progress}%` }} />
                 )}
               </button>
-              {/* Botão de excluir cômodo */}
+              {/* Botão de excluir ambiente */}
               {onDeleteRoom && (
                 <button
                   type="button"
@@ -60,7 +60,7 @@ const RoomSelector = ({
           );
         })}
         
-        {/* Botão para adicionar cômodo - sempre visível */}
+        {/* Botão para adicionar ambiente — sempre visível */}
         {onAddRoom && (
           <button
             type="button"
@@ -68,7 +68,7 @@ const RoomSelector = ({
             disabled={!canAddRoom && rooms.length > 0}
             title={
               !canAddRoom && rooms.length > 0
-                ? 'Preencha Condição ou observação em todos os itens antes de adicionar outro cômodo'
+                ? 'Preencha Condição ou observação em todos os itens antes de adicionar outro ambiente'
                 : undefined
             }
             onClick={onAddRoom}

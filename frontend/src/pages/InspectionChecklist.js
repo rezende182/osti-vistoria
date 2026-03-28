@@ -39,97 +39,173 @@ const ITEMS_COZINHA = [
   'Dimensões',
 ];
 
-// Templates de cômodos com itens na ordem correta
+const ITEMS_SALA_ESTAR = [
+  'Teto',
+  'Paredes',
+  'Esquadrias – Janela',
+  'Peitoril da Janela',
+  'Esquadrias – Porta',
+  'Soleiras / Baguetes',
+  'Pintura',
+  'Piso (contrapiso/cerâmica)',
+  'Rodapé',
+  'Tomadas, interruptores e iluminação',
+  'Quadro de energia',
+  'Ponto de Ar-Condicionado',
+  'Limpeza',
+  'Dimensões',
+];
+
+const ITEMS_BANHEIRO = [
+  'Teto',
+  'Paredes',
+  'Piso e Azulejo Cerâmico',
+  'Esquadria - Janela',
+  'Peitoril da Janela',
+  'Esquadrias - Porta',
+  'Soleira',
+  'Pintura',
+  'Louças e Metais',
+  'Instalações Hidráulicas',
+  'Box de banho',
+  'Ralo',
+  'Tomadas, interruptores e iluminação',
+  'Ventilação Forçada',
+  'Limpeza',
+  'Dimensões',
+];
+
+const ITEMS_QUARTO = [
+  'Teto',
+  'Paredes',
+  'Esquadrias - Janela',
+  'Peitoril da Janela',
+  'Esquadrias - Porta',
+  'Soleira/Baguete',
+  'Pintura',
+  'Ponto de Ar-Condicionado',
+  'Piso (contrapiso/cerâmica)',
+  'Rodapé',
+  'Tomadas, interruptores e iluminação',
+  'Limpeza',
+  'Dimensões',
+];
+
+const ITEMS_VARANDA_SACADA = [
+  'Teto',
+  'Paredes',
+  'Revestimento da Parede (Azulejo)',
+  'Esquadria - Janela',
+  'Peitoril da Janela',
+  'Esquadrias - Porta',
+  'Soleira',
+  'Guarda-Corpo',
+  'Pintura',
+  'Piso (contrapiso/cerâmica)',
+  'Ralo',
+  'Rodapé',
+  'Tomadas, interruptores e iluminação',
+  'Limpeza',
+  'Dimensões',
+];
+
+const ITEMS_GARAGEM = [
+  'Teto',
+  'Paredes',
+  'Piso',
+  'Esquadrias - Porta / Portão',
+  'Iluminação',
+  'Tomadas e interruptores',
+  'Ventilação',
+  'Limpeza',
+  'Dimensões',
+];
+
+const ITEMS_PISCINA = [
+  'Revestimento / vaso',
+  'Deck / borda',
+  'Iluminação',
+  'Instalações (bomba, filtro)',
+  'Hidráulica',
+  'Limpeza',
+  'Dimensões',
+  'Proteção / cercamento',
+];
+
+const ITEMS_COBERTURA_TELHADO = [
+  'Impermeabilização',
+  'Calhas e condutores',
+  'Cobertura / telhas',
+  'Estrutura',
+  'Pontos de inspeção / claraboia',
+  'Limpeza',
+  'Dimensões',
+];
+
+/** Templates de ambientes com itens na ordem correta (chaves estáveis para room_type). */
 const ROOM_TEMPLATES = {
-  sala: {
-    name: 'Sala',
-    items: [
-      'Teto',
-      'Paredes',
-      'Esquadrias – Janela',
-      'Peitoril da Janela',
-      'Esquadrias – Porta',
-      'Soleiras / Baguetes',
-      'Pintura',
-      'Piso (contrapiso/cerâmica)',
-      'Rodapé',
-      'Tomadas, interruptores e iluminação',
-      'Quadro de energia',
-      'Ponto de Ar-Condicionado',
-      'Limpeza',
-      'Dimensões'
-    ]
+  sala_estar_jantar: {
+    name: 'SALA/ESTAR/JANTAR',
+    items: [...ITEMS_SALA_ESTAR],
   },
   cozinha: {
-    name: 'Cozinha',
+    name: 'COZINHA',
     items: [...ITEMS_COZINHA],
   },
-  area_servico: {
-    name: 'Área de Serviço',
+  area_servico_lavanderia: {
+    name: 'ÁREA DE SERVIÇO/LAVANDERIA',
     items: [...ITEMS_COZINHA],
   },
-  banheiro: {
-    name: 'Banheiro',
-    items: [
-      'Teto',
-      'Paredes',
-      'Piso e Azulejo Cerâmico',
-      'Esquadria - Janela',
-      'Peitoril da Janela',
-      'Esquadrias - Porta',
-      'Soleira',
-      'Pintura',
-      'Louças e Metais',
-      'Instalações Hidráulicas',
-      'Box de banho',
-      'Ralo',
-      'Tomadas, interruptores e iluminação',
-      'Ventilação Forçada',
-      'Limpeza',
-      'Dimensões'
-    ]
+  banheiro_social_lavabo: {
+    name: 'BANHEIRO SOCIAL/LAVABO',
+    items: [...ITEMS_BANHEIRO],
   },
-  varanda: {
-    name: 'Área Externa (Varanda)',
-    items: [
-      'Teto',
-      'Paredes',
-      'Revestimento da Parede (Azulejo)',
-      'Esquadria - Janela',
-      'Peitoril da Janela',
-      'Esquadrias - Porta',
-      'Soleira',
-      'Guarda-Corpo',
-      'Pintura',
-      'Piso (contrapiso/cerâmica)',
-      'Ralo',
-      'Rodapé',
-      'Tomadas, interruptores e iluminação',
-      'Limpeza',
-      'Dimensões'
-    ]
+  quarto_suite: {
+    name: 'QUARTO/SUITE',
+    items: [...ITEMS_QUARTO],
   },
-  quarto: {
-    name: 'Quarto',
-    items: [
-      'Teto',
-      'Paredes',
-      'Esquadrias - Janela',
-      'Peitoril da Janela',
-      'Esquadrias - Porta',
-      'Soleira/Baguete',
-      'Pintura',
-      'Ponto de Ar-Condicionado',
-      'Piso (contrapiso/cerâmica)',
-      'Rodapé',
-      'Tomadas, interruptores e iluminação',
-      'Limpeza',
-      'Dimensões'
-    ]
-  }
+  varanda_sacada: {
+    name: 'VARANDA/SACADA',
+    items: [...ITEMS_VARANDA_SACADA],
+  },
+  area_gourmet_churrasqueira: {
+    name: 'ÁREA GOURMET/CHURRASQUEIRA',
+    items: [...ITEMS_COZINHA, 'Churrasqueira / área gourmet'],
+  },
+  garagem: {
+    name: 'GARAGEM',
+    items: [...ITEMS_GARAGEM],
+  },
+  area_externa_comum: {
+    name: 'ÁREA EXTERNA/COMUM',
+    items: [...ITEMS_VARANDA_SACADA],
+  },
+  piscina: {
+    name: 'PISCINA',
+    items: [...ITEMS_PISCINA],
+  },
+  cobertura_telhado: {
+    name: 'COBERTURA/TELHADO',
+    items: [...ITEMS_COBERTURA_TELHADO],
+  },
 };
 
-// Cômodos iniciais padrão - VAZIO, usuário adiciona conforme necessário
+/** Ordem fixa na modal «Adicionar ambiente». */
+const ROOM_TYPE_ORDER = [
+  'sala_estar_jantar',
+  'cozinha',
+  'area_servico_lavanderia',
+  'banheiro_social_lavabo',
+  'quarto_suite',
+  'varanda_sacada',
+  'area_gourmet_churrasqueira',
+  'garagem',
+  'area_externa_comum',
+  'piscina',
+  'cobertura_telhado',
+];
+
+// Ambientes iniciais — vazio; o utilizador adiciona conforme necessário
 const DEFAULT_ROOMS = [];
 
 const InspectionChecklist = () => {
@@ -144,13 +220,13 @@ const InspectionChecklist = () => {
   /** Fluxo da vistoria (ex.: entrega de imóvel) — define o destino do botão «voltar». */
   const [tipoVistoriaFluxo, setTipoVistoriaFluxo] = useState('');
   const [showAddRoom, setShowAddRoom] = useState(false);
-  /** Confirmação antes de excluir cômodo (mobile + desktop) */
+  /** Confirmação antes de excluir ambiente (mobile + desktop) */
   const [deleteRoomTarget, setDeleteRoomTarget] = useState(null);
   /** Confirmação antes de remover item do checklist */
   const [deleteItemTarget, setDeleteItemTarget] = useState(null);
-  /** Edição do nome exibido do cômodo (ex.: "Quarto" → "Suíte") */
+  /** Edição do nome exibido do ambiente (ex.: duplicar tipo com sufixo) */
   const [roomNameEdit, setRoomNameEdit] = useState(null);
-  /** Modal: adicionar item personalizado ao cômodo */
+  /** Modal: adicionar item personalizado ao ambiente */
   const [addItemForRoomId, setAddItemForRoomId] = useState(null);
   const [newItemNameDraft, setNewItemNameDraft] = useState('');
   const contentRef = useRef(null);
@@ -188,7 +264,7 @@ const InspectionChecklist = () => {
       const roomsChecklist = normalizeRoomsChecklist(inspection.rooms_checklist || []);
 
       if (roomsChecklist.length === 0) {
-        // Sem cômodos padrão - usuário adiciona
+        // Sem ambientes padrão — o utilizador adiciona
         setRoomsData([]);
         setRoomsList([]);
         setSelectedRoomId(null);
@@ -217,7 +293,7 @@ const InspectionChecklist = () => {
   }, [loadInspection]);
 
   // Função para renumerar TODAS as fotos globalmente
-  // Ordem: cômodos da esquerda para direita (ordem das abas), itens de cima para baixo
+  // Ordem: ambientes da esquerda para direita (ordem das abas), itens de cima para baixo
   const renumberAllPhotos = (newRoomsData) => {
     let globalNumber = 1;
     const updatedRooms = newRoomsData.map((room) => ({
@@ -316,7 +392,7 @@ const InspectionChecklist = () => {
     toast.success('Item removido.');
   };
 
-  /** Reordenar itens dentro do cômodo (PDF e fotos seguem a nova ordem) */
+  /** Reordenar itens dentro do ambiente (PDF e fotos seguem a nova ordem) */
   const [itemDragSource, setItemDragSource] = useState(null);
 
   const moveItemInRoom = (roomIndex, fromIndex, toIndex) => {
@@ -523,7 +599,7 @@ const InspectionChecklist = () => {
     if (!roomNameEdit) return;
     const name = roomNameEdit.draft.trim();
     if (!name) {
-      toast.error('Indique um nome para o cômodo.');
+      toast.error('Indique um nome para o ambiente.');
       return;
     }
     const rid = roomNameEdit.roomId;
@@ -534,7 +610,7 @@ const InspectionChecklist = () => {
       prev.map((r) => (r.id === rid ? { ...r, name } : r))
     );
     setRoomNameEdit(null);
-    toast.success('Nome do cômodo atualizado.');
+    toast.success('Nome do ambiente atualizado.');
   };
 
   const handleOpenAddRoomModal = () => {
@@ -544,7 +620,7 @@ const InspectionChecklist = () => {
         const displayItems = missing.slice(0, 5);
         const remaining = missing.length - 5;
         let message =
-          '⚠️ Preencha Condição ou observação em todos os itens antes de adicionar outro cômodo.\n\nItens pendentes:\n' +
+          '⚠️ Preencha Condição ou observação em todos os itens antes de adicionar outro ambiente.\n\nItens pendentes:\n' +
           displayItems.join('\n');
         if (remaining > 0) {
           message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -557,9 +633,9 @@ const InspectionChecklist = () => {
   };
 
   const handleSaveAndContinue = async () => {
-    // Verificar se há pelo menos um cômodo
+    // Verificar se há pelo menos um ambiente
     if (roomsData.length === 0) {
-      toast.error('⚠️ Adicione pelo menos um cômodo antes de continuar!', { duration: 5000 });
+      toast.error('⚠️ Adicione pelo menos um ambiente antes de continuar!', { duration: 5000 });
       return;
     }
 
@@ -667,7 +743,7 @@ const InspectionChecklist = () => {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <BrandLogo className="h-[3.75rem] w-auto max-w-[10rem] shrink-0 object-contain object-left py-0.5 sm:h-[4.5rem] sm:max-w-[12rem]" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl lg:text-[1.65rem]">
-                Verificação do ambiente
+                VERIFICAÇÃO DOS AMBIENTES E NÃO CONFORMIDADES
               </h1>
             </div>
             <LogoutHeaderButton />
@@ -699,10 +775,10 @@ const InspectionChecklist = () => {
               id="delete-room-title"
               className="mb-2 text-lg font-bold text-slate-900 font-secondary uppercase"
             >
-              Excluir cômodo?
+              Excluir ambiente?
             </h3>
             <p className="mb-6 text-sm leading-relaxed text-slate-600">
-              O cômodo <strong className="text-slate-900">{deleteRoomTarget.name}</strong> e todos
+              O ambiente <strong className="text-slate-900">{deleteRoomTarget.name}</strong> e todos
               os itens, fotos e respostas serão removidos. Esta ação não pode ser desfeita.
             </p>
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -719,7 +795,7 @@ const InspectionChecklist = () => {
                 onClick={confirmDeleteRoom}
                 className="min-h-touch w-full rounded-lg bg-red-600 px-4 py-3 font-semibold text-white transition-colors hover:bg-red-700 sm:min-h-0 sm:w-auto"
               >
-                Excluir cômodo
+                Excluir ambiente
               </button>
             </div>
           </div>
@@ -778,7 +854,7 @@ const InspectionChecklist = () => {
               id="add-item-title"
               className="mb-2 text-lg font-bold text-slate-900 font-secondary uppercase"
             >
-              Novo item no cômodo
+              Novo item no ambiente
             </h3>
             <p className="mb-4 text-sm text-slate-600">
               Indique o nome do ponto a verificar (ex.: &quot;Tomada da varanda&quot;).
@@ -824,10 +900,10 @@ const InspectionChecklist = () => {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-t-xl bg-white p-6 shadow-xl sm:rounded-lg">
             <h3 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">
-              Adicionar Cômodo
+              Adicionar ambiente
             </h3>
-            <div className="space-y-2">
-              {Object.keys(ROOM_TEMPLATES).map((type) => (
+            <div className="space-y-2 max-h-[min(70vh,28rem)] overflow-y-auto pr-1">
+              {ROOM_TYPE_ORDER.map((type) => (
                 <button
                   key={type}
                   type="button"
@@ -860,14 +936,14 @@ const InspectionChecklist = () => {
             <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Plus size={40} className="text-blue-600" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">Nenhum cômodo adicionado</h2>
-            <p className="text-slate-500 mb-6">Clique no botão "Adicionar" acima para incluir os cômodos do imóvel</p>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Nenhum ambiente adicionado</h2>
+            <p className="text-slate-500 mb-6">Clique no botão &quot;Adicionar&quot; acima para incluir os ambientes do imóvel</p>
             <button
               type="button"
               onClick={() => setShowAddRoom(true)}
               className="min-h-touch rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-blue-700 sm:min-h-0"
             >
-              + Adicionar Cômodo
+              + Adicionar ambiente
             </button>
           </div>
         ) : (
@@ -893,7 +969,7 @@ const InspectionChecklist = () => {
                         if (e.key === 'Escape') cancelEditRoomName();
                       }}
                       className="min-h-touch w-full min-w-0 rounded-lg border-2 border-blue-400 bg-white px-3 py-2.5 text-base font-bold font-secondary uppercase text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 sm:min-h-0 sm:max-w-xl sm:py-2"
-                      aria-label="Nome do cômodo"
+                      aria-label="Nome do ambiente"
                       autoFocus
                     />
                     <div className="flex shrink-0 gap-2">
@@ -930,8 +1006,8 @@ const InspectionChecklist = () => {
                         data-testid="edit-room-name-toggle"
                         onClick={startEditRoomName}
                         className="shrink-0 rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-slate-900 active:bg-slate-200"
-                        aria-label="Editar nome do cômodo"
-                        title="Editar nome do cômodo"
+                        aria-label="Editar nome do ambiente"
+                        title="Editar nome do ambiente"
                       >
                         <Pencil size={20} className="sm:h-[22px] sm:w-[22px]" aria-hidden />
                       </button>
@@ -947,7 +1023,7 @@ const InspectionChecklist = () => {
                   className="inline-flex min-h-touch w-full shrink-0 items-center justify-center gap-2 rounded-lg border-2 border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 transition-colors hover:border-red-300 hover:bg-red-100 active:bg-red-100 sm:min-h-0 sm:w-auto sm:py-2.5"
                 >
                   <Trash2 size={18} className="shrink-0" aria-hidden />
-                  Excluir cômodo
+                  Excluir ambiente
                 </button>
               )}
             </div>
@@ -1022,7 +1098,7 @@ const InspectionChecklist = () => {
                 className="inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/80 px-4 py-3 text-sm font-semibold text-blue-900 transition-colors hover:border-blue-400 hover:bg-blue-100 sm:min-h-0 sm:w-auto sm:px-5"
               >
                 <Plus size={20} className="shrink-0" aria-hidden />
-                Adicionar item ao cômodo
+                Adicionar item ao ambiente
               </button>
             </div>
           </>
@@ -1048,7 +1124,7 @@ const InspectionChecklist = () => {
               disabled={!canAddAnotherRoom}
               title={
                 !canAddAnotherRoom
-                  ? 'Preencha Condição ou observação em todos os itens antes de adicionar outro cômodo'
+                  ? 'Preencha Condição ou observação em todos os itens antes de adicionar outro ambiente'
                   : undefined
               }
               onClick={handleOpenAddRoomModal}
@@ -1059,7 +1135,7 @@ const InspectionChecklist = () => {
               }`}
             >
               <Plus size={18} />
-              Continuar adicionando cômodo
+              Continuar adicionando ambiente
             </button>
           )}
         </div>
