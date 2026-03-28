@@ -141,105 +141,79 @@ const ChecklistItem = ({
     return photo;
   });
 
-  const headerLockedClass = existsNao ? 'pointer-events-none select-none opacity-45' : '';
+  const lockMeta = existsNao ? 'pointer-events-none select-none opacity-45' : '';
+
+  const reorder =
+    onMoveUp || onMoveDown || dragHandleProps ? (
+      <div className={`flex shrink-0 items-center gap-px ${lockMeta}`}>
+        {onMoveUp && (
+          <button
+            type="button"
+            data-testid={`move-item-up-${item.name}`}
+            disabled={!canMoveUp}
+            onClick={onMoveUp}
+            className={btnGhost}
+            aria-label="Mover para cima"
+            title="Mover para cima"
+          >
+            <ChevronUp size={15} strokeWidth={2.25} aria-hidden />
+          </button>
+        )}
+        {dragHandleProps && (
+          <div
+            {...dragHandleProps}
+            className="cursor-grab touch-none select-none rounded p-1 text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-500 active:cursor-grabbing"
+            aria-label="Arrastar"
+            title="Arrastar"
+          >
+            <GripVertical size={15} strokeWidth={2} aria-hidden />
+          </div>
+        )}
+        {onMoveDown && (
+          <button
+            type="button"
+            data-testid={`move-item-down-${item.name}`}
+            disabled={!canMoveDown}
+            onClick={onMoveDown}
+            className={btnGhost}
+            aria-label="Mover para baixo"
+            title="Mover para baixo"
+          >
+            <ChevronDown size={15} strokeWidth={2.25} aria-hidden />
+          </button>
+        )}
+      </div>
+    ) : null;
 
   return (
     <div
       data-testid="checklist-item"
       className={[
-        'rounded-xl border transition-[box-shadow,border-color] duration-200',
+        'rounded-lg border transition-[box-shadow,border-color] duration-200',
         'shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
         existsNao
           ? 'border-amber-200/90 bg-gradient-to-b from-amber-50/70 to-amber-50/30'
-          : 'border-slate-200/90 bg-white hover:shadow-[0_2px_8px_rgba(15,23,42,0.06)]',
+          : 'border-slate-200/90 bg-white hover:shadow-[0_1px_4px_rgba(15,23,42,0.05)]',
       ].join(' ')}
     >
-      <div className="p-3.5 sm:p-4">
-        <div className={`flex items-start justify-between gap-3 ${headerLockedClass}`}>
-          <div className="flex min-w-0 flex-1 gap-2 sm:gap-2.5">
-            {(onMoveUp || onMoveDown || dragHandleProps) && (
-              <div className="flex shrink-0 flex-col items-center gap-0 pt-0.5">
-                {onMoveUp && (
-                  <button
-                    type="button"
-                    data-testid={`move-item-up-${item.name}`}
-                    disabled={!canMoveUp}
-                    onClick={onMoveUp}
-                    className={btnGhost}
-                    aria-label="Mover item para cima"
-                    title="Mover para cima"
-                  >
-                    <ChevronUp size={18} strokeWidth={2.25} aria-hidden />
-                  </button>
-                )}
-                {dragHandleProps && (
-                  <div
-                    {...dragHandleProps}
-                    className="cursor-grab touch-none select-none rounded-lg p-1.5 text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-500 active:cursor-grabbing"
-                    aria-label="Arrastar para reordenar"
-                    title="Arrastar para reordenar"
-                  >
-                    <GripVertical size={18} strokeWidth={2} aria-hidden />
-                  </div>
-                )}
-                {onMoveDown && (
-                  <button
-                    type="button"
-                    data-testid={`move-item-down-${item.name}`}
-                    disabled={!canMoveDown}
-                    onClick={onMoveDown}
-                    className={btnGhost}
-                    aria-label="Mover item para baixo"
-                    title="Mover para baixo"
-                  >
-                    <ChevronDown size={18} strokeWidth={2.25} aria-hidden />
-                  </button>
-                )}
-              </div>
-            )}
-            <h4 className="min-w-0 flex-1 pt-0.5 text-[0.9375rem] font-semibold leading-snug tracking-tight text-slate-800 sm:text-base">
-              {item.name}
-            </h4>
-          </div>
-          <div className="flex shrink-0 items-start gap-1 sm:gap-1.5">
-            {onRemoveItem && (
-              <button
-                type="button"
-                data-testid={`remove-item-${item.name}`}
-                onClick={onRemoveItem}
-                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                aria-label={`Remover elemento ${item.name}`}
-                title="Remover elemento"
-              >
-                <Trash2 size={18} strokeWidth={2} aria-hidden />
-              </button>
-            )}
-            <button
-              type="button"
-              data-testid={`verification-points-${item.name}`}
-              onClick={() => setShowVerificationsModal(true)}
-              className="inline-flex max-w-[min(100%,11rem)] items-center gap-1.5 rounded-lg border border-slate-200/90 bg-slate-50/80 px-2 py-1.5 text-[10px] font-semibold uppercase leading-tight tracking-wide text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-800 sm:max-w-none sm:px-2.5 sm:text-[11px]"
-              aria-label="Itens verificados"
-            >
-              <ClipboardList size={13} strokeWidth={2.25} className="shrink-0 text-slate-500" aria-hidden />
-              <span className="truncate sm:whitespace-normal">Itens verificados</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-3.5 flex flex-col gap-2.5 border-t border-slate-100 pt-3.5 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
-            Situação
-          </span>
-          <div className="inline-flex w-full gap-1.5 rounded-lg bg-slate-100/80 p-1 sm:w-auto">
+      <div className="px-2 py-1.5 sm:px-2.5 sm:py-2">
+        {/* Linha 1: nome | Existe / Não existe | lixeira */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+          {reorder}
+          <h4
+            className={`min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight text-slate-800 sm:text-sm ${lockMeta}`}
+          >
+            {item.name}
+          </h4>
+          <div className="inline-flex shrink-0 items-center gap-px rounded-md bg-slate-100/90 p-px ring-1 ring-slate-200/60">
             <button
               type="button"
               data-testid={`exists-sim-${item.name}`}
               onClick={() => setExists('sim')}
               className={[
-                'min-h-[2.25rem] flex-1 rounded-md px-3 py-2 text-center text-xs font-semibold transition-all sm:min-h-0 sm:min-w-[5.5rem]',
+                'whitespace-nowrap rounded-[5px] px-1.5 py-0.5 text-[10px] font-semibold leading-none transition-colors sm:px-2 sm:py-1 sm:text-[11px]',
                 !existsNao
-                  ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80'
+                  ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700',
               ].join(' ')}
             >
@@ -250,42 +224,67 @@ const ChecklistItem = ({
               data-testid={`exists-nao-${item.name}`}
               onClick={() => setExists('nao')}
               className={[
-                'min-h-[2.25rem] flex-1 rounded-md px-3 py-2 text-center text-xs font-semibold transition-all sm:min-h-0 sm:min-w-[5.5rem]',
+                'whitespace-nowrap rounded-[5px] px-1.5 py-0.5 text-[10px] font-semibold leading-none transition-colors sm:px-2 sm:py-1 sm:text-[11px]',
                 existsNao
-                  ? 'bg-white text-amber-900 shadow-sm ring-1 ring-amber-200/90'
+                  ? 'bg-white text-amber-900 shadow-sm ring-1 ring-amber-200/80'
                   : 'text-slate-500 hover:text-slate-700',
               ].join(' ')}
             >
               Não existe
             </button>
           </div>
+          {onRemoveItem && (
+            <button
+              type="button"
+              data-testid={`remove-item-${item.name}`}
+              onClick={onRemoveItem}
+              className={`shrink-0 rounded-md p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 ${lockMeta}`}
+              aria-label={`Remover ${item.name}`}
+              title="Remover elemento"
+            >
+              <Trash2 size={16} strokeWidth={2} aria-hidden />
+            </button>
+          )}
+        </div>
+
+        {/* Linha 2: itens verificados */}
+        <div className={`mt-1 ${lockMeta}`}>
+          <button
+            type="button"
+            data-testid={`verification-points-${item.name}`}
+            onClick={() => setShowVerificationsModal(true)}
+            className="inline-flex w-full items-center justify-center gap-1 rounded-md border border-slate-200/80 bg-slate-50/70 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-800 sm:w-auto sm:px-2 sm:py-1"
+            aria-label="Itens verificados"
+          >
+            <ClipboardList size={12} strokeWidth={2.25} className="shrink-0 text-slate-500" aria-hidden />
+            Itens verificados
+          </button>
         </div>
 
         {existsNao && (
-          <p className="mt-3 rounded-lg border border-amber-100/90 bg-white/60 px-3 py-2.5 text-[13px] leading-relaxed text-amber-950/90">
-            <span className="font-medium text-amber-900">Inexistente</span> neste ambiente — o restante
-            fica indisponível até marcar <span className="font-medium">Existe</span>. Não entra no PDF.
+          <p className="mt-1 rounded border border-amber-100/90 bg-white/50 px-2 py-1 text-[11px] leading-snug text-amber-950/90">
+            Inexistente aqui — indisponível até <span className="font-semibold">Existe</span>. Fora do PDF.
           </p>
         )}
 
         {!existsNao && (
           <>
-            <div className="mt-3.5">
+            <div className="mt-1">
               <button
                 type="button"
                 data-testid={`nc-button-${item.name}`}
                 onClick={() => setShowNcPanel(!showNcPanel)}
                 className={[
-                  'inline-flex w-full items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-semibold uppercase tracking-[0.08em] transition-all sm:w-auto sm:min-w-[12rem]',
+                  'inline-flex w-full items-center justify-center gap-1.5 rounded-md border py-1 text-[10px] font-semibold uppercase tracking-wide transition-colors sm:py-1.5 sm:text-[11px]',
                   showNcPanel
-                    ? 'border-amber-300/80 bg-amber-100/60 text-amber-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]'
-                    : 'border-amber-200/70 bg-amber-50/40 text-amber-900 hover:border-amber-300 hover:bg-amber-50/80',
+                    ? 'border-amber-300/90 bg-amber-100/70 text-amber-950'
+                    : 'border-amber-200/80 bg-amber-50/50 text-amber-900 hover:bg-amber-50/90',
                 ].join(' ')}
               >
-                <AlertTriangle size={15} strokeWidth={2.25} className="shrink-0 opacity-90" aria-hidden />
+                <AlertTriangle size={13} strokeWidth={2.25} className="shrink-0 opacity-90" aria-hidden />
                 Não conformidades
                 {photos.length > 0 ? (
-                  <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold tabular-nums text-amber-950">
+                  <span className="rounded-full bg-amber-200/90 px-1.5 py-px text-[9px] font-bold tabular-nums text-amber-950">
                     {photos.length}
                   </span>
                 ) : null}
@@ -294,10 +293,10 @@ const ChecklistItem = ({
 
             {showNcPanel && (
               <div
-                className="mt-3 rounded-xl border border-slate-100 bg-slate-50/50 p-3 sm:p-3.5"
+                className="mt-1.5 rounded-lg border border-slate-100 bg-slate-50/50 p-2"
                 data-testid={`nc-panel-${item.name}`}
               >
-                <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400">
+                <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-slate-400">
                   Fotos
                 </p>
 
@@ -318,22 +317,22 @@ const ChecklistItem = ({
                   className="hidden"
                 />
 
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-2 gap-1.5">
                   <button
                     data-testid={`choose-file-${item.name}`}
                     type="button"
                     onClick={handleChooseFile}
                     disabled={isCompressing}
-                    className="flex min-h-touch items-center justify-center gap-2 rounded-xl border border-sky-200/80 bg-sky-50/80 py-2.5 text-sm font-medium text-sky-900 transition-colors hover:bg-sky-100/90 disabled:opacity-50 sm:min-h-0"
+                    className="flex min-h-[2.5rem] items-center justify-center gap-1 rounded-lg border border-sky-200/80 bg-sky-50/80 py-1.5 text-xs font-medium text-sky-900 transition-colors hover:bg-sky-100/90 disabled:opacity-50 sm:min-h-0"
                   >
                     {isCompressing ? (
                       <>
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
-                        A processar…
+                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                        <span className="text-[11px]">…</span>
                       </>
                     ) : (
                       <>
-                        <FolderOpen size={17} strokeWidth={2} className="text-sky-600" />
+                        <FolderOpen size={14} strokeWidth={2} className="text-sky-600" />
                         Ficheiro
                       </>
                     )}
@@ -343,16 +342,16 @@ const ChecklistItem = ({
                     type="button"
                     onClick={handleTakePhoto}
                     disabled={isCompressing}
-                    className="flex min-h-touch items-center justify-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/80 py-2.5 text-sm font-medium text-emerald-900 transition-colors hover:bg-emerald-100/90 disabled:opacity-50 sm:min-h-0"
+                    className="flex min-h-[2.5rem] items-center justify-center gap-1 rounded-lg border border-emerald-200/80 bg-emerald-50/80 py-1.5 text-xs font-medium text-emerald-900 transition-colors hover:bg-emerald-100/90 disabled:opacity-50 sm:min-h-0"
                   >
                     {isCompressing ? (
                       <>
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
-                        A processar…
+                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
+                        <span className="text-[11px]">…</span>
                       </>
                     ) : (
                       <>
-                        <Smartphone size={17} strokeWidth={2} className="text-emerald-600" />
+                        <Smartphone size={14} strokeWidth={2} className="text-emerald-600" />
                         Câmara
                       </>
                     )}
@@ -360,25 +359,25 @@ const ChecklistItem = ({
                 </div>
 
                 {showMobileWarning && (
-                  <div className="mt-3 rounded-lg border border-amber-200/60 bg-amber-50/50 px-3 py-2">
-                    <p className="text-[13px] leading-relaxed text-amber-900/90">
-                      A câmara só está disponível em telemóvel ou tablet.
+                  <div className="mt-2 rounded border border-amber-200/60 bg-amber-50/50 px-2 py-1.5">
+                    <p className="text-[11px] leading-snug text-amber-900/90">
+                      Câmara só em telemóvel ou tablet.
                     </p>
                   </div>
                 )}
 
                 {photos.length > 0 && (
-                  <div className="mt-4 space-y-2.5">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400">
+                  <div className="mt-2 space-y-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                       {photos.length} foto{photos.length !== 1 ? 's' : ''}
                     </p>
                     {photos.map((photo, index) => (
                       <div
                         key={index}
-                        className="rounded-xl border border-slate-100 bg-white p-2.5 shadow-sm"
+                        className="rounded-lg border border-slate-100 bg-white p-2 shadow-sm"
                       >
-                        <div className="flex gap-3">
-                          <div className="relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                        <div className="flex gap-2">
+                          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100">
                             <img
                               src={photo.url}
                               alt=""
@@ -387,16 +386,16 @@ const ChecklistItem = ({
                             <button
                               type="button"
                               onClick={() => handleRemovePhoto(index)}
-                              className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white/95 text-rose-500 shadow ring-1 ring-slate-200/80 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                              className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-rose-500 shadow ring-1 ring-slate-200/80 transition-colors hover:bg-rose-50 hover:text-rose-600"
                               aria-label="Remover foto"
                             >
-                              <X size={12} strokeWidth={2.5} />
+                              <X size={10} strokeWidth={2.5} />
                             </button>
                           </div>
                           <div className="min-w-0 flex-1 pt-0.5">
-                            <div className="mb-1.5 flex items-center gap-1.5">
-                              <Image size={12} className="text-slate-300" aria-hidden />
-                              <span className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+                            <div className="mb-1 flex items-center gap-1">
+                              <Image size={11} className="text-slate-300" aria-hidden />
+                              <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-700">
                                 Foto {photo.number}
                               </span>
                             </div>
@@ -405,7 +404,7 @@ const ChecklistItem = ({
                               value={photo.caption}
                               onChange={(e) => updatePhotoCaption(index, e.target.value)}
                               placeholder="Legenda…"
-                              className="w-full rounded-lg border border-slate-200/90 bg-slate-50/50 px-2.5 py-2 text-[13px] text-slate-800 placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                              className="w-full rounded-md border border-slate-200/90 bg-slate-50/50 px-2 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-sky-500/25"
                             />
                           </div>
                         </div>
