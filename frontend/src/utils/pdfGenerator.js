@@ -796,7 +796,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       );
 
       for (const item of itensNoPdf) {
-        // Espaço mínimo para faixa + condição (~30 mm); observações/fotos quebram depois
+        // Espaço mínimo para faixa + condição (~30 mm); fotos quebram depois
         checkNewPage(30);
 
         // FAIXA CINZA com nome do item (#CDCDCC)
@@ -810,8 +810,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         yPos += 12;
 
         const checklistTextWidth = contentWidth - PDF_LIST_INDENT_MM;
-
-        const obsTrim = (item.observations || '').trim();
 
         let mainVerify = (item.verification_text || '').trim();
         if (!mainVerify && Array.isArray(item.verification_points) && item.verification_points.length) {
@@ -831,22 +829,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
           yPos = drawBodyParagraphs(
             doc,
             mainVerify,
-            listX,
-            checklistTextWidth,
-            yPos,
-            checkNewPage
-          );
-          yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
-        }
-
-        if (obsTrim) {
-          doc.setFont(PDF_FONT, 'bold');
-          doc.text('Observações:', listX, yPos);
-          yPos += PDF_BODY_LINE_MM;
-          doc.setFont(PDF_FONT, 'normal');
-          yPos = drawBodyParagraphs(
-            doc,
-            obsTrim,
             listX,
             checklistTextWidth,
             yPos,

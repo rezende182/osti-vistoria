@@ -510,9 +510,8 @@ const InspectionDetail = () => {
                   <h3 className="font-bold text-slate-900 mb-2">{room.room_name}</h3>
                   <div className="space-y-1">
                     {itensLista.map((item, itemIndex) => {
-                      const obsOk = item.observations && String(item.observations).trim();
                       const fotoOk = item.photos && item.photos.length > 0;
-                      const registo = obsOk || fotoOk;
+                      const registo = fotoOk;
                       return (
                         <div key={itemIndex} className="flex items-start justify-between gap-2 text-sm">
                           <div className="min-w-0 flex-1">

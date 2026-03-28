@@ -1,8 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Camera,
-  MessageSquare,
   X,
   Image,
   FolderOpen,
@@ -12,6 +10,7 @@ import {
   ChevronDown,
   GripVertical,
   ClipboardList,
+  AlertTriangle,
 } from 'lucide-react';
 import { compressImage, formatFileSize, getDataUrlSize } from '../utils/imageCompressor';
 
@@ -27,8 +26,7 @@ const ChecklistItem = ({
   onMoveDown,
   dragHandleProps,
 }) => {
-  const [showPhotoInput, setShowPhotoInput] = useState(false);
-  const [showObservations, setShowObservations] = useState(false);
+  const [showNcPanel, setShowNcPanel] = useState(false);
   const [showMobileWarning, setShowMobileWarning] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [showVerificationsModal, setShowVerificationsModal] = useState(false);
@@ -36,6 +34,13 @@ const ChecklistItem = ({
   const cameraInputRef = useRef(null);
 
   const existsNao = item.exists === 'nao';
+
+  useEffect(() => {
+    if (existsNao) {
+      setShowNcPanel(false);
+      setShowVerificationsModal(false);
+    }
+  }, [existsNao]);
 
   const legacyMerged = (() => {
     const vps = Array.isArray(item.verification_points) ? item.verification_points : [];
@@ -54,10 +59,6 @@ const ChecklistItem = ({
 
   const isMobileDevice = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  };
-
-  const handleObservationsChange = (value) => {
-    onChange({ ...item, observations: value });
   };
 
   const handleChooseFile = () => {
@@ -137,6 +138,8 @@ const ChecklistItem = ({
     return photo;
   });
 
+  const headerLockedClass = existsNao ? 'pointer-events-none select-none opacity-50' : '';
+
   return (
     <div
       data-testid="checklist-item"
@@ -144,7 +147,7 @@ const ChecklistItem = ({
         existsNao ? 'border-amber-300 bg-amber-50/40' : 'border-slate-300 bg-white'
       }`}
     >
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className={`flex items-start justify-between gap-2 mb-3 ${headerLockedClass}`}>
         <div className="flex min-w-0 flex-1 gap-2">
           {(onMoveUp || onMoveDown || dragHandleProps) && (
             <div className="flex shrink-0 flex-col items-center gap-0.5 pt-0.5">
@@ -250,8 +253,8 @@ const ChecklistItem = ({
 
       {existsNao && (
         <p className="mb-4 rounded-lg border border-amber-200 bg-amber-100/80 px-3 py-2 text-sm text-amber-950">
-          Este elemento foi marcado como <strong>inexistente</strong> neste ambiente. Não será
-          incluído no laudo PDF.
+          Marcado como <strong>inexistente</strong> neste ambiente. O restante fica indisponível até
+          voltar a <strong>Existe</strong>. Não será incluído no laudo PDF.
         </p>
       )}
 
@@ -272,7 +275,7 @@ const ChecklistItem = ({
                   Itens verificados — {item.name}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Texto de referência dos critérios de verificação deste elemento.
+                  Texto de referência dos pontos de verificação deste elemento.
                 </p>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
@@ -283,7 +286,7 @@ const ChecklistItem = ({
                   <div className="rounded-lg border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
                     {verificationBody || (
                       <span className="text-slate-500 italic">
-                        Nenhum texto de verificação definido. Use observações e fotos quando o
+                        Nenhum texto de verificação definido. Use não conformidades (fotos) quando o
                         elemento existir.
                       </span>
                     )}
@@ -305,150 +308,144 @@ const ChecklistItem = ({
         )}
 
       {!existsNao && (
-      <div className="flex gap-2">
-        <button
-          data-testid={`photo-button-${item.name}`}
-          onClick={() => setShowPhotoInput(!showPhotoInput)}
-          className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg font-semibold text-sm transition-all duration-200 hover:bg-blue-200"
-        >
-          <Camera size={16} />
-          Foto ({photos.length})
-        </button>
-        <button
-          data-testid={`observation-button-${item.name}`}
-          onClick={() => setShowObservations(!showObservations)}
-          className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-700 rounded-lg font-semibold text-sm transition-all duration-200 hover:bg-slate-200"
-        >
-          <MessageSquare size={16} />
-          Observações
-        </button>
-      </div>
-
-      {showPhotoInput && (
-        <div className="mt-3 p-3 bg-slate-50 rounded-lg">
-          <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-3 block">
-            Adicionar Fotos
-          </label>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-
-          <div className="flex gap-2 mb-3">
+        <>
+          <div className="flex flex-wrap gap-2">
             <button
-              data-testid={`choose-file-${item.name}`}
-              onClick={handleChooseFile}
-              disabled={isCompressing}
-              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold text-sm transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+              type="button"
+              data-testid={`nc-button-${item.name}`}
+              onClick={() => setShowNcPanel(!showNcPanel)}
+              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg font-extrabold text-[11px] uppercase tracking-wide transition-all duration-200 border-2 ${
+                showNcPanel
+                  ? 'bg-amber-100 border-amber-400 text-amber-950'
+                  : 'bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100'
+              }`}
             >
-              {isCompressing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Comprimindo...
-                </>
-              ) : (
-                <>
-                  <FolderOpen size={18} />
-                  Escolher Arquivo
-                </>
-              )}
-            </button>
-            <button
-              data-testid={`take-photo-${item.name}`}
-              onClick={handleTakePhoto}
-              disabled={isCompressing}
-              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-green-600 text-white rounded-lg font-semibold text-sm transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:opacity-50"
-            >
-              {isCompressing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Comprimindo...
-                </>
-              ) : (
-                <>
-                  <Smartphone size={18} />
-                  Tirar Foto
-                </>
-              )}
+              <AlertTriangle size={16} aria-hidden />
+              NÃO CONFORMIDADES
+              {photos.length > 0 ? (
+                <span className="rounded-full bg-amber-200 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+                  {photos.length}
+                </span>
+              ) : null}
             </button>
           </div>
 
-          {showMobileWarning && (
-            <div className="mb-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-              <p className="text-sm text-yellow-800 font-medium">
-                A função &quot;Tirar Foto&quot; está disponível apenas em dispositivos móveis (celular ou
-                tablet).
-              </p>
-            </div>
-          )}
-
-          {photos.length > 0 && (
-            <div className="mt-4 space-y-3">
-              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 block">
-                Fotos Adicionadas ({photos.length})
+          {showNcPanel && (
+            <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200" data-testid={`nc-panel-${item.name}`}>
+              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-3 block">
+                Fotos — não conformidades
               </label>
-              {photos.map((photo, index) => (
-                <div key={index} className="bg-white rounded-lg p-3 border border-slate-200">
-                  <div className="flex gap-3">
-                    <div className="relative flex-shrink-0">
-                      <img
-                        src={photo.url}
-                        alt={photo.caption}
-                        className="w-20 h-20 object-cover rounded-lg"
-                      />
-                      <button
-                        onClick={() => handleRemovePhoto(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Image size={14} className="text-slate-400" />
-                        <span className="text-xs font-bold text-blue-600">FOTO {photo.number}</span>
-                      </div>
-                      <input
-                        type="text"
-                        value={photo.caption}
-                        onChange={(e) => updatePhotoCaption(index, e.target.value)}
-                        placeholder="Digite a legenda da foto..."
-                        className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+
+              <div className="flex gap-2 mb-3">
+                <button
+                  data-testid={`choose-file-${item.name}`}
+                  type="button"
+                  onClick={handleChooseFile}
+                  disabled={isCompressing}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold text-sm transition-all duration-200 hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+                >
+                  {isCompressing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Comprimindo...
+                    </>
+                  ) : (
+                    <>
+                      <FolderOpen size={18} />
+                      Escolher arquivo
+                    </>
+                  )}
+                </button>
+                <button
+                  data-testid={`take-photo-${item.name}`}
+                  type="button"
+                  onClick={handleTakePhoto}
+                  disabled={isCompressing}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-green-600 text-white rounded-lg font-semibold text-sm transition-all duration-200 hover:bg-green-700 active:scale-95 disabled:opacity-50"
+                >
+                  {isCompressing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Comprimindo...
+                    </>
+                  ) : (
+                    <>
+                      <Smartphone size={18} />
+                      Tirar foto
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {showMobileWarning && (
+                <div className="mb-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+                  <p className="text-sm text-yellow-800 font-medium">
+                    A função &quot;Tirar foto&quot; está disponível apenas em dispositivos móveis (celular ou
+                    tablet).
+                  </p>
                 </div>
-              ))}
+              )}
+
+              {photos.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  <label className="text-xs font-bold tracking-wider uppercase text-slate-500 block">
+                    Fotos adicionadas ({photos.length})
+                  </label>
+                  {photos.map((photo, index) => (
+                    <div key={index} className="bg-white rounded-lg p-3 border border-slate-200">
+                      <div className="flex gap-3">
+                        <div className="relative flex-shrink-0">
+                          <img
+                            src={photo.url}
+                            alt={photo.caption}
+                            className="w-20 h-20 object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePhoto(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Image size={14} className="text-slate-400" />
+                            <span className="text-xs font-bold text-blue-600">FOTO {photo.number}</span>
+                          </div>
+                          <input
+                            type="text"
+                            value={photo.caption}
+                            onChange={(e) => updatePhotoCaption(index, e.target.value)}
+                            placeholder="Legenda da foto..."
+                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
-
-      {showObservations && (
-        <div className="mt-3">
-          <textarea
-            data-testid={`observation-textarea-${item.name}`}
-            value={item.observations || ''}
-            onChange={(e) => handleObservationsChange(e.target.value)}
-            placeholder="Digite suas observações..."
-            className="w-full p-3 border border-slate-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows={3}
-          />
-        </div>
-      )}
+        </>
       )}
     </div>
   );

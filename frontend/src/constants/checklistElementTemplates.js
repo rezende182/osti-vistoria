@@ -24,7 +24,7 @@ function capitalizeFirst(text) {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
-/** Nome do elemento + texto integral dos critérios (como definido no laudo). */
+/** Nome do elemento + texto integral dos pontos de verificação (como definido no laudo). */
 function E(name, verificationText) {
   return {
     name: capitalizeFirst(name),
@@ -121,6 +121,10 @@ export const ROOM_ELEMENT_TEMPLATES = {
       'Infraestrutura para Ar-Condicionado',
       'Presença de ponto elétrico, dreno, espaço para instalação, e acabamento dos pontos'
     ),
+    E(
+      'Móveis (Planejados ou Soltos)',
+      'Estrutura, superfícies, acabamento, ferragens, funcionamento, portas, gavetas, alinhamento, fixação e condições gerais (limpeza e compatibilidade com o ambiente: encaixe, interferências)'
+    ),
     E('Limpeza', 'Condição geral de limpeza do ambiente'),
     E('Dimensões', 'Conferência das dimensões do ambiente'),
   ],
@@ -175,6 +179,11 @@ export const ROOM_ELEMENT_TEMPLATES = {
       'Ventilação Forçada',
       'Ventilação natural e forçada e circulação de ar'
     ),
+    E(
+      'Móveis (Planejados ou Soltos)',
+      'Estrutura, superfícies, acabamento, ferragens, funcionamento, portas, gavetas, alinhamento, fixação e condições gerais (limpeza e compatibilidade com o ambiente: encaixe, interferências)'
+    ),
+    E('Eletrodomésticos', 'Estado geral e funcionamento'),
     E('Limpeza', 'Condição geral de limpeza do ambiente'),
     E('Dimensões', 'Conferência das dimensões do ambiente'),
   ],
@@ -296,6 +305,10 @@ export const ROOM_ELEMENT_TEMPLATES = {
     E(
       'Infraestrutura para Ar-Condicionado',
       'Presença de ponto elétrico, dreno, espaço para instalação e acabamento dos pontos'
+    ),
+    E(
+      'Móveis (Planejados ou Soltos)',
+      'Estrutura, superfícies, acabamento, ferragens, funcionamento, portas, gavetas, alinhamento, fixação e condições gerais (limpeza e compatibilidade com o ambiente: encaixe, interferências)'
     ),
     E(
       'Limpeza (Item Obrigatório)',
@@ -552,7 +565,7 @@ export const ROOM_ELEMENT_TEMPLATES = {
     ),
     E(
       'Casa de Máquinas',
-      'Condições gerais, organização, presença de vazamentos, fixação dos equipamentos e ventilação forçada'
+      'Condições gerais, organização, presença de vazamentos, fixação dos equipamentos e sistema de ventilação forçada'
     ),
     E(
       'Bombas e Filtros',
@@ -617,7 +630,6 @@ export function buildItemsFromRoomType(roomType, roomIdPrefix) {
     name: el.name,
     verification_text: el.verificationText,
     exists: 'sim',
-    observations: '',
     photos: [],
   }));
 }

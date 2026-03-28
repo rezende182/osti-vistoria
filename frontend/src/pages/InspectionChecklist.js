@@ -30,7 +30,6 @@ function capitalizeFirst(text) {
 
 function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
   const id = item.id || `${roomId}_i_${itemIdx}`;
-  const observations = item.observations || '';
   const photos = item.photos || [];
 
   let verification_text =
@@ -52,7 +51,7 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
     verification_text = match.verificationText;
   }
   if (!verification_text) {
-    verification_text = 'Critérios de verificação do elemento';
+    verification_text = 'Pontos de verificação do elemento';
   }
   verification_text = capitalizeFirst(verification_text);
 
@@ -62,6 +61,7 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
     condition: _c,
     verification_points: _vp,
     additional_verifications: _av,
+    observations: _obs,
     ...rest
   } = item;
 
@@ -71,7 +71,6 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
     name: item.name,
     verification_text,
     exists,
-    observations,
     photos,
   };
 }
@@ -323,7 +322,6 @@ const InspectionChecklist = () => {
       name: capitalizeFirst(name),
       verification_text: '',
       exists: 'sim',
-      observations: '',
       photos: [],
     };
     const newRoomsData = [...roomsData];
@@ -335,9 +333,7 @@ const InspectionChecklist = () => {
 
   const itemChecklistCompleto = (item) => {
     if (item.exists === 'nao') return true;
-    const obs = item.observations && String(item.observations).trim();
-    const hasPhotos = item.photos && item.photos.length > 0;
-    return Boolean(obs || hasPhotos);
+    return Boolean(item.photos && item.photos.length > 0);
   };
 
   const calculateRoomProgress = (room) => {
@@ -433,10 +429,9 @@ const InspectionChecklist = () => {
     roomsData.forEach((room) => {
       room.items.forEach((item) => {
         if (item.exists === 'nao') return;
-        const obs = item.observations && String(item.observations).trim();
         const hasPhotos = item.photos && item.photos.length > 0;
-        if (!obs && !hasPhotos) {
-          missingItems.push(`${room.room_name}: "${item.name}" - Observação ou foto`);
+        if (!hasPhotos) {
+          missingItems.push(`${room.room_name}: "${item.name}" - Foto de não conformidade`);
         }
       });
     });
@@ -482,7 +477,7 @@ const InspectionChecklist = () => {
         const displayItems = missing.slice(0, 5);
         const remaining = missing.length - 5;
         let message =
-          '⚠️ Preencha observação ou adicione foto em todos os elementos antes de adicionar outro ambiente.\n\nPendentes:\n' +
+          '⚠️ Registre foto de não conformidade em todos os elementos antes de adicionar outro ambiente.\n\nPendentes:\n' +
           displayItems.join('\n');
         if (remaining > 0) {
           message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -510,7 +505,7 @@ const InspectionChecklist = () => {
       const remaining = missingItems.length - 5;
       
       let message =
-        '⚠️ Não é possível continuar!\n\nPreencha observação ou adicione foto em cada elemento do checklist.\n\nPendentes:\n' +
+        '⚠️ Não é possível continuar!\n\nRegistre pelo menos uma foto de não conformidade em cada elemento do checklist.\n\nPendentes:\n' +
         displayItems.join('\n');
       if (remaining > 0) {
         message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -986,7 +981,7 @@ const InspectionChecklist = () => {
               disabled={!canAddAnotherRoom}
               title={
                 !canAddAnotherRoom
-                  ? 'Preencha observação ou foto em todos os elementos antes de adicionar outro ambiente'
+                  ? 'Registre foto de não conformidade em todos os elementos antes de adicionar outro ambiente'
                   : undefined
               }
               onClick={handleOpenAddRoomModal}
