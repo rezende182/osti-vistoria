@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Camera,
@@ -32,10 +32,27 @@ const ChecklistItem = ({
   const [showMobileWarning, setShowMobileWarning] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [showVerificationsModal, setShowVerificationsModal] = useState(false);
+  const [extraDraft, setExtraDraft] = useState('');
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  const verificationPoints = Array.isArray(item.verification_points) ? item.verification_points : [];
+  useEffect(() => {
+    if (showVerificationsModal) setExtraDraft('');
+  }, [showVerificationsModal]);
+
+  const legacyMerged = (() => {
+    const vps = Array.isArray(item.verification_points) ? item.verification_points : [];
+    return vps
+      .filter((vp) => vp && !vp.excluded)
+      .map((vp) => (vp.text || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  })();
+
+  const verificationBody = ((item.verification_text || '').trim() || legacyMerged).trim();
+  const additionalVerifications = Array.isArray(item.additional_verifications)
+    ? item.additional_verifications
+    : [];
 
   const isMobileDevice = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -43,15 +60,6 @@ const ChecklistItem = ({
 
   const handleObservationsChange = (value) => {
     onChange({ ...item, observations: value });
-  };
-
-  const toggleVerificationExcluded = (vpId) => {
-    onChange({
-      ...item,
-      verification_points: verificationPoints.map((vp) =>
-        vp.id === vpId ? { ...vp, excluded: !vp.excluded } : vp
-      ),
-    });
   };
 
   const handleChooseFile = () => {
@@ -131,8 +139,7 @@ const ChecklistItem = ({
     return photo;
   });
 
-  const activeCount = verificationPoints.filter((vp) => !vp.excluded).length;
-  const totalVp = verificationPoints.length;
+  const extraCount = additionalVerifications.length;
 
   return (
     <div
@@ -181,7 +188,7 @@ const ChecklistItem = ({
               )}
             </div>
           )}
-          <h4 className="min-w-0 flex-1 font-bold text-slate-900 leading-snug uppercase tracking-tight">
+          <h4 className="min-w-0 flex-1 font-bold capitalize text-slate-900 leading-snug tracking-tight">
             {item.name}
           </h4>
         </div>
@@ -207,9 +214,9 @@ const ChecklistItem = ({
           >
             <ClipboardList size={14} aria-hidden />
             Itens verificados
-            {totalVp > 0 && (
-              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] tabular-nums text-slate-700">
-                {activeCount}/{totalVp}
+            {extraCount > 0 && (
+              <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] tabular-nums text-blue-800">
+                +{extraCount}
               </span>
             )}
           </button>
@@ -228,50 +235,93 @@ const ChecklistItem = ({
               <div className="border-b border-slate-200 px-4 py-3 sm:px-5">
                 <h3
                   id="vp-modal-title"
-                  className="text-lg font-bold font-secondary uppercase text-slate-900"
+                  className="text-lg font-bold font-secondary capitalize text-slate-900"
                 >
-                  Verificação — {item.name}
+                  Itens verificados — {item.name}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Exclua critérios que não se aplicam a esta vistoria. Os restantes contam como itens
-                  verificados.
+                  Texto de referência do elemento. Pode incluir critérios adicionais abaixo, se
+                  necessário.
                 </p>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
-                {verificationPoints.length === 0 ? (
-                  <p className="text-sm text-slate-600">
-                    Nenhum critério listado para este elemento. Use observações e fotos para registar a
-                    verificação.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {verificationPoints.map((vp) => (
-                      <li
-                        key={vp.id}
-                        className={`rounded-lg border p-3 text-sm leading-relaxed ${
-                          vp.excluded
-                            ? 'border-slate-200 bg-slate-50 text-slate-400 line-through'
-                            : 'border-slate-200 bg-white text-slate-800'
-                        }`}
+                <div className="space-y-5">
+                  <div>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Elementos e verificações
+                    </p>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
+                      {verificationBody || (
+                        <span className="text-slate-500 italic">
+                          Nenhum texto de verificação definido. Use observações e fotos, ou inclua
+                          critérios abaixo.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {additionalVerifications.length > 0 && (
+                    <div>
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                        Critérios adicionais incluídos
+                      </p>
+                      <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-800">
+                        {additionalVerifications.map((line, i) => (
+                          <li key={i}>
+                            {line.charAt(0).toUpperCase()}
+                            {line.slice(1)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div>
+                    <label
+                      htmlFor={`extra-criterion-${item.id || item.name}`}
+                      className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500"
+                    >
+                      Incluir critério
+                    </label>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                      <input
+                        id={`extra-criterion-${item.id || item.name}`}
+                        type="text"
+                        value={extraDraft}
+                        onChange={(e) => setExtraDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const t = extraDraft.trim();
+                            if (!t) return;
+                            const cap = t.charAt(0).toUpperCase() + t.slice(1);
+                            onChange({
+                              ...item,
+                              additional_verifications: [...additionalVerifications, cap],
+                            });
+                            setExtraDraft('');
+                          }
+                        }}
+                        placeholder="Descreva o critério a incluir"
+                        className="min-h-touch min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 sm:min-h-0"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const t = extraDraft.trim();
+                          if (!t) return;
+                          const cap = t.charAt(0).toUpperCase() + t.slice(1);
+                          onChange({
+                            ...item,
+                            additional_verifications: [...additionalVerifications, cap],
+                          });
+                          setExtraDraft('');
+                        }}
+                        className="min-h-touch shrink-0 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 sm:min-h-0"
                       >
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-                          <span className="min-w-0 flex-1">{vp.text}</span>
-                          <button
-                            type="button"
-                            onClick={() => toggleVerificationExcluded(vp.id)}
-                            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide ${
-                              vp.excluded
-                                ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                            }`}
-                          >
-                            {vp.excluded ? 'Incluir' : 'Excluir'}
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                        Incluir
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="border-t border-slate-200 p-4 sm:px-5">
                 <button

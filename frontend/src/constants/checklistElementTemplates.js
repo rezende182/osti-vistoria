@@ -1,6 +1,5 @@
 /**
- * Por tipo de ambiente (room_type): elementos e critérios de verificação.
- * Cada critério pode ser excluído na UI (não se aplica a esta vistoria).
+ * Por tipo de ambiente (room_type): elementos e texto de verificação (formato contínuo).
  */
 
 /** Nome exibido ao adicionar ambiente (tabs / título base). */
@@ -19,19 +18,21 @@ export const ROOM_TYPE_LABELS = {
   cobertura_telhado: 'COBERTURA/TELHADO',
 };
 
-export function splitVerifications(text) {
-  if (!text || typeof text !== 'string') return [];
-  return text
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+function capitalizeFirst(text) {
+  const t = (text || '').trim();
+  if (!t) return '';
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
+/** Nome do elemento + texto integral dos critérios (como definido no laudo). */
 function E(name, verificationText) {
-  return { name, verifications: splitVerifications(verificationText) };
+  return {
+    name: capitalizeFirst(name),
+    verificationText: capitalizeFirst(verificationText),
+  };
 }
 
-/** @type {Record<string, Array<{ name: string, verifications: string[] }>>} */
+/** @type {Record<string, Array<{ name: string, verificationText: string }>>} */
 export const ROOM_ELEMENT_TEMPLATES = {
   area_externa_comum: [
     E(
@@ -614,11 +615,8 @@ export function buildItemsFromRoomType(roomType, roomIdPrefix) {
   return elements.map((el, idx) => ({
     id: `${roomIdPrefix}_i_${idx}`,
     name: el.name,
-    verification_points: el.verifications.map((text, vidx) => ({
-      id: `${roomIdPrefix}_i_${idx}_v_${vidx}`,
-      text,
-      excluded: false,
-    })),
+    verification_text: el.verificationText,
+    additional_verifications: [],
     observations: '',
     photos: [],
   }));

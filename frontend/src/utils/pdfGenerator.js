@@ -817,19 +817,53 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         const checklistTextWidth = contentWidth - PDF_LIST_INDENT_MM;
 
         const obsTrim = (item.observations || '').trim();
-        const vps = Array.isArray(item.verification_points) ? item.verification_points : [];
-        const activeVps = vps.filter((vp) => vp && !vp.excluded && (vp.text || '').trim());
 
-        if (activeVps.length > 0) {
-          doc.setFont(PDF_FONT, 'normal');
+        let mainVerify = (item.verification_text || '').trim();
+        if (!mainVerify && Array.isArray(item.verification_points) && item.verification_points.length) {
+          mainVerify = item.verification_points
+            .filter((vp) => vp && !vp.excluded)
+            .map((vp) => (vp.text || '').trim())
+            .filter(Boolean)
+            .join(', ');
+        }
+        const extras = Array.isArray(item.additional_verifications)
+          ? item.additional_verifications.filter((s) => s && String(s).trim())
+          : [];
+
+        if (mainVerify) {
+          doc.setFont(PDF_FONT, 'bold');
           doc.setFontSize(PDF_BODY_PT);
           doc.setTextColor(0, 0, 0);
-          const critLabel = 'Critérios verificados: ';
-          doc.text(critLabel, listX, yPos);
+          doc.text('Elementos e verificações:', listX, yPos);
           yPos += PDF_BODY_LINE_MM;
-          for (const vp of activeVps) {
-            const line = `• ${(vp.text || '').trim()}`;
-            yPos = drawBodyParagraphs(doc, line, listX, checklistTextWidth, yPos, checkNewPage);
+          doc.setFont(PDF_FONT, 'normal');
+          yPos = drawBodyParagraphs(
+            doc,
+            mainVerify,
+            listX,
+            checklistTextWidth,
+            yPos,
+            checkNewPage
+          );
+          yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
+        }
+
+        if (extras.length > 0) {
+          doc.setFont(PDF_FONT, 'bold');
+          doc.text('Critérios adicionais:', listX, yPos);
+          yPos += PDF_BODY_LINE_MM;
+          doc.setFont(PDF_FONT, 'normal');
+          for (const line of extras) {
+            const t = String(line).trim();
+            if (!t) continue;
+            yPos = drawBodyParagraphs(
+              doc,
+              `• ${t}`,
+              listX,
+              checklistTextWidth,
+              yPos,
+              checkNewPage
+            );
             yPos += PDF_LIST_ITEM_EXTRA_GAP_MM * 0.5;
           }
           yPos += PDF_LIST_ITEM_EXTRA_GAP_MM * 0.5;

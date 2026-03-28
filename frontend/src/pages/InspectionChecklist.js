@@ -22,52 +22,58 @@ import {
   getElementsForRoomType,
 } from '../constants/checklistElementTemplates';
 
+function capitalizeFirst(text) {
+  const t = (text || '').trim();
+  if (!t) return '';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
   const id = item.id || `${roomId}_i_${itemIdx}`;
   const observations = item.observations || '';
   const photos = item.photos || [];
 
-  if (item.verification_points && Array.isArray(item.verification_points) && item.verification_points.length > 0) {
-    const { condition: _c, exists: _e, ...rest } = item;
-    return {
-      ...rest,
-      id,
-      verification_points: item.verification_points.map((vp, i) => ({
-        id: vp.id || `${id}_v_${i}`,
-        text: vp.text || '',
-        excluded: Boolean(vp.excluded),
-      })),
-      observations,
-      photos,
-    };
+  const extraIn = Array.isArray(item.additional_verifications) ? item.additional_verifications : [];
+  const additional_verifications = extraIn
+    .map((s) => (typeof s === 'string' ? capitalizeFirst(s) : ''))
+    .filter(Boolean);
+
+  let verification_text =
+    typeof item.verification_text === 'string' ? item.verification_text.trim() : '';
+
+  if (!verification_text && item.verification_points?.length) {
+    verification_text = item.verification_points
+      .filter((vp) => vp && !vp.excluded)
+      .map((vp) => (vp.text || '').trim())
+      .filter(Boolean)
+      .join(', ');
   }
 
   const templateEls = getElementsForRoomType(roomType);
-  const match = templateEls.find((e) => e.name === item.name);
-  if (match) {
-    const { condition: _c, exists: _e, ...rest } = item;
-    return {
-      ...rest,
-      id,
-      name: item.name,
-      verification_points: match.verifications.map((text, i) => ({
-        id: `${id}_v_${i}`,
-        text,
-        excluded: false,
-      })),
-      observations,
-      photos,
-    };
+  const match = templateEls.find(
+    (e) => (e.name || '').toLowerCase() === (item.name || '').toLowerCase()
+  );
+  if (!verification_text && match?.verificationText) {
+    verification_text = match.verificationText;
   }
+  if (!verification_text) {
+    verification_text = 'Critérios de verificação do elemento';
+  }
+  verification_text = capitalizeFirst(verification_text);
 
-  const { condition: _c, exists: _e, ...rest } = item;
+  const {
+    condition: _c,
+    exists: _e,
+    verification_points: _vp,
+    ...rest
+  } = item;
+
   return {
     ...rest,
     id,
     name: item.name,
-    verification_points: [
-      { id: `${id}_v_0`, text: 'Critérios de verificação do elemento', excluded: false },
-    ],
+    verification_text,
+    additional_verifications,
     observations,
     photos,
   };
@@ -317,14 +323,9 @@ const InspectionChecklist = () => {
     const itemId = `item_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const newItem = {
       id: itemId,
-      name,
-      verification_points: [
-        {
-          id: `${itemId}_v_0`,
-          text: 'Verificação conforme elemento personalizado',
-          excluded: false,
-        },
-      ],
+      name: capitalizeFirst(name),
+      verification_text: '',
+      additional_verifications: [],
       observations: '',
       photos: [],
     };
@@ -719,7 +720,7 @@ const InspectionChecklist = () => {
               Novo item no ambiente
             </h3>
             <p className="mb-4 text-sm text-slate-600">
-              Indique o nome do ponto a verificar (ex.: &quot;Tomada da varanda&quot;).
+              Indique o nome do ponto a verificar (Ex: Vigas e Pilares).
             </p>
             <input
               type="text"
