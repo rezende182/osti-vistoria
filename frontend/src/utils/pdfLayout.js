@@ -162,6 +162,108 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
   return y;
 }
 
+/**
+ * Bloco de texto estilo “card” do app: fundo claro, barra azul à esquerda, cantos arredondados.
+ * Texto vazio exibe traço em itálico. Textos muito longos caem em parágrafos normais (sem card).
+ */
+export function drawLaudoFieldCard(doc, margin, contentWidth, yStart, text, checkNewPage) {
+  const stripeW = 1.35;
+  const padX = 4;
+  const padY = 4;
+  const radius = 2.5;
+  const innerX = margin + stripeW + padX;
+  const innerW = Math.max(40, contentWidth - stripeW - padX * 2);
+
+  const raw = text == null ? '' : String(text).trim();
+  const filler = raw || '\u2014';
+
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+
+  const normalized = filler.replace(/\r\n/g, '\n').replace(/\u00a0/g, ' ');
+  const blocks = normalized
+    .split(/\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  const measureInnerHeight = () => {
+    let h = 0;
+    blocks.forEach((block, blockIdx) => {
+      const paraLines = buildParagraphVisualLines(
+        doc,
+        block,
+        innerW,
+        PDF_BODY_FIRST_LINE_INDENT_MM
+      );
+      h += paraLines.length * PDF_BODY_LINE_MM;
+      if (blockIdx < blocks.length - 1) h += PDF_PARAGRAPH_GAP_MM;
+    });
+    return Math.max(11, h);
+  };
+
+  const innerH = measureInnerHeight();
+  const cardH = padY * 2 + innerH;
+  const maxCardMm = 118;
+
+  if (cardH > maxCardMm) {
+    checkNewPage(24);
+    const toDraw = raw || '\u2014';
+    return drawBodyParagraphs(doc, toDraw, margin, contentWidth, yStart, checkNewPage);
+  }
+
+  checkNewPage(cardH + 10);
+
+  const pageOpts = defaultPageOpts();
+  let yCard = yStart;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (yCard + cardH > pageHeight - pageOpts.bottomMarginMm) {
+    doc.addPage();
+    yCard = pageOpts.topMarginMm;
+  }
+
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(margin, yCard, contentWidth, cardH, radius, radius, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.12);
+  doc.roundedRect(margin, yCard, contentWidth, cardH, radius, radius, 'S');
+  doc.setFillColor(37, 99, 235);
+  doc.rect(margin, yCard, stripeW, cardH, 'F');
+
+  let ty = yCard + padY + 4;
+  doc.setTextColor(51, 65, 85);
+  if (!raw) doc.setFont(PDF_FONT, 'italic');
+
+  blocks.forEach((block, blockIdx) => {
+    const paraLines = buildParagraphVisualLines(
+      doc,
+      block,
+      innerW,
+      PDF_BODY_FIRST_LINE_INDENT_MM
+    );
+    paraLines.forEach((pl, lineIdx) => {
+      ty = ensureVerticalSpace(doc, ty, PDF_BODY_LINE_MM, pageOpts);
+      const x = innerX + pl.xOffset;
+      const words = pl.text.trim().split(/\s+/).filter(Boolean);
+      const isLast = lineIdx === paraLines.length - 1;
+      if (words.length > 1 && !isLast) {
+        justifyLine(doc, words, x, ty, pl.maxW);
+      } else {
+        doc.text(pl.text, x, ty);
+      }
+      ty += PDF_BODY_LINE_MM;
+    });
+    if (blockIdx < blocks.length - 1) {
+      ty = ensureVerticalSpace(doc, ty, PDF_PARAGRAPH_GAP_MM, pageOpts);
+      ty += PDF_PARAGRAPH_GAP_MM;
+    }
+  });
+
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setTextColor(0, 0, 0);
+
+  return yCard + cardH + PDF_PARAGRAPH_GAP_MM;
+}
+
 const defaultPageOpts = () => ({
   bottomMarginMm: PDF_PAGE_BOTTOM_SAFE_MM,
   topMarginMm: PDF_PAGE_TOP_SAFE_MM,

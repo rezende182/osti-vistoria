@@ -165,11 +165,11 @@ const NewInspection = () => {
     setFormData((prev) => {
       const next = { ...prev };
       let changed = false;
-      if (!String(prev.laudo_objetivo || '').trim()) {
+      if (!String(prev.laudo_objetivo || '').trim() && LAUDO_OBJETIVO_PRESETS.length > 0) {
         next.laudo_objetivo = LAUDO_OBJETIVO_PRESETS[0];
         changed = true;
       }
-      if (!String(prev.laudo_metodologia || '').trim()) {
+      if (!String(prev.laudo_metodologia || '').trim() && LAUDO_METODOLOGIA_PRESETS.length > 0) {
         next.laudo_metodologia = LAUDO_METODOLOGIA_PRESETS[0];
         changed = true;
       }
@@ -327,7 +327,7 @@ const NewInspection = () => {
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
                   {tipoImovelFluxo === 'apartamento' && entregaStep === 2
-                    ? 'Objetivo, Metodologia e Verificações dos Ambientes'
+                    ? 'Objetivo e Metodologia'
                     : 'Identificação da Vistoria Técnica'}
                 </h1>
                 {subtipoLabel && (
@@ -419,14 +419,6 @@ const NewInspection = () => {
                   rows={18}
                   className={laudoTextareaClass}
                 />
-              </div>
-
-              <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm leading-relaxed text-slate-700">
-                <p className="font-semibold text-slate-800">Verificações dos ambientes</p>
-                <p className="mt-2">
-                  Após criar a vistoria, o checklist por cômodo é preenchido na etapa seguinte — é nele que
-                  constam as verificações dos ambientes do imóvel.
-                </p>
               </div>
 
               <button
@@ -1044,7 +1036,7 @@ const NewInspection = () => {
           >
             {tipoImovelFluxo === 'apartamento' && entregaStep === 1
               ? 'Salvar e continuar'
-              : 'Iniciar Checklist'}
+              : 'Verificação dos ambientes'}
             <ArrowRight size={20} />
           </button>
         </form>

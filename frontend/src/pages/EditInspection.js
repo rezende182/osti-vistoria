@@ -639,7 +639,7 @@ const EditInspection = () => {
                 </div>
               </div>
 
-              {sectionTitle('Objetivo, Metodologia e Verificações dos Ambientes')}
+              {sectionTitle('Objetivo e Metodologia')}
 
               <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
                 {laudoBlockTitle('Objetivo')}
@@ -671,7 +671,11 @@ const EditInspection = () => {
                   value={formData.laudo_objetivo}
                   onChange={handleChange}
                   rows={8}
-                  placeholder={`${LAUDO_OBJETIVO_PRESETS[0].slice(0, 80)}…`}
+                  placeholder={
+                    LAUDO_OBJETIVO_PRESETS[0]
+                      ? `${LAUDO_OBJETIVO_PRESETS[0].slice(0, 80)}…`
+                      : 'Texto do objetivo do laudo…'
+                  }
                   className={laudoTextareaClass}
                 />
               </div>
@@ -708,13 +712,6 @@ const EditInspection = () => {
                   rows={16}
                   className={laudoTextareaClass}
                 />
-              </div>
-
-              <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm leading-relaxed text-slate-700">
-                <p className="font-semibold text-slate-800">Verificações dos ambientes</p>
-                <p className="mt-2">
-                  As verificações por cômodo são feitas no checklist após guardar estas informações.
-                </p>
               </div>
             </>
           ) : (
@@ -980,7 +977,7 @@ const EditInspection = () => {
             type="submit"
             className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 flex items-center justify-center gap-2"
           >
-            Continuar para Checklist
+            Verificação dos ambientes
             <ArrowRight size={20} />
           </button>
         </form>

@@ -1,12 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import {
-  TEXTOS_CONCLUSAO,
-  CLASSIFICACAO_FINAL_LABELS,
-} from '../constants/inspectionClassificacao';
+import { TEXTOS_CONCLUSAO } from '../constants/inspectionClassificacao';
 import {
   drawBodyParagraphs,
-  drawClassificationFinalPlain,
+  drawLaudoFieldCard,
   drawResponsavelAssinaturaSection,
   drawChapterTitle,
   drawSubsectionTitle,
@@ -80,6 +77,10 @@ function formatPdfIntroLocalizacao(inspection) {
 
 const PDF_IDENT_LABEL_FILL = [245, 245, 245];
 
+/** Tabela 1 mais compacta para caber melhor na primeira página. */
+const PDF_IDENT_TABLE_PT = 9;
+const PDF_IDENT_TABLE_CELL_PAD = 1.6;
+
 function pdfIdentLabelCell(text) {
   return {
     content: text,
@@ -143,20 +144,32 @@ function pdfTipoImovelUnificado(inspection) {
   return '';
 }
 
-/** Título de subsecção na tabela de identificação (linha única em 4 colunas). */
-function pdfIdentSectionRow(title) {
+/** Versão compacta para a tabela 1 (primeira página). */
+function pdfIdentSectionRowCompact(title) {
   return [
     {
       content: title,
       colSpan: 4,
       styles: {
         fontStyle: 'bold',
-        fontSize: PDF_BODY_PT + 0.5,
+        fontSize: PDF_IDENT_TABLE_PT + 0.75,
         fillColor: [226, 232, 240],
         textColor: [51, 65, 85],
-        cellPadding: { top: 4.5, bottom: 4.5, left: 4, right: 4 },
+        cellPadding: { top: 2.2, bottom: 2.2, left: 3, right: 3 },
       },
     },
+  ];
+}
+
+/** Horário de início e de término na mesma linha (duas colunas rótulo/valor). */
+function pdfIdentRowHorarios(horarioInicio, horarioTermino) {
+  const hi = horarioInicio == null ? '' : String(horarioInicio).trim();
+  const ht = horarioTermino == null ? '' : String(horarioTermino).trim();
+  return [
+    pdfIdentLabelCell('Horário de início'),
+    { content: hi || '—' },
+    pdfIdentLabelCell('Horário de término'),
+    { content: ht || '—' },
   ];
 }
 
@@ -170,18 +183,18 @@ function buildIdentificacaoTableBody(inspection) {
   if (entregaForm) {
     const rows = [];
 
-    rows.push(pdfIdentSectionRow('Identificação do Responsável Técnico'));
+    rows.push(pdfIdentSectionRowCompact('Identificação do Responsável Técnico'));
     rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
     rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
     const rtDoc = pdfIdentRowFull('CPF / CNPJ', inspection.responsavel_cpf_cnpj, false);
     if (rtDoc) rows.push(rtDoc);
 
-    rows.push(pdfIdentSectionRow('Identificação do contratante'));
+    rows.push(pdfIdentSectionRowCompact('Identificação do contratante'));
     rows.push(pdfIdentRowFull('Contratante', inspection.cliente, true));
     const cDoc = pdfIdentRowFull('CPF / CNPJ', inspection.contratante_cpf_cnpj, false);
     if (cDoc) rows.push(cDoc);
 
-    rows.push(pdfIdentSectionRow('Dados do Imóvel'));
+    rows.push(pdfIdentSectionRowCompact('Dados do Imóvel'));
     rows.push(
       pdfIdentRowFull('Tipo do Imóvel', pdfTipoImovelUnificado(inspection), true)
     );
@@ -214,7 +227,7 @@ function buildIdentificacaoTableBody(inspection) {
     const trEn = pdfIdentRowFull('Energia disponível', enStr, false);
     if (trEn) rows.push(trEn);
 
-    rows.push(pdfIdentSectionRow('Identificação da vistoria'));
+    rows.push(pdfIdentSectionRowCompact('Identificação da vistoria'));
     rows.push(pdfIdentRowFull('Data da vistoria', formatDate(inspection.data), true));
     const rcRow = pdfIdentRowFull(
       'Responsável da Construtora',
@@ -222,13 +235,13 @@ function buildIdentificacaoTableBody(inspection) {
       false
     );
     if (rcRow) rows.push(rcRow);
-    rows.push(pdfIdentRowFull('Horário de início', inspection.horario_inicio, true));
+    rows.push(pdfIdentRowHorarios(inspection.horario_inicio, inspection.horario_termino));
     return rows.filter(Boolean);
   }
 
   const rows = [];
 
-  rows.push(pdfIdentSectionRow('Contratante e imóvel'));
+  rows.push(pdfIdentSectionRowCompact('Contratante e imóvel'));
   rows.push(pdfIdentRowFull('Cliente', inspection.cliente, true));
   rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
 
@@ -251,16 +264,16 @@ function buildIdentificacaoTableBody(inspection) {
   const tipoRowG = pdfIdentRowFull('Tipo do Imóvel', tipoLinhaG, false);
   if (tipoRowG) rows.push(tipoRowG);
 
-  rows.push(pdfIdentSectionRow('Responsável técnico'));
+  rows.push(pdfIdentSectionRowCompact('Responsável técnico'));
   const rtDoc = pdfIdentRowFull('CPF / CNPJ', inspection.responsavel_cpf_cnpj, false);
   if (rtDoc) rows.push(rtDoc);
   rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
   rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
 
-  rows.push(pdfIdentSectionRow('Identificação da vistoria'));
+  rows.push(pdfIdentSectionRowCompact('Identificação da vistoria'));
   rows.push(pdfIdentRowFull('Data', formatDate(inspection.data), true));
 
-  rows.push(pdfIdentRowFull('Horário de início', inspection.horario_inicio, true));
+  rows.push(pdfIdentRowHorarios(inspection.horario_inicio, inspection.horario_termino));
 
   const tipo = inspection.tipo_imovel;
   const tipoStr =
@@ -565,7 +578,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       ty += titleLineH;
     });
 
-    yPos = yPos + rowH + 10;
+    yPos = yPos + rowH + 7;
   } else {
     doc.setFont(PDF_FONT, 'bold');
     doc.setFontSize(PDF_HEADER_TITLE_PT);
@@ -576,7 +589,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       doc.text(ln, cx, ty, { align: 'center' });
       ty += titleLineH;
     });
-    yPos = ty + 10;
+    yPos = ty + 7;
   }
 
   // ============================================================
@@ -588,13 +601,13 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     contentWidth,
     yPos,
     '1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA',
-    { minFollowingMm: Math.max(PDF_CHAPTER_KEEP_WITH_NEXT_MM, 48) }
+    { minFollowingMm: 28 }
   );
 
   const identificacaoData = buildIdentificacaoTableBody(inspection);
 
-  const identLabelColW = 50;
-  const identValuePairW = Math.max(24, (contentWidth - identLabelColW * 2) / 2);
+  const identLabelColW = 46;
+  const identValuePairW = Math.max(22, (contentWidth - identLabelColW * 2) / 2);
 
   autoTable(doc, {
     startY: yPos,
@@ -602,11 +615,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     theme: 'grid',
     styles: {
       font: PDF_FONT,
-      fontSize: PDF_BODY_PT,
-      cellPadding: 3,
+      fontSize: PDF_IDENT_TABLE_PT,
+      cellPadding: PDF_IDENT_TABLE_CELL_PAD,
       textColor: [0, 0, 0],
       lineColor: [0, 0, 0],
-      lineWidth: 0.2,
+      lineWidth: 0.15,
     },
     columnStyles: {
       0: {
@@ -669,22 +682,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   if (entregaLaudoExt) {
     const metaText = finalizeLaudoMetodologiaPdf(inspection, checklistChapterNum);
     const objT = pdfTrim(inspection.laudo_objetivo);
-    if (objT) {
-      yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '3. OBJETIVO', {
-        minFollowingMm: 45,
-      });
-      doc.setFont(PDF_FONT, 'normal');
-      doc.setFontSize(PDF_BODY_PT);
-      doc.setTextColor(0, 0, 0);
-      yPos = drawBodyParagraphs(
-        doc,
-        objT,
-        margin,
-        contentWidth,
-        yPos,
-        checkNewPage
-      );
-    }
+
+    yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '3. OBJETIVO', {
+      minFollowingMm: 36,
+    });
+    yPos = drawLaudoFieldCard(doc, margin, contentWidth, yPos, objT, checkNewPage);
 
     checkNewPage(36);
     yPos = drawChapterTitle(
@@ -717,23 +719,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       );
     }
 
-    if (pdfTrim(metaText)) {
-      checkNewPage(40);
-      yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '5. METODOLOGIA', {
-        minFollowingMm: 45,
-      });
-      doc.setFont(PDF_FONT, 'normal');
-      doc.setFontSize(PDF_BODY_PT);
-      doc.setTextColor(0, 0, 0);
-      yPos = drawBodyParagraphs(
-        doc,
-        metaText,
-        margin,
-        contentWidth,
-        yPos,
-        checkNewPage
-      );
-    }
+    checkNewPage(40);
+    yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '5. METODOLOGIA', {
+      minFollowingMm: 36,
+    });
+    yPos = drawLaudoFieldCard(doc, margin, contentWidth, yPos, metaText, checkNewPage);
 
     checkNewPage(52);
     yPos = drawChapterTitle(
@@ -975,26 +965,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const cf = inspection.classificacao_final;
   const conclusaoTrim = (inspection.conclusao || '').trim();
-  const rotuloEscolhaTrim = (inspection.classificacao_escolha_rotulo || '').trim();
-  const outroSomente =
-    cf === 'outro' && !!inspection.outro_somente_conclusao;
-  /** Outra classificação: sem bloco se “só conclusão” ou sem rótulo personalizado preenchido */
-  const hideClassificacaoBlock =
-    cf === 'outro' && (outroSomente || !rotuloEscolhaTrim);
-
-  if (!hideClassificacaoBlock && cf) {
-    const labelText =
-      cf === 'outro'
-        ? rotuloEscolhaTrim
-        : CLASSIFICACAO_FINAL_LABELS[cf] || 'PENDENTE';
-    yPos = drawClassificationFinalPlain(
-      doc,
-      margin,
-      contentWidth,
-      yPos,
-      labelText
-    );
-  }
 
   const textoConclusao =
     cf === 'outro'

@@ -654,7 +654,7 @@ const InspectionChecklist = () => {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <BrandLogo className="h-[3.75rem] w-auto max-w-[10rem] shrink-0 object-contain object-left py-0.5 sm:h-[4.5rem] sm:max-w-[12rem]" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl lg:text-[1.65rem]">
-                Inspeção Técnica e Checklist de Verificação
+                Verificação do ambiente
               </h1>
             </div>
             <LogoutHeaderButton />
