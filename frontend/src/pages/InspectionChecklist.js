@@ -331,10 +331,9 @@ const InspectionChecklist = () => {
     toast.success('Item adicionado.');
   };
 
-  const itemChecklistCompleto = (item) => {
-    if (item.exists === 'nao') return true;
-    return Boolean(item.photos && item.photos.length > 0);
-  };
+  /** Obrigatório para concluir o passo: apenas situação Existe ou Não existe. */
+  const itemChecklistCompleto = (item) =>
+    item.exists === 'sim' || item.exists === 'nao';
 
   const calculateRoomProgress = (room) => {
     const totalItems = room.items.length;
@@ -428,11 +427,10 @@ const InspectionChecklist = () => {
 
     roomsData.forEach((room) => {
       room.items.forEach((item) => {
-        if (item.exists === 'nao') return;
-        const hasPhotos = item.photos && item.photos.length > 0;
-        if (!hasPhotos) {
-          missingItems.push(`${room.room_name}: "${item.name}" - Foto de não conformidade`);
-        }
+        if (item.exists === 'sim' || item.exists === 'nao') return;
+        missingItems.push(
+          `${room.room_name}: "${item.name || 'Item'}" — indique Existe ou Não existe`
+        );
       });
     });
 
@@ -477,7 +475,7 @@ const InspectionChecklist = () => {
         const displayItems = missing.slice(0, 5);
         const remaining = missing.length - 5;
         let message =
-          '⚠️ Registre foto de não conformidade em todos os elementos antes de adicionar outro ambiente.\n\nPendentes:\n' +
+          '⚠️ Em cada item, selecione Existe ou Não existe antes de adicionar outro ambiente.\n\nPendentes:\n' +
           displayItems.join('\n');
         if (remaining > 0) {
           message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -505,7 +503,7 @@ const InspectionChecklist = () => {
       const remaining = missingItems.length - 5;
       
       let message =
-        '⚠️ Não é possível continuar!\n\nRegistre pelo menos uma foto de não conformidade em cada elemento do checklist.\n\nPendentes:\n' +
+        '⚠️ Não é possível continuar!\n\nEm cada elemento do checklist, selecione Existe ou Não existe.\n\nPendentes:\n' +
         displayItems.join('\n');
       if (remaining > 0) {
         message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -981,7 +979,7 @@ const InspectionChecklist = () => {
               disabled={!canAddAnotherRoom}
               title={
                 !canAddAnotherRoom
-                  ? 'Registre foto de não conformidade em todos os elementos antes de adicionar outro ambiente'
+                  ? 'Selecione Existe ou Não existe em todos os itens antes de adicionar outro ambiente'
                   : undefined
               }
               onClick={handleOpenAddRoomModal}

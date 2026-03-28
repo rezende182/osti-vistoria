@@ -247,8 +247,8 @@ const ChecklistItem = ({
           )}
         </div>
 
-        {/* Linha 2: critérios de referência (destaque) */}
-        <div className={`mt-1 ${lockMeta}`}>
+        {/* Linha 2: critérios de referência (destaque) — afastado do bloco superior e inferior */}
+        <div className={`my-2.5 sm:my-3 ${lockMeta}`}>
           <button
             type="button"
             data-testid={`verification-points-${item.name}`}
@@ -262,14 +262,14 @@ const ChecklistItem = ({
         </div>
 
         {existsNao && (
-          <p className="mt-1 rounded border border-stone-200/90 bg-white/70 px-2 py-1.5 text-[11px] leading-snug text-stone-800">
+          <p className="mt-2 rounded border border-stone-200/90 bg-white/70 px-2 py-1.5 text-[11px] leading-snug text-stone-800">
             Item inexistente — Não irá constar no Laudo.
           </p>
         )}
 
         {!existsNao && (
           <>
-            <div className="mt-1.5 space-y-1">
+            <div className="mt-2 space-y-1.5 sm:mt-2.5">
               <button
                 type="button"
                 data-testid={`nc-button-${item.name}`}
@@ -283,15 +283,11 @@ const ChecklistItem = ({
               >
                 <AlertTriangle size={13} strokeWidth={2.25} className="shrink-0 text-rose-600" aria-hidden />
                 Não conformidades
-                {photos.length > 0 ? (
-                  <span className="rounded-full bg-rose-200/90 px-1.5 py-px text-[9px] font-bold tabular-nums text-rose-950">
-                    {photos.length}
-                  </span>
-                ) : null}
+                {photos.length > 0 ? ` (${photos.length})` : ''}
               </button>
               <p className="text-center text-[10px] leading-snug text-slate-500 sm:text-left">
-                <span className="font-semibold text-rose-800/90">Conformidade do item:</span> registe
-                aqui as fotos que comprovam estado conforme ou as não conformidades para o laudo.
+                <span className="font-semibold text-rose-800/90">Não conformidade do item:</span> Registre
+                aqui fotos e descrições que comprovam o estado de não conformidade.
               </p>
             </div>
 
