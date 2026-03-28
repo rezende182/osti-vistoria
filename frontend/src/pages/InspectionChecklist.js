@@ -33,11 +33,6 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
   const observations = item.observations || '';
   const photos = item.photos || [];
 
-  const extraIn = Array.isArray(item.additional_verifications) ? item.additional_verifications : [];
-  const additional_verifications = extraIn
-    .map((s) => (typeof s === 'string' ? capitalizeFirst(s) : ''))
-    .filter(Boolean);
-
   let verification_text =
     typeof item.verification_text === 'string' ? item.verification_text.trim() : '';
 
@@ -61,10 +56,12 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
   }
   verification_text = capitalizeFirst(verification_text);
 
+  const exists = item.exists === 'nao' ? 'nao' : 'sim';
+
   const {
     condition: _c,
-    exists: _e,
     verification_points: _vp,
+    additional_verifications: _av,
     ...rest
   } = item;
 
@@ -73,7 +70,7 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
     id,
     name: item.name,
     verification_text,
-    additional_verifications,
+    exists,
     observations,
     photos,
   };
@@ -106,7 +103,7 @@ const InspectionChecklist = () => {
     (roomsChecklist || []).map((room) => ({
       ...room,
       items: (room.items || [])
-        .filter((it) => it && it.exists !== 'nao')
+        .filter((it) => it)
         .map((it, idx) => hydrateChecklistItem(it, room.room_type, room.room_id, idx)),
     }));
 
@@ -325,7 +322,7 @@ const InspectionChecklist = () => {
       id: itemId,
       name: capitalizeFirst(name),
       verification_text: '',
-      additional_verifications: [],
+      exists: 'sim',
       observations: '',
       photos: [],
     };
@@ -337,6 +334,7 @@ const InspectionChecklist = () => {
   };
 
   const itemChecklistCompleto = (item) => {
+    if (item.exists === 'nao') return true;
     const obs = item.observations && String(item.observations).trim();
     const hasPhotos = item.photos && item.photos.length > 0;
     return Boolean(obs || hasPhotos);
@@ -434,6 +432,7 @@ const InspectionChecklist = () => {
 
     roomsData.forEach((room) => {
       room.items.forEach((item) => {
+        if (item.exists === 'nao') return;
         const obs = item.observations && String(item.observations).trim();
         const hasPhotos = item.photos && item.photos.length > 0;
         if (!obs && !hasPhotos) {

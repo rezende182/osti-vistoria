@@ -731,7 +731,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      `${checklistChapterNum}. VERIFICAÇÕES DOS AMBIENTES`,
+      `${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`,
       { minFollowingMm: 52 }
     );
   } else {
@@ -760,14 +760,14 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
 
     // ============================================================
-    // 4. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO
+    // 4. VERIFICAÇÃO DOS AMBIENTES (após introdução; fluxo sem bloco Metodologia separado)
     // ============================================================
     yPos = drawChapterTitle(
       doc,
       margin,
       contentWidth,
       yPos,
-      `${checklistChapterNum}. INSPEÇÃO TÉCNICA E CHECKLIST DE VERIFICAÇÃO`,
+      `${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`,
       { minFollowingMm: 52 }
     );
   }
@@ -776,7 +776,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     let roomNumber = 1;
 
     for (const room of inspection.rooms_checklist) {
-      // Itens no laudo: todos exceto legado "não existe" (removidos na app)
+      // Itens no laudo: exclui "Não existe" (não entra no PDF)
       const itensNoPdf = (room.items || []).filter(
         (item) => item && item.exists !== 'nao'
       );
@@ -794,11 +794,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         yPos,
         `${checklistChapterNum}.${roomNumber} ${room.room_name.toUpperCase()}`
       );
-
-      doc.setFont(PDF_FONT, 'normal');
-      doc.setFontSize(PDF_BODY_PT);
-      doc.text('Itens verificados:', listX, yPos);
-      yPos += PDF_BODY_LINE_MM + PDF_LIST_ITEM_EXTRA_GAP_MM;
 
       for (const item of itensNoPdf) {
         // Espaço mínimo para faixa + condição (~30 mm); observações/fotos quebram depois
@@ -826,10 +821,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
             .filter(Boolean)
             .join(', ');
         }
-        const extras = Array.isArray(item.additional_verifications)
-          ? item.additional_verifications.filter((s) => s && String(s).trim())
-          : [];
-
         if (mainVerify) {
           doc.setFont(PDF_FONT, 'bold');
           doc.setFontSize(PDF_BODY_PT);
@@ -846,27 +837,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
             checkNewPage
           );
           yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
-        }
-
-        if (extras.length > 0) {
-          doc.setFont(PDF_FONT, 'bold');
-          doc.text('Critérios adicionais:', listX, yPos);
-          yPos += PDF_BODY_LINE_MM;
-          doc.setFont(PDF_FONT, 'normal');
-          for (const line of extras) {
-            const t = String(line).trim();
-            if (!t) continue;
-            yPos = drawBodyParagraphs(
-              doc,
-              `• ${t}`,
-              listX,
-              checklistTextWidth,
-              yPos,
-              checkNewPage
-            );
-            yPos += PDF_LIST_ITEM_EXTRA_GAP_MM * 0.5;
-          }
-          yPos += PDF_LIST_ITEM_EXTRA_GAP_MM * 0.5;
         }
 
         if (obsTrim) {

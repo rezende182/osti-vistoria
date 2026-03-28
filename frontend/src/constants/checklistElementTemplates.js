@@ -72,8 +72,8 @@ export const ROOM_ELEMENT_TEMPLATES = {
       'Presença de fissuras ou trincas, desalinhamento, exposição de armadura, falhas de acabamento e sinais de infiltração'
     ),
     E(
-      'Ventilação e Condições Gerais',
-      'Ventilação do ambiente e acúmulo de umidade'
+      'Ventilação Forçada e Condições Gerais',
+      'Exaustão forçada, renovação do ar e acúmulo de umidade'
     ),
     E('Limpeza', 'Condição geral de limpeza do ambiente'),
     E('Dimensões', 'Conferência das dimensões do ambiente'),
@@ -172,8 +172,8 @@ export const ROOM_ELEMENT_TEMPLATES = {
       'Nivelamento, fixação, acabamento e transição de ambientes'
     ),
     E(
-      'Ventilação',
-      'Ventilação natural, ventilação forçada e circulação de ar'
+      'Ventilação Forçada',
+      'Ventilação natural e forçada e circulação de ar'
     ),
     E('Limpeza', 'Condição geral de limpeza do ambiente'),
     E('Dimensões', 'Conferência das dimensões do ambiente'),
@@ -246,8 +246,8 @@ export const ROOM_ELEMENT_TEMPLATES = {
     ),
     E('Vidros', 'Trincas ou quebras, fixação e vedação'),
     E(
-      'Ventilação',
-      'Ventilação natural, ventilação forçada (exaustor), circulação de ar e eficiência na remoção de umidade'
+      'Ventilação Forçada',
+      'Ventilação natural e forçada (exaustor), circulação de ar e eficiência na remoção de umidade'
     ),
     E('Limpeza', 'Condição geral de limpeza do ambiente'),
     E(
@@ -346,8 +346,8 @@ export const ROOM_ELEMENT_TEMPLATES = {
       'Funcionamento, vedação, alinhamento e fixação'
     ),
     E(
-      'Ventilação',
-      'Ventilação natural, ventilação forçada e eficiência na secagem do ambiente'
+      'Ventilação Forçada',
+      'Ventilação natural e forçada e eficiência na secagem do ambiente'
     ),
     E('Limpeza', 'Condição geral de limpeza do ambiente'),
     E('Dimensões', 'Conferência das dimensões do ambiente'),
@@ -456,7 +456,7 @@ export const ROOM_ELEMENT_TEMPLATES = {
       'Tomadas, interruptores, iluminação (funcionamento e distribuição), fixação de luminárias e acabamento das caixas elétricas'
     ),
     E(
-      'Ventilação',
+      'Ventilação Forçada',
       'Condições de exaustão (ambientes fechados)'
     ),
     E(
@@ -525,8 +525,8 @@ export const ROOM_ELEMENT_TEMPLATES = {
     ),
     E('Vidros', 'Trincas ou quebras, fixação e vedação'),
     E(
-      'Ventilação',
-      'Ventilação natural, eficiência na exaustão de fumaça e circulação de ar'
+      'Ventilação Forçada',
+      'Ventilação natural e forçada, eficiência na exaustão de fumaça e circulação de ar'
     ),
     E(
       'Teto / Cobertura',
@@ -552,7 +552,7 @@ export const ROOM_ELEMENT_TEMPLATES = {
     ),
     E(
       'Casa de Máquinas',
-      'Condições gerais, organização, presença de vazamentos, fixação dos equipamentos e ventilação'
+      'Condições gerais, organização, presença de vazamentos, fixação dos equipamentos e ventilação forçada'
     ),
     E(
       'Bombas e Filtros',
@@ -616,7 +616,7 @@ export function buildItemsFromRoomType(roomType, roomIdPrefix) {
     id: `${roomIdPrefix}_i_${idx}`,
     name: el.name,
     verification_text: el.verificationText,
-    additional_verifications: [],
+    exists: 'sim',
     observations: '',
     photos: [],
   }));

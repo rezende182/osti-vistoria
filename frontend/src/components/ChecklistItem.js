@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Camera,
@@ -32,13 +32,10 @@ const ChecklistItem = ({
   const [showMobileWarning, setShowMobileWarning] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [showVerificationsModal, setShowVerificationsModal] = useState(false);
-  const [extraDraft, setExtraDraft] = useState('');
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  useEffect(() => {
-    if (showVerificationsModal) setExtraDraft('');
-  }, [showVerificationsModal]);
+  const existsNao = item.exists === 'nao';
 
   const legacyMerged = (() => {
     const vps = Array.isArray(item.verification_points) ? item.verification_points : [];
@@ -50,9 +47,10 @@ const ChecklistItem = ({
   })();
 
   const verificationBody = ((item.verification_text || '').trim() || legacyMerged).trim();
-  const additionalVerifications = Array.isArray(item.additional_verifications)
-    ? item.additional_verifications
-    : [];
+
+  const setExists = (value) => {
+    onChange({ ...item, exists: value });
+  };
 
   const isMobileDevice = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -139,12 +137,12 @@ const ChecklistItem = ({
     return photo;
   });
 
-  const extraCount = additionalVerifications.length;
-
   return (
     <div
       data-testid="checklist-item"
-      className="border-2 rounded-lg p-4 transition-all duration-200 border-slate-300 bg-white"
+      className={`border-2 rounded-lg p-4 transition-all duration-200 ${
+        existsNao ? 'border-amber-300 bg-amber-50/40' : 'border-slate-300 bg-white'
+      }`}
     >
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex min-w-0 flex-1 gap-2">
@@ -214,14 +212,48 @@ const ChecklistItem = ({
           >
             <ClipboardList size={14} aria-hidden />
             Itens verificados
-            {extraCount > 0 && (
-              <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] tabular-nums text-blue-800">
-                +{extraCount}
-              </span>
-            )}
           </button>
         </div>
       </div>
+
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+          Situação do elemento
+        </span>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            data-testid={`exists-sim-${item.name}`}
+            onClick={() => setExists('sim')}
+            className={`rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
+              !existsNao
+                ? 'bg-slate-900 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Existe
+          </button>
+          <button
+            type="button"
+            data-testid={`exists-nao-${item.name}`}
+            onClick={() => setExists('nao')}
+            className={`rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
+              existsNao
+                ? 'bg-amber-700 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Não existe
+          </button>
+        </div>
+      </div>
+
+      {existsNao && (
+        <p className="mb-4 rounded-lg border border-amber-200 bg-amber-100/80 px-3 py-2 text-sm text-amber-950">
+          Este elemento foi marcado como <strong>inexistente</strong> neste ambiente. Não será
+          incluído no laudo PDF.
+        </p>
+      )}
 
       {showVerificationsModal &&
         createPortal(
@@ -240,86 +272,21 @@ const ChecklistItem = ({
                   Itens verificados — {item.name}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Texto de referência do elemento. Pode incluir critérios adicionais abaixo, se
-                  necessário.
+                  Texto de referência dos critérios de verificação deste elemento.
                 </p>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
-                <div className="space-y-5">
-                  <div>
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                      Elementos e verificações
-                    </p>
-                    <div className="rounded-lg border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
-                      {verificationBody || (
-                        <span className="text-slate-500 italic">
-                          Nenhum texto de verificação definido. Use observações e fotos, ou inclua
-                          critérios abaixo.
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {additionalVerifications.length > 0 && (
-                    <div>
-                      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Critérios adicionais incluídos
-                      </p>
-                      <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-800">
-                        {additionalVerifications.map((line, i) => (
-                          <li key={i}>
-                            {line.charAt(0).toUpperCase()}
-                            {line.slice(1)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <div>
-                    <label
-                      htmlFor={`extra-criterion-${item.id || item.name}`}
-                      className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500"
-                    >
-                      Incluir critério
-                    </label>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-                      <input
-                        id={`extra-criterion-${item.id || item.name}`}
-                        type="text"
-                        value={extraDraft}
-                        onChange={(e) => setExtraDraft(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const t = extraDraft.trim();
-                            if (!t) return;
-                            const cap = t.charAt(0).toUpperCase() + t.slice(1);
-                            onChange({
-                              ...item,
-                              additional_verifications: [...additionalVerifications, cap],
-                            });
-                            setExtraDraft('');
-                          }
-                        }}
-                        placeholder="Descreva o critério a incluir"
-                        className="min-h-touch min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 sm:min-h-0"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const t = extraDraft.trim();
-                          if (!t) return;
-                          const cap = t.charAt(0).toUpperCase() + t.slice(1);
-                          onChange({
-                            ...item,
-                            additional_verifications: [...additionalVerifications, cap],
-                          });
-                          setExtraDraft('');
-                        }}
-                        className="min-h-touch shrink-0 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 sm:min-h-0"
-                      >
-                        Incluir
-                      </button>
-                    </div>
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Elementos e verificações
+                  </p>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50/90 p-4 text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
+                    {verificationBody || (
+                      <span className="text-slate-500 italic">
+                        Nenhum texto de verificação definido. Use observações e fotos quando o
+                        elemento existir.
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -337,6 +304,7 @@ const ChecklistItem = ({
           document.body
         )}
 
+      {!existsNao && (
       <div className="flex gap-2">
         <button
           data-testid={`photo-button-${item.name}`}
@@ -480,6 +448,7 @@ const ChecklistItem = ({
             rows={3}
           />
         </div>
+      )}
       )}
     </div>
   );
