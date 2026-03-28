@@ -619,6 +619,16 @@ export const ROOM_ELEMENT_TEMPLATES = {
   ],
 };
 
+/** Limpeza e Dimensões (incl. variantes) não usam Existe / Não existe. */
+export function itemSkipsExistsToggle(itemName) {
+  const n = String(itemName || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return n.startsWith('limpeza') || n.startsWith('dimensoes');
+}
+
 export function getElementsForRoomType(roomType) {
   return ROOM_ELEMENT_TEMPLATES[roomType] || [];
 }

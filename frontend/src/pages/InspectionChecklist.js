@@ -20,6 +20,7 @@ import {
   ROOM_TYPE_ORDER,
   buildItemsFromRoomType,
   getElementsForRoomType,
+  itemSkipsExistsToggle,
 } from '../constants/checklistElementTemplates';
 
 function capitalizeFirst(text) {
@@ -55,7 +56,10 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
   }
   verification_text = capitalizeFirst(verification_text);
 
-  const exists = item.exists === 'nao' ? 'nao' : 'sim';
+  let exists = item.exists === 'nao' ? 'nao' : 'sim';
+  if (itemSkipsExistsToggle(item.name)) {
+    exists = 'sim';
+  }
 
   const {
     condition: _c,

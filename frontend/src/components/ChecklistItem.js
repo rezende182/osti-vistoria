@@ -13,6 +13,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { compressImage, formatFileSize, getDataUrlSize } from '../utils/imageCompressor';
+import { itemSkipsExistsToggle } from '../constants/checklistElementTemplates';
 
 const btnGhost =
   'rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent';
@@ -36,7 +37,8 @@ const ChecklistItem = ({
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  const existsNao = item.exists === 'nao';
+  const skipExistsToggle = itemSkipsExistsToggle(item.name);
+  const existsNao = !skipExistsToggle && item.exists === 'nao';
 
   useEffect(() => {
     if (existsNao) {
@@ -192,7 +194,7 @@ const ChecklistItem = ({
         'rounded-lg border transition-[box-shadow,border-color] duration-200',
         'shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
         existsNao
-          ? 'border-stone-300/90 bg-gradient-to-b from-stone-100/80 to-stone-50/50'
+          ? 'border-red-200/90 bg-gradient-to-b from-red-50/80 to-red-50/30'
           : 'border-slate-200/90 bg-white hover:shadow-[0_1px_4px_rgba(15,23,42,0.05)]',
       ].join(' ')}
     >
@@ -205,34 +207,36 @@ const ChecklistItem = ({
           >
             {item.name}
           </h4>
-          <div className="inline-flex shrink-0 items-center gap-px rounded-md bg-slate-100/90 p-px ring-1 ring-slate-200/60">
-            <button
-              type="button"
-              data-testid={`exists-sim-${item.name}`}
-              onClick={() => setExists('sim')}
-              className={[
-                'whitespace-nowrap rounded-[5px] px-1.5 py-0.5 text-[10px] font-semibold leading-none transition-colors sm:px-2 sm:py-1 sm:text-[11px]',
-                !existsNao
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700',
-              ].join(' ')}
-            >
-              Existe
-            </button>
-            <button
-              type="button"
-              data-testid={`exists-nao-${item.name}`}
-              onClick={() => setExists('nao')}
-              className={[
-                'whitespace-nowrap rounded-[5px] px-1.5 py-0.5 text-[10px] font-semibold leading-none transition-colors sm:px-2 sm:py-1 sm:text-[11px]',
-                existsNao
-                  ? 'bg-stone-600 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700',
-              ].join(' ')}
-            >
-              Não existe
-            </button>
-          </div>
+          {!skipExistsToggle && (
+            <div className="inline-flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                data-testid={`exists-sim-${item.name}`}
+                onClick={() => setExists('sim')}
+                className={[
+                  'whitespace-nowrap rounded-md border px-2 py-1 text-[10px] font-semibold leading-none transition-colors sm:py-1.5 sm:text-[11px]',
+                  !existsNao
+                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                ].join(' ')}
+              >
+                Existe
+              </button>
+              <button
+                type="button"
+                data-testid={`exists-nao-${item.name}`}
+                onClick={() => setExists('nao')}
+                className={[
+                  'whitespace-nowrap rounded-md border px-2 py-1 text-[10px] font-semibold leading-none transition-colors sm:py-1.5 sm:text-[11px]',
+                  existsNao
+                    ? 'border-red-600 bg-red-600 text-white shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700',
+                ].join(' ')}
+              >
+                Não existe
+              </button>
+            </div>
+          )}
           {onRemoveItem && (
             <button
               type="button"
@@ -262,33 +266,36 @@ const ChecklistItem = ({
         </div>
 
         {existsNao && (
-          <p className="mt-2 rounded border border-stone-200/90 bg-white/70 px-2 py-1.5 text-[11px] leading-snug text-stone-800">
+          <p className="mt-2 rounded border border-red-200/90 bg-white/80 px-2 py-1.5 text-[11px] leading-snug text-red-950">
             Item inexistente — Não irá constar no Laudo.
           </p>
         )}
 
         {!existsNao && (
           <>
-            <div className="mt-2 space-y-1.5 sm:mt-2.5">
+            <div className="mt-2 sm:mt-2.5">
               <button
                 type="button"
                 data-testid={`nc-button-${item.name}`}
                 onClick={() => setShowNcPanel(!showNcPanel)}
                 className={[
-                  'inline-flex w-full items-center justify-center gap-1.5 rounded-md border py-1.5 text-[10px] font-semibold uppercase tracking-wide transition-colors sm:text-[11px]',
+                  'flex w-full flex-col items-stretch gap-1 rounded-md border px-2 py-2 text-left transition-colors sm:px-2.5',
                   showNcPanel
                     ? 'border-rose-400/90 bg-rose-100 text-rose-950 shadow-inner'
                     : 'border-rose-300/80 bg-rose-50 text-rose-900 hover:border-rose-400 hover:bg-rose-100/80',
                 ].join(' ')}
               >
-                <AlertTriangle size={13} strokeWidth={2.25} className="shrink-0 text-rose-600" aria-hidden />
-                Não conformidades
-                {photos.length > 0 ? ` (${photos.length})` : ''}
+                <span className="flex items-center justify-center gap-1.5 text-center">
+                  <AlertTriangle size={13} strokeWidth={2.25} className="shrink-0 text-rose-600" aria-hidden />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide sm:text-[11px]">
+                    Não conformidades
+                    {photos.length > 0 ? ` (${photos.length})` : ''}
+                  </span>
+                </span>
+                <span className="text-center text-[9px] font-normal normal-case leading-snug text-rose-900/85 sm:text-[10px]">
+                  Registre aqui fotos e descrições que comprovam o estado de não conformidade.
+                </span>
               </button>
-              <p className="text-center text-[10px] leading-snug text-slate-500 sm:text-left">
-                <span className="font-semibold text-rose-800/90">Não conformidade do item:</span> Registre
-                aqui fotos e descrições que comprovam o estado de não conformidade.
-              </p>
             </div>
 
             {showNcPanel && (
