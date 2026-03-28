@@ -36,6 +36,8 @@ const V = {
     'Nivelamento geral, caimento adequado para drenagem, presença de peças soltas ou ocas, trincas, fissuras ou quebras, desgaste superficial ou acabamento inadequado e rejuntamento.',
   pisoCeramica:
     'Nivelamento, alinhamento, presença de peças ocas, trincas, fissuras ou quebras, desgaste superficial, acabamento e rejuntamento.',
+  pisoContrapiso:
+    'Nivelamento, regularidade da superfície, fissuras ou trincas, desagregação (farelamento), umidade, aderência/coesão, e condições para receber revestimento.',
   pisoAreaMolhada:
     'Nivelamento, caimento adequado em direção ao ralo, presença de peças ocas, trincas, fissuras ou quebras, desgaste superficial, acabamento, rejuntamento e acúmulo de água fora da área de escoamento.',
   ralosDrenagemExterna:
@@ -74,17 +76,22 @@ const V = {
   vidro: 'Presença de trinca ou quebras, riscos e fixação.',
   peitoril: 'Nivelamento, fixação, acabamento e integridade.',
   soleiraBaguete: 'Nivelamento, fixação, acabamento e transição entre ambientes.',
+  infraAC:
+    'Presença de ponto elétrico, dreno, espaço para instalação, e acabamento dos pontos.',
   revestimentoAzulejo:
     'Fixação das peças, descolamento, alinhamento, rejuntamento, trincas ou fissuras e acabamento.',
   bancadas:
     'Nivelamento, fixação, presença de fissuras ou trincas, vedação e acabamento.',
   pia: 'Fixação, vedação, funcionamento do escoamento, presença de vazamentos e acabamento.',
+  ventilacao: 'Condições de exaustão (ambientes fechados).',
   vasoSanitario:
     'Fixação, estabilidade, funcionamento da descarga, vedação na base, vazamentos e acabamento.',
   lavatorioCuba:
     'Fixação, nivelamento, vedação com a parede ou bancada, escoamento e presença de vazamentos.',
   boxBanho:
     'Vedação, fixação, funcionamento e presença de vazamentos para fora da área molhada.',
+  escada:
+    'Estrutura, fixação, degraus (nivelamento e uniformidade), piso/revestimento (desgaste e antiderrapante), espelhos, bordas/acabamento, corrimão (fixação e altura) e segurança de uso.',
   tanque:
     'Fixação, nivelamento, vedação, integridade e funcionamento do escoamento.',
   instalacaoMaquina:
@@ -93,7 +100,63 @@ const V = {
     'Fixação, estabilidade, altura adequada, segurança geral, integridade dos materiais e acabamento.',
   churrasqueiraEstrutura:
     'Integridade aparente, revestimento, grelha e suportes, duto/chaminé (exaustão), bancada/apoio e limpeza geral.',
+  instalacoesGas: 'Pontos de gás, vedação, segurança e posicionamento adequado.',
+  piscina:
+    'Estrutura, fixação, revestimento, bordas e acabamento, piso ao redor (nivelamento, caimento e antiderrapante), drenagem (ralos), casa de máquinas (bomba e filtro), sistema hidráulico, escadas/acessos, segurança, limpeza geral e dimensões.',
+  moveis:
+    'Estrutura, acabamento, ferragens, funcionamento, portas, gavetas e condições gerais.',
+  eletrodomesticos: 'Estado geral e funcionamento.',
 };
+
+/**
+ * Catálogo completo para «Adicionar item» (qualquer ambiente).
+ * Itens já presentes no ambiente são filtrados por nome.
+ */
+export const MASTER_ITEM_CATALOG = [
+  E('Piso (Área Externa)', V.pisoAreaExterna),
+  E('Piso (Cerâmica)', V.pisoCeramica),
+  E('Piso (Contrapiso)', V.pisoContrapiso),
+  E('Ralos e Drenagem (Área Externa)', V.ralosDrenagemExterna),
+  E('Muros e Fechamentos', V.murosFechamentos),
+  E('Fachada', V.fachada),
+  E('Portões e Acessos', V.portoesAcessos),
+  E('Calçadas e Acessos', V.calcadasAcessos),
+  E('Estrutura Aparente (Vigas e Pilares)', V.estruturaVigas),
+  E('Limpeza', V.limpeza),
+  E('Dimensões', V.dimensoes),
+  E('Piscina', V.piscina),
+  E('Instalações Hidráulicas', V.instalacoesHidraulicas),
+  E('Rodapés', V.rodapes),
+  E('Paredes', V.paredes),
+  E('Pintura', V.pintura),
+  E('Teto', V.teto),
+  E('Tomadas e Interruptores', V.tomadasInterruptores),
+  E('Iluminação', V.iluminacao),
+  E('Quadro de energia', V.quadroEnergia),
+  E('Esquadria (Porta)', V.esquadriaPorta),
+  E('Esquadria (Janela)', V.esquadriaJanela),
+  E('Vidro', V.vidro),
+  E('Peitoril', V.peitoril),
+  E('Soleira / Baguete', V.soleiraBaguete),
+  E('Infraestrutura para Ar-Condicionado', V.infraAC),
+  E('Revestimento da Parede (Azulejo)', V.revestimentoAzulejo),
+  E('Bancadas', V.bancadas),
+  E('Pia', V.pia),
+  E('Ralos', V.ralos),
+  E('Ventilação', V.ventilacao),
+  E('Piso (Área Molhada)', V.pisoAreaMolhada),
+  E('Vaso Sanitário', V.vasoSanitario),
+  E('Lavatório / Cuba', V.lavatorioCuba),
+  E('Box / Área de Banho', V.boxBanho),
+  E('Escada', V.escada),
+  E('Tanque', V.tanque),
+  E('Instalação para Máquina de Lavar', V.instalacaoMaquina),
+  E('Guarda-corpo', V.guardaCorpo),
+  E('Churrasqueira (Estrutura)', V.churrasqueiraEstrutura),
+  E('Instalações de Gás', V.instalacoesGas),
+  E('Móveis', V.moveis),
+  E('Eletrodomésticos', V.eletrodomesticos),
+];
 
 /** @type {Record<string, Array<{ name: string, verificationText: string }>>} */
 export const ROOM_ELEMENT_TEMPLATES = {
@@ -235,17 +298,18 @@ export function getElementsForRoomType(roomType) {
   return ROOM_ELEMENT_TEMPLATES[roomType] || [];
 }
 
-/** Itens do modelo ainda não adicionados ao ambiente (comparação por nome, sem acentos). */
-export function getAvailableElementsToAdd(roomType, existingItemNames) {
-  const template = getElementsForRoomType(roomType);
-  const norm = (s) =>
-    String(s || '')
-      .trim()
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-  const used = new Set((existingItemNames || []).map(norm));
-  return template.filter((el) => !used.has(norm(el.name)));
+function normalizeItemName(s) {
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+/** Itens do catálogo global ainda não adicionados ao ambiente (comparação por nome, sem acentos). */
+export function getAvailableElementsToAdd(existingItemNames) {
+  const used = new Set((existingItemNames || []).map(normalizeItemName));
+  return MASTER_ITEM_CATALOG.filter((el) => !used.has(normalizeItemName(el.name)));
 }
 
 export function buildItemsFromRoomType(roomType, roomIdPrefix) {

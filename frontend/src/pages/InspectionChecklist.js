@@ -511,10 +511,7 @@ const InspectionChecklist = () => {
 
   const addItemModalRoom = roomsData.find((r) => r.room_id === addItemForRoomId);
   const availableElementsToAdd = addItemModalRoom
-    ? getAvailableElementsToAdd(
-        addItemModalRoom.room_type,
-        (addItemModalRoom.items || []).map((i) => i.name)
-      )
+    ? getAvailableElementsToAdd((addItemModalRoom.items || []).map((i) => i.name))
     : [];
 
   return (
@@ -660,25 +657,30 @@ const InspectionChecklist = () => {
                 Adicionar item ao ambiente
               </h3>
               <p className="mt-1 text-sm text-slate-600">
-                Escolha um item do modelo que ainda não está neste ambiente.
+                Escolha um tipo de item que ainda não está neste ambiente.
               </p>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2 sm:px-4">
               {availableElementsToAdd.length === 0 ? (
                 <p className="py-6 text-center text-sm text-slate-500">
-                  Todos os itens do modelo para este tipo de ambiente já foram adicionados.
+                  Todos os itens disponíveis já foram adicionados a este ambiente.
                 </p>
               ) : (
-                <ul className="space-y-1.5 pb-2">
+                <ul className="space-y-2 pb-2">
                   {availableElementsToAdd.map((el) => (
                     <li key={el.name}>
                       <button
                         type="button"
                         data-testid={`add-template-item-${el.name}`}
                         onClick={() => addTemplateElementToRoom(el)}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-left text-sm font-semibold text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50"
+                        className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-3 text-left shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50/90"
                       >
-                        {el.name}
+                        <span className="block font-secondary text-[15px] font-semibold leading-snug tracking-tight text-slate-900">
+                          {el.name}
+                        </span>
+                        <span className="mt-1 line-clamp-2 block text-xs leading-relaxed text-slate-500">
+                          {el.verificationText}
+                        </span>
                       </button>
                     </li>
                   ))}

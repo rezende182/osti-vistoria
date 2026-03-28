@@ -176,36 +176,39 @@ const ChecklistItem = ({
       className="rounded-lg border border-slate-200/90 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-[box-shadow] duration-200 hover:shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
     >
       <div className="px-2 py-1.5 sm:px-2.5 sm:py-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+        <div className="flex min-w-0 items-start gap-2">
           {reorder}
-          <h4 className="min-w-0 flex-1 truncate text-[13px] font-semibold leading-tight text-slate-800 sm:text-sm">
-            {item.name}
-          </h4>
-          {onRemoveItem && (
-            <button
-              type="button"
-              data-testid={`remove-item-${item.name}`}
-              onClick={onRemoveItem}
-              className="shrink-0 rounded-md p-1 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-              aria-label={`Remover ${item.name}`}
-              title="Remover elemento"
-            >
-              <Trash2 size={16} strokeWidth={2} aria-hidden />
-            </button>
-          )}
-        </div>
-
-        <div className="my-2.5 sm:my-3">
-          <button
-            type="button"
-            data-testid={`verification-points-${item.name}`}
-            onClick={() => setShowVerificationsModal(true)}
-            className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-blue-200 bg-blue-50/90 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-blue-900 shadow-sm ring-2 ring-blue-300/35 ring-offset-1 ring-offset-white transition-colors hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:w-auto sm:px-3 sm:py-1.5"
-            aria-label="Itens verificados"
-          >
-            <ClipboardList size={12} strokeWidth={2.25} className="shrink-0 text-blue-600" aria-hidden />
-            Itens verificados
-          </button>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+              <h4 className="min-w-0 flex-1 text-[0.9375rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[15px] font-secondary">
+                {item.name}
+              </h4>
+              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                <button
+                  type="button"
+                  data-testid={`verification-points-${item.name}`}
+                  onClick={() => setShowVerificationsModal(true)}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/95 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-blue-900 shadow-sm ring-1 ring-blue-200/60 transition-colors hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  aria-label="Itens verificados"
+                >
+                  <ClipboardList size={13} strokeWidth={2.25} className="shrink-0 text-blue-600" aria-hidden />
+                  Itens verificados
+                </button>
+                {onRemoveItem && (
+                  <button
+                    type="button"
+                    data-testid={`remove-item-${item.name}`}
+                    onClick={onRemoveItem}
+                    className="inline-flex shrink-0 items-center justify-center rounded-lg border-2 border-rose-300 bg-rose-50 p-2 text-rose-600 shadow-sm transition-colors hover:border-rose-400 hover:bg-rose-100 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
+                    aria-label={`Remover ${item.name}`}
+                    title="Remover elemento"
+                  >
+                    <Trash2 size={18} strokeWidth={2.25} aria-hidden />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="mt-2 sm:mt-2.5">
