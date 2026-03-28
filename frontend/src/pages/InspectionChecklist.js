@@ -15,198 +15,63 @@ import {
   enqueueSyncOperation,
 } from '../utils/offlineStorage';
 import BrandLogo from '@/components/BrandLogo';
+import {
+  ROOM_TYPE_LABELS,
+  ROOM_TYPE_ORDER,
+  buildItemsFromRoomType,
+  getElementsForRoomType,
+} from '../constants/checklistElementTemplates';
 
-// Itens padrão de cozinha — reutilizado em Área de Serviço
-const ITEMS_COZINHA = [
-  'Teto',
-  'Paredes',
-  'Revestimento da Parede (Azulejo)',
-  'Esquadrias - Janela',
-  'Peitoril da Janela',
-  'Esquadrias - Porta',
-  'Soleiras',
-  'Pintura',
-  'Pia e Bancada',
-  'Louças e Metais',
-  'Instalações Hidráulicas',
-  'Instalação de Gás',
-  'Ralo',
-  'Piso (contrapiso/cerâmica)',
-  'Tomadas, interruptores e iluminação',
-  'Ventilação Forçada',
-  'Interfone',
-  'Limpeza',
-  'Dimensões',
-];
+function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
+  const id = item.id || `${roomId}_i_${itemIdx}`;
+  const observations = item.observations || '';
+  const photos = item.photos || [];
 
-const ITEMS_SALA_ESTAR = [
-  'Teto',
-  'Paredes',
-  'Esquadrias – Janela',
-  'Peitoril da Janela',
-  'Esquadrias – Porta',
-  'Soleiras / Baguetes',
-  'Pintura',
-  'Piso (contrapiso/cerâmica)',
-  'Rodapé',
-  'Tomadas, interruptores e iluminação',
-  'Quadro de energia',
-  'Ponto de Ar-Condicionado',
-  'Limpeza',
-  'Dimensões',
-];
+  if (item.verification_points && Array.isArray(item.verification_points) && item.verification_points.length > 0) {
+    const { condition: _c, exists: _e, ...rest } = item;
+    return {
+      ...rest,
+      id,
+      verification_points: item.verification_points.map((vp, i) => ({
+        id: vp.id || `${id}_v_${i}`,
+        text: vp.text || '',
+        excluded: Boolean(vp.excluded),
+      })),
+      observations,
+      photos,
+    };
+  }
 
-const ITEMS_BANHEIRO = [
-  'Teto',
-  'Paredes',
-  'Piso e Azulejo Cerâmico',
-  'Esquadria - Janela',
-  'Peitoril da Janela',
-  'Esquadrias - Porta',
-  'Soleira',
-  'Pintura',
-  'Louças e Metais',
-  'Instalações Hidráulicas',
-  'Box de banho',
-  'Ralo',
-  'Tomadas, interruptores e iluminação',
-  'Ventilação Forçada',
-  'Limpeza',
-  'Dimensões',
-];
+  const templateEls = getElementsForRoomType(roomType);
+  const match = templateEls.find((e) => e.name === item.name);
+  if (match) {
+    const { condition: _c, exists: _e, ...rest } = item;
+    return {
+      ...rest,
+      id,
+      name: item.name,
+      verification_points: match.verifications.map((text, i) => ({
+        id: `${id}_v_${i}`,
+        text,
+        excluded: false,
+      })),
+      observations,
+      photos,
+    };
+  }
 
-const ITEMS_QUARTO = [
-  'Teto',
-  'Paredes',
-  'Esquadrias - Janela',
-  'Peitoril da Janela',
-  'Esquadrias - Porta',
-  'Soleira/Baguete',
-  'Pintura',
-  'Ponto de Ar-Condicionado',
-  'Piso (contrapiso/cerâmica)',
-  'Rodapé',
-  'Tomadas, interruptores e iluminação',
-  'Limpeza',
-  'Dimensões',
-];
-
-const ITEMS_VARANDA_SACADA = [
-  'Teto',
-  'Paredes',
-  'Revestimento da Parede (Azulejo)',
-  'Esquadria - Janela',
-  'Peitoril da Janela',
-  'Esquadrias - Porta',
-  'Soleira',
-  'Guarda-Corpo',
-  'Pintura',
-  'Piso (contrapiso/cerâmica)',
-  'Ralo',
-  'Rodapé',
-  'Tomadas, interruptores e iluminação',
-  'Limpeza',
-  'Dimensões',
-];
-
-const ITEMS_GARAGEM = [
-  'Teto',
-  'Paredes',
-  'Piso',
-  'Esquadrias - Porta / Portão',
-  'Iluminação',
-  'Tomadas e interruptores',
-  'Ventilação',
-  'Limpeza',
-  'Dimensões',
-];
-
-const ITEMS_PISCINA = [
-  'Revestimento / vaso',
-  'Deck / borda',
-  'Iluminação',
-  'Instalações (bomba, filtro)',
-  'Hidráulica',
-  'Limpeza',
-  'Dimensões',
-  'Proteção / cercamento',
-];
-
-const ITEMS_COBERTURA_TELHADO = [
-  'Impermeabilização',
-  'Calhas e condutores',
-  'Cobertura / telhas',
-  'Estrutura',
-  'Pontos de inspeção / claraboia',
-  'Limpeza',
-  'Dimensões',
-];
-
-/** Templates de ambientes com itens na ordem correta (chaves estáveis para room_type). */
-const ROOM_TEMPLATES = {
-  sala_estar_jantar: {
-    name: 'SALA/ESTAR/JANTAR',
-    items: [...ITEMS_SALA_ESTAR],
-  },
-  cozinha: {
-    name: 'COZINHA',
-    items: [...ITEMS_COZINHA],
-  },
-  area_servico_lavanderia: {
-    name: 'ÁREA DE SERVIÇO/LAVANDERIA',
-    items: [...ITEMS_COZINHA],
-  },
-  banheiro_social_lavabo: {
-    name: 'BANHEIRO SOCIAL/LAVABO',
-    items: [...ITEMS_BANHEIRO],
-  },
-  quarto_suite: {
-    name: 'QUARTO/SUITE',
-    items: [...ITEMS_QUARTO],
-  },
-  varanda_sacada: {
-    name: 'VARANDA/SACADA',
-    items: [...ITEMS_VARANDA_SACADA],
-  },
-  area_gourmet_churrasqueira: {
-    name: 'ÁREA GOURMET/CHURRASQUEIRA',
-    items: [...ITEMS_COZINHA, 'Churrasqueira / área gourmet'],
-  },
-  garagem: {
-    name: 'GARAGEM',
-    items: [...ITEMS_GARAGEM],
-  },
-  area_externa_comum: {
-    name: 'ÁREA EXTERNA/COMUM',
-    items: [...ITEMS_VARANDA_SACADA],
-  },
-  piscina: {
-    name: 'PISCINA',
-    items: [...ITEMS_PISCINA],
-  },
-  cobertura_telhado: {
-    name: 'COBERTURA/TELHADO',
-    items: [...ITEMS_COBERTURA_TELHADO],
-  },
-};
-
-/** Ordem fixa na modal «Adicionar ambiente». */
-const ROOM_TYPE_ORDER = [
-  'sala_estar_jantar',
-  'cozinha',
-  'area_servico_lavanderia',
-  'banheiro_social_lavabo',
-  'quarto_suite',
-  'varanda_sacada',
-  'area_gourmet_churrasqueira',
-  'garagem',
-  'area_externa_comum',
-  'piscina',
-  'cobertura_telhado',
-];
-
-// Ambientes iniciais — vazio; o utilizador adiciona conforme necessário
-const DEFAULT_ROOMS = [];
+  const { condition: _c, exists: _e, ...rest } = item;
+  return {
+    ...rest,
+    id,
+    name: item.name,
+    verification_points: [
+      { id: `${id}_v_0`, text: 'Critérios de verificação do elemento', excluded: false },
+    ],
+    observations,
+    photos,
+  };
+}
 
 const InspectionChecklist = () => {
   const { id } = useParams();
@@ -236,13 +101,7 @@ const InspectionChecklist = () => {
       ...room,
       items: (room.items || [])
         .filter((it) => it && it.exists !== 'nao')
-        .map((it, idx) => {
-          const { exists: _e, ...rest } = it;
-          return {
-            ...rest,
-            id: it.id || `${room.room_id}_i_${idx}`,
-          };
-        }),
+        .map((it, idx) => hydrateChecklistItem(it, room.room_type, room.room_id, idx)),
     }));
 
   useEffect(() => {
@@ -455,10 +314,17 @@ const InspectionChecklist = () => {
     const rIdx = roomsData.findIndex((r) => r.room_id === addItemForRoomId);
     if (rIdx < 0) return;
     const room = roomsData[rIdx];
+    const itemId = `item_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const newItem = {
-      id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      id: itemId,
       name,
-      condition: null,
+      verification_points: [
+        {
+          id: `${itemId}_v_0`,
+          text: 'Verificação conforme elemento personalizado',
+          excluded: false,
+        },
+      ],
       observations: '',
       photos: [],
     };
@@ -471,7 +337,8 @@ const InspectionChecklist = () => {
 
   const itemChecklistCompleto = (item) => {
     const obs = item.observations && String(item.observations).trim();
-    return Boolean(item.condition || obs);
+    const hasPhotos = item.photos && item.photos.length > 0;
+    return Boolean(obs || hasPhotos);
   };
 
   const calculateRoomProgress = (room) => {
@@ -495,31 +362,25 @@ const InspectionChecklist = () => {
   };
 
   const addRoom = (type) => {
-    const template = ROOM_TEMPLATES[type];
-    if (!template) return;
+    const label = ROOM_TYPE_LABELS[type];
+    if (!label) return;
 
-    const count = roomsList.filter(r => r.type === type).length;
+    const count = roomsList.filter((r) => r.type === type).length;
     const suffix = count > 0 ? ` ${count + 1}` : '';
     const newId = `${type}_${Date.now()}`;
-    const newName = `${template.name}${suffix}`;
+    const newName = `${label}${suffix}`;
 
     const newRoom = {
       id: newId,
       name: newName,
-      type: type
+      type,
     };
 
     const newRoomData = {
       room_id: newId,
       room_name: newName,
       room_type: type,
-      items: template.items.map((itemName, idx) => ({
-        id: `${newId}_i_${idx}`,
-        name: itemName,
-        condition: null,
-        observations: '',
-        photos: [],
-      }))
+      items: buildItemsFromRoomType(type, newId),
     };
 
     setRoomsList([...roomsList, newRoom]);
@@ -573,8 +434,9 @@ const InspectionChecklist = () => {
     roomsData.forEach((room) => {
       room.items.forEach((item) => {
         const obs = item.observations && String(item.observations).trim();
-        if (!item.condition && !obs) {
-          missingItems.push(`${room.room_name}: "${item.name}" - Condição ou observação`);
+        const hasPhotos = item.photos && item.photos.length > 0;
+        if (!obs && !hasPhotos) {
+          missingItems.push(`${room.room_name}: "${item.name}" - Observação ou foto`);
         }
       });
     });
@@ -620,7 +482,7 @@ const InspectionChecklist = () => {
         const displayItems = missing.slice(0, 5);
         const remaining = missing.length - 5;
         let message =
-          '⚠️ Preencha Condição ou observação em todos os itens antes de adicionar outro ambiente.\n\nItens pendentes:\n' +
+          '⚠️ Preencha observação ou adicione foto em todos os elementos antes de adicionar outro ambiente.\n\nPendentes:\n' +
           displayItems.join('\n');
         if (remaining > 0) {
           message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -648,7 +510,7 @@ const InspectionChecklist = () => {
       const remaining = missingItems.length - 5;
       
       let message =
-        '⚠️ Não é possível continuar!\n\nPreencha Condição ou observação em cada item do checklist.\n\nItens pendentes:\n' +
+        '⚠️ Não é possível continuar!\n\nPreencha observação ou adicione foto em cada elemento do checklist.\n\nPendentes:\n' +
         displayItems.join('\n');
       if (remaining > 0) {
         message += `\n\n... e mais ${remaining} item(s) faltando`;
@@ -911,7 +773,7 @@ const InspectionChecklist = () => {
                   onClick={() => addRoom(type)}
                   className="min-h-touch w-full rounded-lg bg-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition-colors hover:bg-slate-200 sm:min-h-0"
                 >
-                  {ROOM_TEMPLATES[type].name}
+                  {ROOM_TYPE_LABELS[type]}
                 </button>
               ))}
             </div>
@@ -1124,7 +986,7 @@ const InspectionChecklist = () => {
               disabled={!canAddAnotherRoom}
               title={
                 !canAddAnotherRoom
-                  ? 'Preencha Condição ou observação em todos os itens antes de adicionar outro ambiente'
+                  ? 'Preencha observação ou foto em todos os elementos antes de adicionar outro ambiente'
                   : undefined
               }
               onClick={handleOpenAddRoomModal}

@@ -510,19 +510,18 @@ const InspectionDetail = () => {
                   <h3 className="font-bold text-slate-900 mb-2">{room.room_name}</h3>
                   <div className="space-y-1">
                     {itensLista.map((item, itemIndex) => {
-                      const getItemColor = () => {
-                        if (item.condition === 'aprovado') return 'text-green-600';
-                        if (item.condition === 'reprovado') return 'text-red-600';
-                        return 'text-slate-400';
-                      };
+                      const obsOk = item.observations && String(item.observations).trim();
+                      const fotoOk = item.photos && item.photos.length > 0;
+                      const registo = obsOk || fotoOk;
                       return (
-                        <div key={itemIndex} className="flex items-start justify-between text-sm">
-                          <div className="flex-1">
+                        <div key={itemIndex} className="flex items-start justify-between gap-2 text-sm">
+                          <div className="min-w-0 flex-1">
                             <span className="text-slate-700">{item.name}</span>
                           </div>
-                          <span className={`font-semibold ${getItemColor()}`}>
-                            {item.condition === 'aprovado' ? 'Aprovado' :
-                              item.condition === 'reprovado' ? 'Reprovado' : '-'}
+                          <span
+                            className={`shrink-0 font-semibold ${registo ? 'text-green-600' : 'text-slate-400'}`}
+                          >
+                            {registo ? 'Registado' : '—'}
                           </span>
                         </div>
                       );

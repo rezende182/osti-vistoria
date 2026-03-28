@@ -817,12 +817,29 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         const checklistTextWidth = contentWidth - PDF_LIST_INDENT_MM;
 
         const obsTrim = (item.observations || '').trim();
-        const hasCondition =
-          item.condition === 'aprovado' || item.condition === 'reprovado';
-        /** Observação preenchida sem Aprovado/Reprovado (fluxo do checklist). */
-        const somenteObservacao = !hasCondition && obsTrim;
+        const vps = Array.isArray(item.verification_points) ? item.verification_points : [];
+        const activeVps = vps.filter((vp) => vp && !vp.excluded && (vp.text || '').trim());
 
-        if (somenteObservacao) {
+        if (activeVps.length > 0) {
+          doc.setFont(PDF_FONT, 'normal');
+          doc.setFontSize(PDF_BODY_PT);
+          doc.setTextColor(0, 0, 0);
+          const critLabel = 'Critérios verificados: ';
+          doc.text(critLabel, listX, yPos);
+          yPos += PDF_BODY_LINE_MM;
+          for (const vp of activeVps) {
+            const line = `• ${(vp.text || '').trim()}`;
+            yPos = drawBodyParagraphs(doc, line, listX, checklistTextWidth, yPos, checkNewPage);
+            yPos += PDF_LIST_ITEM_EXTRA_GAP_MM * 0.5;
+          }
+          yPos += PDF_LIST_ITEM_EXTRA_GAP_MM * 0.5;
+        }
+
+        if (obsTrim) {
+          doc.setFont(PDF_FONT, 'bold');
+          doc.text('Observações:', listX, yPos);
+          yPos += PDF_BODY_LINE_MM;
+          doc.setFont(PDF_FONT, 'normal');
           yPos = drawBodyParagraphs(
             doc,
             obsTrim,
@@ -832,58 +849,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
             checkNewPage
           );
           yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
-        } else {
-          const condLabel = 'Condição: ';
-          doc.setFont(PDF_FONT, 'normal');
-          doc.setFontSize(PDF_BODY_PT);
-          doc.setTextColor(0, 0, 0);
-          doc.text(condLabel, listX, yPos);
-          const condLabelW = doc.getTextWidth(condLabel);
-
-          doc.setFont(PDF_FONT, 'bold');
-          if (item.condition === 'aprovado') {
-            doc.setTextColor(34, 139, 34); // Verde
-            doc.text('APROVADO', listX + condLabelW, yPos);
-          } else if (item.condition === 'reprovado') {
-            doc.setTextColor(178, 34, 34); // Vermelho
-            doc.text('REPROVADO', listX + condLabelW, yPos);
-          } else {
-            doc.setTextColor(0, 0, 0);
-            doc.text('-', listX + condLabelW, yPos);
-          }
-          doc.setTextColor(0, 0, 0);
-          yPos += PDF_BODY_LINE_MM;
-
-          doc.setFont(PDF_FONT, 'normal');
-          doc.setFontSize(PDF_BODY_PT);
-
-          if (item.condition === 'aprovado') {
-            const obsLab = 'Observações: ';
-            doc.text(obsLab, listX, yPos);
-            const obsLabW = doc.getTextWidth(obsLab);
-            doc.setFont(PDF_FONT, 'italic');
-            doc.text(
-              'Item em conformidade, sem irregularidades aparentes.',
-              listX + obsLabW,
-              yPos
-            );
-            yPos += PDF_BODY_LINE_MM + PDF_LIST_ITEM_EXTRA_GAP_MM;
-          } else if (item.condition === 'reprovado') {
-            doc.text('Observações:', listX, yPos);
-            yPos += PDF_BODY_LINE_MM;
-
-            if (obsTrim) {
-              yPos = drawBodyParagraphs(
-                doc,
-                obsTrim,
-                listX,
-                checklistTextWidth,
-                yPos,
-                checkNewPage
-              );
-            }
-            yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
-          }
         }
 
         // Fotos: legenda `Foto N: …` com quebra na largura da imagem; sem cabeçalho "Fotos:"

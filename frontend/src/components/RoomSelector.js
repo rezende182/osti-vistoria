@@ -68,7 +68,7 @@ const RoomSelector = ({
             disabled={!canAddRoom && rooms.length > 0}
             title={
               !canAddRoom && rooms.length > 0
-                ? 'Preencha Condição ou observação em todos os itens antes de adicionar outro ambiente'
+                ? 'Preencha observação ou foto em todos os elementos antes de adicionar outro ambiente'
                 : undefined
             }
             onClick={onAddRoom}

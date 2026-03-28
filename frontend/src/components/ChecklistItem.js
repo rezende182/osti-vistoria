@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Camera,
   MessageSquare,
@@ -10,9 +11,8 @@ import {
   ChevronUp,
   ChevronDown,
   GripVertical,
+  ClipboardList,
 } from 'lucide-react';
-import InspectionOrientationModal from './InspectionOrientationModal';
-import { getOrientationForItemName } from '../constants/itemOrientations';
 import { compressImage, formatFileSize, getDataUrlSize } from '../utils/imageCompressor';
 
 const ChecklistItem = ({
@@ -31,30 +31,27 @@ const ChecklistItem = ({
   const [showObservations, setShowObservations] = useState(false);
   const [showMobileWarning, setShowMobileWarning] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
-  const [showOrientationModal, setShowOrientationModal] = useState(false);
-  const orientation = getOrientationForItemName(item.name);
+  const [showVerificationsModal, setShowVerificationsModal] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+
+  const verificationPoints = Array.isArray(item.verification_points) ? item.verification_points : [];
 
   const isMobileDevice = () => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   };
 
-  const handleConditionChange = (value) => {
-    if (value === 'reprovado') {
-      setShowObservations(true);
-    }
-    onChange({ ...item, condition: value });
-  };
-
-  useEffect(() => {
-    if (item.condition === 'reprovado') {
-      setShowObservations(true);
-    }
-  }, [item.condition]);
-
   const handleObservationsChange = (value) => {
     onChange({ ...item, observations: value });
+  };
+
+  const toggleVerificationExcluded = (vpId) => {
+    onChange({
+      ...item,
+      verification_points: verificationPoints.map((vp) =>
+        vp.id === vpId ? { ...vp, excluded: !vp.excluded } : vp
+      ),
+    });
   };
 
   const handleChooseFile = () => {
@@ -127,12 +124,6 @@ const ChecklistItem = ({
     onChange({ ...item, photos: newPhotos });
   };
 
-  const getStatusColor = () => {
-    if (item.condition === 'aprovado') return 'border-green-500 bg-green-50';
-    if (item.condition === 'reprovado') return 'border-red-500 bg-red-50';
-    return 'border-slate-300 bg-white';
-  };
-
   const photos = (item.photos || []).map((photo, index) => {
     if (typeof photo === 'string') {
       return { url: photo, caption: `Foto ${index + 1}`, number: index + 1 };
@@ -140,10 +131,13 @@ const ChecklistItem = ({
     return photo;
   });
 
+  const activeCount = verificationPoints.filter((vp) => !vp.excluded).length;
+  const totalVp = verificationPoints.length;
+
   return (
     <div
       data-testid="checklist-item"
-      className={`border-2 rounded-lg p-4 transition-all duration-200 ${getStatusColor()}`}
+      className="border-2 rounded-lg p-4 transition-all duration-200 border-slate-300 bg-white"
     >
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex min-w-0 flex-1 gap-2">
@@ -187,69 +181,111 @@ const ChecklistItem = ({
               )}
             </div>
           )}
-          <h4 className="min-w-0 flex-1 font-bold text-slate-900 leading-snug">{item.name}</h4>
+          <h4 className="min-w-0 flex-1 font-bold text-slate-900 leading-snug uppercase tracking-tight">
+            {item.name}
+          </h4>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
           {onRemoveItem && (
             <button
               type="button"
               data-testid={`remove-item-${item.name}`}
               onClick={onRemoveItem}
               className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-700 active:bg-red-100"
-              aria-label={`Remover item ${item.name} (não existe nesta vistoria)`}
-              title="Remover item (não existe nesta vistoria)"
+              aria-label={`Remover elemento ${item.name}`}
+              title="Remover elemento"
             >
               <Trash2 size={20} aria-hidden />
             </button>
           )}
           <button
             type="button"
-            data-testid={`orientation-info-${item.name}`}
-            onClick={() => setShowOrientationModal(true)}
-            className="px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wide text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
-            aria-label="Dicas de inspeção"
+            data-testid={`verification-points-${item.name}`}
+            onClick={() => setShowVerificationsModal(true)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
+            aria-label="Itens verificados"
           >
-            Dicas
+            <ClipboardList size={14} aria-hidden />
+            Itens verificados
+            {totalVp > 0 && (
+              <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] tabular-nums text-slate-700">
+                {activeCount}/{totalVp}
+              </span>
+            )}
           </button>
         </div>
       </div>
 
-      <InspectionOrientationModal
-        isOpen={showOrientationModal}
-        onClose={() => setShowOrientationModal(false)}
-        itemTitle={orientation.title}
-        bullets={orientation.bullets}
-      />
-
-      <div className="mb-3">
-        <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-          Condição
-        </label>
-        <div className="flex gap-2">
-          <button
-            data-testid={`condition-aprovado-${item.name}`}
-            onClick={() => handleConditionChange('aprovado')}
-            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
-              item.condition === 'aprovado'
-                ? 'bg-green-600 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Aprovado
-          </button>
-          <button
-            data-testid={`condition-reprovado-${item.name}`}
-            onClick={() => handleConditionChange('reprovado')}
-            className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
-              item.condition === 'reprovado'
-                ? 'bg-red-600 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Reprovado
-          </button>
-        </div>
-      </div>
+      {showVerificationsModal &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-4 sm:items-center">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="vp-modal-title"
+              className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-xl bg-white shadow-xl sm:rounded-xl"
+            >
+              <div className="border-b border-slate-200 px-4 py-3 sm:px-5">
+                <h3
+                  id="vp-modal-title"
+                  className="text-lg font-bold font-secondary uppercase text-slate-900"
+                >
+                  Verificação — {item.name}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Exclua critérios que não se aplicam a esta vistoria. Os restantes contam como itens
+                  verificados.
+                </p>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5">
+                {verificationPoints.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    Nenhum critério listado para este elemento. Use observações e fotos para registar a
+                    verificação.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {verificationPoints.map((vp) => (
+                      <li
+                        key={vp.id}
+                        className={`rounded-lg border p-3 text-sm leading-relaxed ${
+                          vp.excluded
+                            ? 'border-slate-200 bg-slate-50 text-slate-400 line-through'
+                            : 'border-slate-200 bg-white text-slate-800'
+                        }`}
+                      >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                          <span className="min-w-0 flex-1">{vp.text}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleVerificationExcluded(vp.id)}
+                            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide ${
+                              vp.excluded
+                                ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                            }`}
+                          >
+                            {vp.excluded ? 'Incluir' : 'Excluir'}
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className="border-t border-slate-200 p-4 sm:px-5">
+                <button
+                  type="button"
+                  onClick={() => setShowVerificationsModal(false)}
+                  className="min-h-touch w-full rounded-lg bg-slate-900 py-3 text-sm font-semibold text-white hover:bg-slate-800 sm:min-h-0"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       <div className="flex gap-2">
         <button
@@ -335,7 +371,8 @@ const ChecklistItem = ({
           {showMobileWarning && (
             <div className="mb-3 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
               <p className="text-sm text-yellow-800 font-medium">
-                A função "Tirar Foto" está disponível apenas em dispositivos móveis (celular ou tablet).
+                A função &quot;Tirar Foto&quot; está disponível apenas em dispositivos móveis (celular ou
+                tablet).
               </p>
             </div>
           )}
@@ -386,7 +423,7 @@ const ChecklistItem = ({
         <div className="mt-3">
           <textarea
             data-testid={`observation-textarea-${item.name}`}
-            value={item.observations}
+            value={item.observations || ''}
             onChange={(e) => handleObservationsChange(e.target.value)}
             placeholder="Digite suas observações..."
             className="w-full p-3 border border-slate-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
