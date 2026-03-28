@@ -1,6 +1,5 @@
 /**
- * Por tipo de ambiente (room_type): elementos e texto de verificação (formato contínuo).
- * Templates de itens vazios por enquanto — a repor quando definidos.
+ * Por tipo de ambiente (room_type): elementos e texto de verificação.
  */
 
 /** Nome exibido ao adicionar ambiente (tabs / título base). */
@@ -17,32 +16,236 @@ export const ROOM_TYPE_LABELS = {
   cobertura_telhado: 'COBERTURA/TELHADO',
 };
 
+function capitalizeFirst(text) {
+  const t = (text || '').trim();
+  if (!t) return '';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** Nome do elemento + texto dos itens verificados. */
+function E(name, verificationText) {
+  return {
+    name: capitalizeFirst(name.trim()),
+    verificationText: String(verificationText || '').trim(),
+  };
+}
+
+/** Textos de verificação reutilizáveis por tipo de elemento. */
+const V = {
+  pisoAreaExterna:
+    'Nivelamento geral, caimento adequado para drenagem, presença de peças soltas ou ocas, trincas, fissuras ou quebras, desgaste superficial ou acabamento inadequado e rejuntamento.',
+  pisoCeramica:
+    'Nivelamento, alinhamento, presença de peças ocas, trincas, fissuras ou quebras, desgaste superficial, acabamento e rejuntamento.',
+  pisoAreaMolhada:
+    'Nivelamento, caimento adequado em direção ao ralo, presença de peças ocas, trincas, fissuras ou quebras, desgaste superficial, acabamento, rejuntamento e acúmulo de água fora da área de escoamento.',
+  ralosDrenagemExterna:
+    'Funcionamento do escoamento, presença de obstruções, vedação, fixação das grelhas, posicionamento adequado, caimento do piso, retorno de odores, acúmulo de água (empoçamento) e acabamento ao redor.',
+  ralos:
+    'Funcionamento do escoamento, presença de obstruções, retorno de odores, acabamento ao redor e vedação.',
+  murosFechamentos:
+    'Fissuras e trincas, desalinhamento ou inclinação, condições da pintura (manchas, descascamento), presença de umidade ou infiltrações e integridade estrutural aparente.',
+  fachada:
+    'Fissuras e trincas, descolamento de revestimentos, falhas de pintura, manchas de umidade e acabamento geral.',
+  portoesAcessos:
+    'Funcionamento (abertura/fechamento), alinhamento, fixação das ferragens, estado de conservação e sistema de travamento.',
+  calcadasAcessos:
+    'Nivelamento, condição do piso, presença de trincas ou desníveis e segurança de circulação.',
+  estruturaVigas:
+    'Presença de fissuras ou trincas, desalinhamento, exposição de armadura, falhas de acabamento e sinais de infiltração.',
+  limpeza: 'Condição geral de limpeza do ambiente.',
+  dimensoes: 'Conferência das dimensões do ambiente.',
+  instalacoesHidraulicas:
+    'Pontos de água, torneiras, registros, sifões, tubulações aparentes, conexões, vedação, vazamentos, pressão da água, funcionamento geral e acabamento dos pontos.',
+  rodapes: 'Fixação, alinhamento, acabamento, descolamento e integridade.',
+  paredes:
+    'Fissuras e trincas, ondulações ou empenamento, prumo, acabamento superficial e presença de umidade ou infiltrações.',
+  pintura: 'Uniformidade, manchas, bolhas, descascamento e falhas de aplicação.',
+  teto: 'Fissuras e trincas, manchas, sinais de infiltração, nivelamento e acabamento.',
+  tomadasInterruptores:
+    'Funcionamento, fixação, presença de espelhos, quantidade adequada, acionamento adequado e identificação.',
+  iluminacao:
+    'Funcionamento dos pontos de luz, fixação de luminárias, acionamento, distribuição/iluminação do ambiente, fiação aparente e acabamento.',
+  quadroEnergia:
+    'Fixação, identificação dos circuitos, organização interna, disjuntores, barramentos, fiação, aterramento, proteção (DR/DPS), tampa/fechamento, aquecimento anormal, sinais de sobrecarga, acessibilidade, segurança e acabamento geral.',
+  esquadriaPorta:
+    'Funcionamento (abertura e fechamento), alinhamento, fixação, vedação, ferragens (dobradiças, fechaduras), empenamento, folgas, acabamento e integridade geral.',
+  esquadriaJanela:
+    'Funcionamento (abertura e fechamento), alinhamento, fixação, vedação, ferragens (trilhos, roldanas, travas), vidros, acabamento e integridade geral.',
+  vidro: 'Presença de trinca ou quebras, riscos e fixação.',
+  peitoril: 'Nivelamento, fixação, acabamento e integridade.',
+  soleiraBaguete: 'Nivelamento, fixação, acabamento e transição entre ambientes.',
+  revestimentoAzulejo:
+    'Fixação das peças, descolamento, alinhamento, rejuntamento, trincas ou fissuras e acabamento.',
+  bancadas:
+    'Nivelamento, fixação, presença de fissuras ou trincas, vedação e acabamento.',
+  pia: 'Fixação, vedação, funcionamento do escoamento, presença de vazamentos e acabamento.',
+  vasoSanitario:
+    'Fixação, estabilidade, funcionamento da descarga, vedação na base, vazamentos e acabamento.',
+  lavatorioCuba:
+    'Fixação, nivelamento, vedação com a parede ou bancada, escoamento e presença de vazamentos.',
+  boxBanho:
+    'Vedação, fixação, funcionamento e presença de vazamentos para fora da área molhada.',
+  tanque:
+    'Fixação, nivelamento, vedação, integridade e funcionamento do escoamento.',
+  instalacaoMaquina:
+    'Ponto de água, ponto de esgoto, tomada elétrica, posicionamento adequado e condições para instalação.',
+  guardaCorpo:
+    'Fixação, estabilidade, altura adequada, segurança geral, integridade dos materiais e acabamento.',
+  churrasqueiraEstrutura:
+    'Integridade aparente, revestimento, grelha e suportes, duto/chaminé (exaustão), bancada/apoio e limpeza geral.',
+};
+
 /** @type {Record<string, Array<{ name: string, verificationText: string }>>} */
 export const ROOM_ELEMENT_TEMPLATES = {
-  area_externa_comum: [],
-  sala_estar_jantar: [],
-  cozinha: [],
-  area_servico_lavanderia: [],
-  banheiro_social_lavabo: [],
-  quarto_suite: [],
-  varanda_sacada: [],
-  area_gourmet: [],
-  garagem: [],
+  sala_estar_jantar: [
+    E('Piso (Cerâmica)', V.pisoCeramica),
+    E('Rodapés', V.rodapes),
+    E('Paredes', V.paredes),
+    E('Pintura', V.pintura),
+    E('Teto', V.teto),
+    E('Tomadas e Interruptores', V.tomadasInterruptores),
+    E('Iluminação', V.iluminacao),
+    E('Quadro de energia', V.quadroEnergia),
+    E('Esquadria (Porta)', V.esquadriaPorta),
+    E('Esquadria (Janela)', V.esquadriaJanela),
+    E('Vidro', V.vidro),
+    E('Peitoril', V.peitoril),
+    E('Soleira / Baguete', V.soleiraBaguete),
+    E('Limpeza', V.limpeza),
+    E('Dimensões', V.dimensoes),
+  ],
+
+  quarto_suite: [
+    E('Piso (Cerâmica)', V.pisoCeramica),
+    E('Rodapés', V.rodapes),
+    E('Paredes', V.paredes),
+    E('Pintura', V.pintura),
+    E('Teto', V.teto),
+    E('Tomadas e Interruptores', V.tomadasInterruptores),
+    E('Iluminação', V.iluminacao),
+    E('Esquadria (Porta)', V.esquadriaPorta),
+    E('Esquadria (Janela)', V.esquadriaJanela),
+    E('Peitoril', V.peitoril),
+    E('Soleira / Baguete', V.soleiraBaguete),
+    E('Limpeza', V.limpeza),
+    E('Dimensões', V.dimensoes),
+  ],
+
+  cozinha: [
+    E('Piso (Área Molhada)', V.pisoAreaMolhada),
+    E('Rodapés', V.rodapes),
+    E('Paredes', V.paredes),
+    E('Pintura', V.pintura),
+    E('Teto', V.teto),
+    E('Revestimento da Parede (Azulejo)', V.revestimentoAzulejo),
+    E('Bancadas', V.bancadas),
+    E('Pia', V.pia),
+    E('Instalações Hidráulicas', V.instalacoesHidraulicas),
+    E('Ralos', V.ralos),
+    E('Tomadas e Interruptores', V.tomadasInterruptores),
+    E('Iluminação', V.iluminacao),
+    E('Esquadria (Janela)', V.esquadriaJanela),
+    E('Limpeza', V.limpeza),
+    E('Dimensões', V.dimensoes),
+  ],
+
+  banheiro_social_lavabo: [
+    E('Piso (Área Molhada)', V.pisoAreaMolhada),
+    E('Revestimento da Parede (Azulejo)', V.revestimentoAzulejo),
+    E('Teto', V.teto),
+    E('Ralos', V.ralos),
+    E('Instalações Hidráulicas', V.instalacoesHidraulicas),
+    E('Vaso Sanitário', V.vasoSanitario),
+    E('Lavatório / Cuba', V.lavatorioCuba),
+    E('Box / Área de Banho', V.boxBanho),
+    E('Tomadas e Interruptores', V.tomadasInterruptores),
+    E('Iluminação', V.iluminacao),
+    E('Esquadria (Janela)', V.esquadriaJanela),
+    E('Limpeza', V.limpeza),
+    E('Dimensões', V.dimensoes),
+  ],
+
+  area_servico_lavanderia: [
+    E('Piso (Área Molhada)', V.pisoAreaMolhada),
+    E('Paredes', V.paredes),
+    E('Teto', V.teto),
+    E('Ralos', V.ralos),
+    E('Instalações Hidráulicas', V.instalacoesHidraulicas),
+    E('Tanque', V.tanque),
+    E('Instalação para Máquina de Lavar', V.instalacaoMaquina),
+    E('Tomadas e Interruptores', V.tomadasInterruptores),
+    E('Iluminação', V.iluminacao),
+    E('Esquadria (Janela)', V.esquadriaJanela),
+    E('Limpeza', V.limpeza),
+    E('Dimensões', V.dimensoes),
+  ],
+
+  varanda_sacada: [
+    E('Piso (Área Externa)', V.pisoAreaExterna),
+    E('Ralos', V.ralos),
+    E('Guarda-corpo', V.guardaCorpo),
+    E('Esquadria (Porta)', V.esquadriaPorta),
+    E('Peitoril', V.peitoril),
+    E('Paredes', V.paredes),
+    E('Teto', V.teto),
+    E('Iluminação', V.iluminacao),
+    E('Limpeza', V.limpeza),
+    E('Dimensões', V.dimensoes),
+  ],
+
+  area_gourmet: [
+    E('Piso (Área Externa)', V.pisoAreaExterna),
+    E('Revestimento da Parede (Azulejo)', V.revestimentoAzulejo),
+    E('Bancadas', V.bancadas),
+    E('Pia', V.pia),
+    E('Instalações Hidráulicas', V.instalacoesHidraulicas),
+    E('Ralos', V.ralos),
+    E('Churrasqueira (Estrutura)', V.churrasqueiraEstrutura),
+    E('Iluminação', V.iluminacao),
+    E('Limpeza', V.limpeza),
+    E('Dimensões', V.dimensoes),
+  ],
+
+  garagem: [
+    E('Piso (Área Externa)', V.pisoAreaExterna),
+    E('Paredes', V.paredes),
+    E('Ralos e Drenagem (Área Externa)', V.ralosDrenagemExterna),
+    E('Portões e Acessos', V.portoesAcessos),
+    E('Estrutura Aparente (Vigas e Pilares)', V.estruturaVigas),
+    E('Iluminação', V.iluminacao),
+    E('Limpeza', V.limpeza),
+    E('Dimensões', V.dimensoes),
+  ],
+
+  area_externa_comum: [
+    E('Piso (Área Externa)', V.pisoAreaExterna),
+    E('Ralos e Drenagem (Área Externa)', V.ralosDrenagemExterna),
+    E('Muros e Fechamentos', V.murosFechamentos),
+    E('Fachada', V.fachada),
+    E('Calçadas e Acessos', V.calcadasAcessos),
+    E('Instalações Hidráulicas', V.instalacoesHidraulicas),
+    E('Limpeza', V.limpeza),
+    E('Dimensões', V.dimensoes),
+  ],
+
   cobertura_telhado: [],
 };
 
-/** Limpeza e Dimensões (incl. variantes) não usam Existe / Não existe. */
-export function itemSkipsExistsToggle(itemName) {
-  const n = String(itemName || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-  return n.startsWith('limpeza') || n.startsWith('dimensoes');
-}
-
 export function getElementsForRoomType(roomType) {
   return ROOM_ELEMENT_TEMPLATES[roomType] || [];
+}
+
+/** Itens do modelo ainda não adicionados ao ambiente (comparação por nome, sem acentos). */
+export function getAvailableElementsToAdd(roomType, existingItemNames) {
+  const template = getElementsForRoomType(roomType);
+  const norm = (s) =>
+    String(s || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  const used = new Set((existingItemNames || []).map(norm));
+  return template.filter((el) => !used.has(norm(el.name)));
 }
 
 export function buildItemsFromRoomType(roomType, roomIdPrefix) {
@@ -51,7 +254,6 @@ export function buildItemsFromRoomType(roomType, roomIdPrefix) {
     id: `${roomIdPrefix}_i_${idx}`,
     name: el.name,
     verification_text: el.verificationText,
-    exists: itemSkipsExistsToggle(el.name) ? 'sim' : null,
     photos: [],
   }));
 }

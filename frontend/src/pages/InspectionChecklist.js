@@ -19,8 +19,8 @@ import {
   ROOM_TYPE_LABELS,
   ROOM_TYPE_ORDER,
   buildItemsFromRoomType,
+  getAvailableElementsToAdd,
   getElementsForRoomType,
-  itemSkipsExistsToggle,
 } from '../constants/checklistElementTemplates';
 
 function capitalizeFirst(text) {
@@ -56,22 +56,12 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
   }
   verification_text = capitalizeFirst(verification_text);
 
-  let exists;
-  if (itemSkipsExistsToggle(item.name)) {
-    exists = 'sim';
-  } else if (item.exists === 'nao') {
-    exists = 'nao';
-  } else if (item.exists === 'sim') {
-    exists = 'sim';
-  } else {
-    exists = null;
-  }
-
   const {
     condition: _c,
     verification_points: _vp,
     additional_verifications: _av,
     observations: _obs,
+    exists: _exists,
     ...rest
   } = item;
 
@@ -80,7 +70,6 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
     id,
     name: item.name,
     verification_text,
-    exists,
     photos,
   };
 }
@@ -103,9 +92,8 @@ const InspectionChecklist = () => {
   const [deleteItemTarget, setDeleteItemTarget] = useState(null);
   /** Edição do nome exibido do ambiente (ex.: duplicar tipo com sufixo) */
   const [roomNameEdit, setRoomNameEdit] = useState(null);
-  /** Modal: adicionar item personalizado ao ambiente */
+  /** Modal: adicionar item do modelo ao ambiente */
   const [addItemForRoomId, setAddItemForRoomId] = useState(null);
-  const [newItemNameDraft, setNewItemNameDraft] = useState('');
   const contentRef = useRef(null);
 
   const normalizeRoomsChecklist = (roomsChecklist) =>
@@ -314,38 +302,28 @@ const InspectionChecklist = () => {
 
   const cancelAddItemModal = () => {
     setAddItemForRoomId(null);
-    setNewItemNameDraft('');
   };
 
-  const confirmAddItem = () => {
-    const name = newItemNameDraft.trim();
-    if (!name || !addItemForRoomId) {
-      toast.error('Indique o nome do item.');
-      return;
-    }
+  const addTemplateElementToRoom = (el) => {
+    if (!addItemForRoomId || !el) return;
     const rIdx = roomsData.findIndex((r) => r.room_id === addItemForRoomId);
     if (rIdx < 0) return;
     const room = roomsData[rIdx];
     const itemId = `item_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const newItem = {
       id: itemId,
-      name: capitalizeFirst(name),
-      verification_text: '',
-      exists: null,
+      name: el.name,
+      verification_text: el.verificationText,
       photos: [],
     };
     const newRoomsData = [...roomsData];
     newRoomsData[rIdx] = { ...room, items: [...room.items, newItem] };
     setRoomsData(newRoomsData);
     cancelAddItemModal();
-    toast.success('Item adicionado.');
+    toast.success(`Item «${el.name}» adicionado.`);
   };
 
-  /** Obrigatório: Existe ou Não existe escolhido (itens sem toggle contam como ok). */
-  const itemChecklistCompleto = (item) => {
-    if (itemSkipsExistsToggle(item.name)) return true;
-    return item.exists === 'sim' || item.exists === 'nao';
-  };
+  const itemChecklistCompleto = () => true;
 
   const calculateRoomProgress = (room) => {
     const totalItems = room.items.length;
@@ -434,25 +412,7 @@ const InspectionChecklist = () => {
     setDeleteRoomTarget(null);
   };
 
-  const validateChecklist = () => {
-    const missingItems = [];
-
-    roomsData.forEach((room) => {
-      room.items.forEach((item) => {
-        if (itemSkipsExistsToggle(item.name)) return;
-        if (item.exists === 'sim' || item.exists === 'nao') return;
-        missingItems.push(
-          `${room.room_name}: "${item.name || 'Item'}" — indique Existe ou Não existe`
-        );
-      });
-    });
-
-    return missingItems;
-  };
-
-  const pendingChecklistItems = validateChecklist();
-  const canAddAnotherRoom =
-    roomsData.length === 0 || pendingChecklistItems.length === 0;
+  const canAddAnotherRoom = true;
 
   const startEditRoomName = () => {
     if (!selectedRoomId) return;
@@ -482,21 +442,6 @@ const InspectionChecklist = () => {
   };
 
   const handleOpenAddRoomModal = () => {
-    if (roomsData.length > 0) {
-      const missing = validateChecklist();
-      if (missing.length > 0) {
-        const displayItems = missing.slice(0, 5);
-        const remaining = missing.length - 5;
-        let message =
-          '⚠️ Em cada item, selecione Existe ou Não existe antes de adicionar outro ambiente.\n\nPendentes:\n' +
-          displayItems.join('\n');
-        if (remaining > 0) {
-          message += `\n\n... e mais ${remaining} item(s) faltando`;
-        }
-        toast.error(message, { duration: 8000 });
-        return;
-      }
-    }
     setShowAddRoom(true);
   };
 
@@ -505,25 +450,6 @@ const InspectionChecklist = () => {
     if (roomsData.length === 0) {
       toast.error('⚠️ Adicione pelo menos um ambiente antes de continuar!', { duration: 5000 });
       return;
-    }
-
-    // Validar checklist
-    const missingItems = validateChecklist();
-    
-    if (missingItems.length > 0) {
-      // Mostrar mensagem de erro clara
-      const displayItems = missingItems.slice(0, 5);
-      const remaining = missingItems.length - 5;
-      
-      let message =
-        '⚠️ Não é possível continuar!\n\nEm cada elemento do checklist, selecione Existe ou Não existe.\n\nPendentes:\n' +
-        displayItems.join('\n');
-      if (remaining > 0) {
-        message += `\n\n... e mais ${remaining} item(s) faltando`;
-      }
-      
-      toast.error(message, { duration: 8000 });
-      return; // Permanece na página
     }
 
     if (!uid) {
@@ -582,6 +508,14 @@ const InspectionChecklist = () => {
 
   const selectedRoom = roomsData.find((room) => room.room_id === selectedRoomId);
   const selectedRoomIndex = roomsData.findIndex((room) => room.room_id === selectedRoomId);
+
+  const addItemModalRoom = roomsData.find((r) => r.room_id === addItemForRoomId);
+  const availableElementsToAdd = addItemModalRoom
+    ? getAvailableElementsToAdd(
+        addItemModalRoom.room_type,
+        (addItemModalRoom.items || []).map((i) => i.name)
+      )
+    : [];
 
   return (
     <div className="min-h-dvh bg-slate-50 pb-44 sm:pb-40">
@@ -716,48 +650,48 @@ const InspectionChecklist = () => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-item-title"
-            className="w-full max-w-md rounded-t-xl bg-white p-6 shadow-xl sm:rounded-xl"
+            className="flex max-h-[min(85vh,32rem)] w-full max-w-md flex-col rounded-t-xl bg-white shadow-xl sm:max-h-[min(80vh,36rem)] sm:rounded-xl"
           >
-            <h3
-              id="add-item-title"
-              className="mb-2 text-lg font-bold text-slate-900 font-secondary uppercase"
-            >
-              Novo item no ambiente
-            </h3>
-            <p className="mb-4 text-sm text-slate-600">
-              Indique o nome do ponto a verificar (Ex: Vigas e Pilares).
-            </p>
-            <input
-              type="text"
-              data-testid="add-item-name-input"
-              value={newItemNameDraft}
-              onChange={(e) => setNewItemNameDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  confirmAddItem();
-                }
-                if (e.key === 'Escape') cancelAddItemModal();
-              }}
-              placeholder="Nome do item"
-              className="mb-4 w-full rounded-lg border-2 border-slate-200 px-3 py-2.5 text-base outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              autoFocus
-            />
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h3
+                id="add-item-title"
+                className="text-lg font-bold text-slate-900 font-secondary uppercase"
+              >
+                Adicionar item ao ambiente
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Escolha um item do modelo que ainda não está neste ambiente.
+              </p>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2 sm:px-4">
+              {availableElementsToAdd.length === 0 ? (
+                <p className="py-6 text-center text-sm text-slate-500">
+                  Todos os itens do modelo para este tipo de ambiente já foram adicionados.
+                </p>
+              ) : (
+                <ul className="space-y-1.5 pb-2">
+                  {availableElementsToAdd.map((el) => (
+                    <li key={el.name}>
+                      <button
+                        type="button"
+                        data-testid={`add-template-item-${el.name}`}
+                        onClick={() => addTemplateElementToRoom(el)}
+                        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-left text-sm font-semibold text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50"
+                      >
+                        {el.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="border-t border-slate-100 p-4">
               <button
                 type="button"
                 onClick={cancelAddItemModal}
-                className="min-h-touch w-full rounded-lg border-2 border-slate-200 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50 sm:min-h-0 sm:w-auto"
+                className="min-h-touch w-full rounded-lg border-2 border-slate-200 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50 sm:min-h-0"
               >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                data-testid="confirm-add-item-button"
-                onClick={confirmAddItem}
-                className="min-h-touch w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 sm:min-h-0 sm:w-auto"
-              >
-                Adicionar
+                Fechar
               </button>
             </div>
           </div>
@@ -961,7 +895,6 @@ const InspectionChecklist = () => {
                 onClick={() => {
                   if (!selectedRoom) return;
                   setAddItemForRoomId(selectedRoom.room_id);
-                  setNewItemNameDraft('');
                 }}
                 className="inline-flex min-h-touch w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/80 px-4 py-3 text-sm font-semibold text-blue-900 transition-colors hover:border-blue-400 hover:bg-blue-100 sm:min-h-0 sm:w-auto sm:px-5"
               >
@@ -989,18 +922,8 @@ const InspectionChecklist = () => {
             <button
               type="button"
               data-testid="continue-add-room-button"
-              disabled={!canAddAnotherRoom}
-              title={
-                !canAddAnotherRoom
-                  ? 'Selecione Existe ou Não existe em todos os itens antes de adicionar outro ambiente'
-                  : undefined
-              }
               onClick={handleOpenAddRoomModal}
-              className={`flex min-h-touch w-full items-center justify-center gap-2 rounded-lg border py-3 text-sm font-semibold transition-all duration-200 sm:min-h-0 ${
-                canAddAnotherRoom
-                  ? 'border-slate-200 bg-slate-100 text-slate-800 hover:bg-slate-200 active:scale-[0.99]'
-                  : 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
-              }`}
+              className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 py-3 text-sm font-semibold text-slate-800 transition-all duration-200 hover:bg-slate-200 active:scale-[0.99] sm:min-h-0"
             >
               <Plus size={18} />
               Continuar adicionando ambiente
