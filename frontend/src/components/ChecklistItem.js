@@ -195,7 +195,7 @@ const ChecklistItem = ({
         'rounded-lg border transition-[box-shadow,border-color] duration-200',
         'shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
         existsNao
-          ? 'border-red-200/90 bg-gradient-to-b from-red-50/80 to-red-50/30'
+          ? 'border-slate-300/95 bg-gradient-to-b from-slate-100/90 to-slate-50/60 ring-1 ring-slate-200/50'
           : 'border-slate-200/90 bg-white hover:shadow-[0_1px_4px_rgba(15,23,42,0.05)]',
       ].join(' ')}
     >
@@ -230,7 +230,7 @@ const ChecklistItem = ({
                 className={[
                   'whitespace-nowrap rounded-md border px-2 py-1 text-[10px] font-semibold leading-none transition-colors sm:py-1.5 sm:text-[11px]',
                   existsNao
-                    ? 'border-red-600 bg-red-600 text-white shadow-sm'
+                    ? 'border-slate-600 bg-slate-600 text-white shadow-sm'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
                 ].join(' ')}
               >
@@ -267,7 +267,7 @@ const ChecklistItem = ({
         </div>
 
         {existsNao && (
-          <p className="mt-2 rounded border border-red-200/90 bg-white/80 px-2 py-1.5 text-[11px] leading-snug text-red-950">
+          <p className="mt-2 rounded border border-slate-200 bg-white/90 px-2 py-1.5 text-[11px] leading-snug text-slate-700">
             Item inexistente — Não irá constar no Laudo.
           </p>
         )}
