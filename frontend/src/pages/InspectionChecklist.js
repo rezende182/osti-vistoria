@@ -897,7 +897,7 @@ const InspectionChecklist = () => {
                       ? (ev) => handleItemDrop(ev, selectedRoomIndex, itemIndex)
                       : undefined
                   }
-                  className={`mb-3 rounded-xl transition-opacity ${
+                  className={`mb-4 last:mb-0 rounded-xl transition-opacity ${
                     itemDragSource?.roomIndex === selectedRoomIndex &&
                     itemDragSource?.itemIndex === itemIndex
                       ? 'opacity-50'
