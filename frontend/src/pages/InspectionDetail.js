@@ -74,17 +74,22 @@ function empreendimentoConstrutoraExibicao(emp, cons) {
   return '';
 }
 
-/** Empreendimento e construtora em linhas separadas (quebra de palavras longas). */
+/** Empreendimento/construtora numa linha (ex.: orleans/jacinto). */
 function EmpreendimentoConstrutoraValue({ empreendimento, construtora }) {
   const e = tStr(empreendimento);
   const k = tStr(construtora);
   if (!e && !k) return null;
+  if (e && k) {
+    return (
+      <span className="block max-w-full break-words text-sm font-medium leading-snug text-slate-900">
+        {e}/{k}
+      </span>
+    );
+  }
   return (
-    <div className="break-words text-sm font-medium leading-snug text-slate-900">
-      {e ? <p>{e}</p> : null}
-      {e && k ? <p className="py-0.5 text-center text-slate-400">/</p> : null}
-      {k ? <p>{k}</p> : null}
-    </div>
+    <span className="block max-w-full break-words text-sm font-medium leading-snug text-slate-900">
+      {e || k}
+    </span>
   );
 }
 
@@ -516,7 +521,12 @@ const InspectionDetail = () => {
               Verificações dos Ambientes e Não Conformidades
             </h2>
             {inspection.rooms_checklist.map((room, index) => {
-              const itensLista = (room.items || []).filter((item) => item && item.name);
+              const itensLista = (room.items || []).filter(
+                (item) =>
+                  item &&
+                  item.name &&
+                  String(item.name).trim().toLowerCase() !== 'vidro'
+              );
 
               if (itensLista.length === 0) return null;
 
@@ -536,7 +546,11 @@ const InspectionDetail = () => {
                           <span className="min-w-0 flex-1 whitespace-normal font-sans text-slate-800">
                             {item.name}
                           </span>
-                          <span className="shrink-0 text-right font-sans font-semibold tabular-nums text-slate-700">
+                          <span
+                            className={`shrink-0 text-right font-sans font-semibold tabular-nums ${
+                              nc > 0 ? 'text-slate-700' : 'text-red-600'
+                            }`}
+                          >
                             {nc > 0 ? `Não Conformidades (${nc})` : '—'}
                           </span>
                         </div>

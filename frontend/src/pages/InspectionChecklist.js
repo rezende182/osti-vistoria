@@ -104,7 +104,10 @@ const InspectionChecklist = () => {
     (roomsChecklist || []).map((room) => ({
       ...room,
       items: (room.items || [])
-        .filter((it) => it)
+        .filter(
+          (it) =>
+            it && String(it.name || '').trim().toLowerCase() !== 'vidro'
+        )
         .map((it, idx) => hydrateChecklistItem(it, room.room_type, room.room_id, idx)),
     }));
 

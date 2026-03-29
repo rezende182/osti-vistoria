@@ -128,11 +128,11 @@ function pdfEmpreendimentoConstrutoraTexto(empreendimento, construtora) {
   return e || k || '';
 }
 
-/** Célula da tabela de identificação: empreendimento, linha com /, construtora (quebra de linha). */
+/** Célula da tabela de identificação: `empreendimento/construtora` numa linha (ex.: orleans/jacinto). */
 function pdfEmpreendimentoConstrutoraCellValue(inspection) {
   const e = pdfTrim(inspection.empreendimento);
   const k = pdfTrim(inspection.construtora);
-  if (e && k) return `${e}\n/\n${k}`;
+  if (e && k) return `${e}/${k}`;
   return e || k || '';
 }
 
@@ -635,8 +635,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const identificacaoData = buildIdentificacaoTableBody(inspection);
 
-  const identLabelColW = 46;
-  const identValuePairW = Math.max(22, (contentWidth - identLabelColW * 2) / 2);
+  /** Rótulos mais estreitos para dar mais largura aos valores (ex.: empreendimento/construtora numa linha). */
+  const identLabelColW = 32;
+  const identValuePairW = Math.max(28, (contentWidth - identLabelColW * 2) / 2);
 
   autoTable(doc, {
     startY: yPos,
@@ -824,7 +825,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     let roomNumber = 1;
 
     for (const room of inspection.rooms_checklist) {
-      const itensNoPdf = (room.items || []).filter((item) => item && item.name);
+      const itensNoPdf = (room.items || []).filter(
+        (item) =>
+          item && item.name && String(item.name).trim().toLowerCase() !== 'vidro'
+      );
 
       if (itensNoPdf.length === 0) {
         continue;
@@ -839,6 +843,14 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         yPos,
         `${checklistChapterNum}.${roomNumber} ${room.room_name.toUpperCase()}`
       );
+
+      checkNewPage(16);
+      doc.setFont(PDF_FONT, 'bold');
+      doc.setFontSize(PDF_BODY_PT);
+      doc.setTextColor(0, 0, 0);
+      doc.text('ITEM: ELEMENTO E VERIFICAÇÕES', listX, yPos);
+      yPos += PDF_BODY_LINE_MM + PDF_LIST_ITEM_EXTRA_GAP_MM * 0.5;
+      doc.setFont(PDF_FONT, 'normal');
 
       for (const item of itensNoPdf) {
         checkNewPage(18);
