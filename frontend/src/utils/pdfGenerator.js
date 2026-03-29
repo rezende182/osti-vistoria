@@ -3,7 +3,6 @@ import autoTable from 'jspdf-autotable';
 import { TEXTOS_CONCLUSAO } from '../constants/inspectionClassificacao';
 import {
   drawBodyParagraphs,
-  drawLaudoFieldCard,
   drawResponsavelAssinaturaSection,
   drawChapterTitle,
   drawSubsectionTitle,
@@ -129,6 +128,26 @@ function pdfEmpreendimentoConstrutoraTexto(empreendimento, construtora) {
   return e || k || '';
 }
 
+/** Célula da tabela de identificação: empreendimento, linha com /, construtora (quebra de linha). */
+function pdfEmpreendimentoConstrutoraCellValue(inspection) {
+  const e = pdfTrim(inspection.empreendimento);
+  const k = pdfTrim(inspection.construtora);
+  if (e && k) return `${e}\n/\n${k}`;
+  return e || k || '';
+}
+
+function getItemVerificationBody(item) {
+  let mainVerify = (item.verification_text || '').trim();
+  if (!mainVerify && Array.isArray(item.verification_points) && item.verification_points.length) {
+    mainVerify = item.verification_points
+      .filter((vp) => vp && !vp.excluded)
+      .map((vp) => (vp.text || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  }
+  return mainVerify;
+}
+
 /** Apartamento | Casa Térrea | Sobrado (uma linha no laudo). */
 function pdfTipoImovelUnificado(inspection) {
   const cat = inspection.imovel_categoria;
@@ -205,12 +224,17 @@ function buildIdentificacaoTableBody(inspection) {
     }
     const cidUf = pdfCidadeUfTexto(inspection.cidade, inspection.uf);
     rows.push(pdfIdentRowFull('Cidade', cidUf || '—', true));
-    const empCons = pdfIdentRowFull(
-      'Empreendimento/Construtora',
-      pdfEmpreendimentoConstrutoraTexto(inspection.empreendimento, inspection.construtora),
-      false
-    );
-    if (empCons) rows.push(empCons);
+    const empConsVal = pdfEmpreendimentoConstrutoraCellValue(inspection);
+    if (empConsVal) {
+      rows.push([
+        pdfIdentLabelCell('Empreendimento/Construtora'),
+        {
+          content: empConsVal,
+          colSpan: 3,
+          styles: { overflow: 'linebreak' },
+        },
+      ]);
+    }
     const tipo = inspection.tipo_imovel;
     const tipoStr =
       tipo === 'novo'
@@ -253,12 +277,17 @@ function buildIdentificacaoTableBody(inspection) {
     if (apt) rows.push(apt);
   }
 
-  const empConsG = pdfIdentRowFull(
-    'Empreendimento/Construtora',
-    pdfEmpreendimentoConstrutoraTexto(inspection.empreendimento, inspection.construtora),
-    false
-  );
-  if (empConsG) rows.push(empConsG);
+  const empConsGVal = pdfEmpreendimentoConstrutoraCellValue(inspection);
+  if (empConsGVal) {
+    rows.push([
+      pdfIdentLabelCell('Empreendimento/Construtora'),
+      {
+        content: empConsGVal,
+        colSpan: 3,
+        styles: { overflow: 'linebreak' },
+      },
+    ]);
+  }
 
   const tipoLinhaG = pdfTipoImovelUnificado(inspection);
   const tipoRowG = pdfIdentRowFull('Tipo do Imóvel', tipoLinhaG, false);
@@ -620,6 +649,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       textColor: [0, 0, 0],
       lineColor: [0, 0, 0],
       lineWidth: 0.15,
+      overflow: 'linebreak',
     },
     columnStyles: {
       0: {
@@ -675,18 +705,26 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const entregaLaudoExt = isEntregaImovelLaudoExtended(inspection);
   const checklistChapterNum = entregaLaudoExt ? 6 : 4;
-  const conclusaoChapterNum = entregaLaudoExt ? 7 : 5;
-  const assinaturaChapterNum = entregaLaudoExt ? 8 : 6;
-  const legalChapterNum = entregaLaudoExt ? 9 : 7;
+  const ncChapterNum = entregaLaudoExt ? 7 : 5;
+  const conclusaoChapterNum = entregaLaudoExt ? 8 : 6;
+  const assinaturaChapterNum = entregaLaudoExt ? 9 : 7;
+  const legalChapterNum = entregaLaudoExt ? 10 : 8;
 
   if (entregaLaudoExt) {
-    const metaText = finalizeLaudoMetodologiaPdf(inspection, checklistChapterNum);
+    const metaText = finalizeLaudoMetodologiaPdf(inspection, ncChapterNum);
     const objT = pdfTrim(inspection.laudo_objetivo);
 
     yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '3. OBJETIVO', {
       minFollowingMm: 36,
     });
-    yPos = drawLaudoFieldCard(doc, margin, contentWidth, yPos, objT, checkNewPage);
+    yPos = drawBodyParagraphs(
+      doc,
+      objT || '\u2014',
+      margin,
+      contentWidth,
+      yPos,
+      checkNewPage
+    );
 
     checkNewPage(36);
     yPos = drawChapterTitle(
@@ -723,7 +761,14 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '5. METODOLOGIA', {
       minFollowingMm: 36,
     });
-    yPos = drawLaudoFieldCard(doc, margin, contentWidth, yPos, metaText, checkNewPage);
+    yPos = drawBodyParagraphs(
+      doc,
+      metaText || '\u2014',
+      margin,
+      contentWidth,
+      yPos,
+      checkNewPage
+    );
 
     checkNewPage(52);
     yPos = drawChapterTitle(
@@ -772,14 +817,14 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
   }
 
+  const checklistTextWidth = contentWidth - PDF_LIST_INDENT_MM;
+  const ncPhotoEntries = [];
+
   if (inspection.rooms_checklist && inspection.rooms_checklist.length > 0) {
     let roomNumber = 1;
 
     for (const room of inspection.rooms_checklist) {
-      // Itens no laudo: exclui "Não existe" (não entra no PDF)
-      const itensNoPdf = (room.items || []).filter(
-        (item) => item && item.name
-      );
+      const itensNoPdf = (room.items || []).filter((item) => item && item.name);
 
       if (itensNoPdf.length === 0) {
         continue;
@@ -796,94 +841,21 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       );
 
       for (const item of itensNoPdf) {
-        // Espaço mínimo para faixa + condição (~30 mm); fotos quebram depois
-        checkNewPage(30);
+        checkNewPage(18);
 
-        // FAIXA CINZA com nome do item (#CDCDCC)
-        doc.setFillColor(205, 205, 204);
-        doc.rect(margin, yPos - 4, contentWidth, 10, 'F');
-        
-        doc.setFont(PDF_FONT, 'bold');
+        const mainVerify = getItemVerificationBody(item);
+        const block = mainVerify ? `${item.name}: ${mainVerify}` : `${item.name}: \u2014`;
+        doc.setFont(PDF_FONT, 'normal');
         doc.setFontSize(PDF_BODY_PT);
         doc.setTextColor(0, 0, 0);
-        doc.text(item.name, listX, yPos + 2);
-        yPos += 12;
+        yPos = drawBodyParagraphs(doc, block, listX, checklistTextWidth, yPos, checkNewPage);
+        yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
 
-        const checklistTextWidth = contentWidth - PDF_LIST_INDENT_MM;
-
-        let mainVerify = (item.verification_text || '').trim();
-        if (!mainVerify && Array.isArray(item.verification_points) && item.verification_points.length) {
-          mainVerify = item.verification_points
-            .filter((vp) => vp && !vp.excluded)
-            .map((vp) => (vp.text || '').trim())
-            .filter(Boolean)
-            .join(', ');
-        }
-        if (mainVerify) {
-          doc.setFont(PDF_FONT, 'bold');
-          doc.setFontSize(PDF_BODY_PT);
-          doc.setTextColor(0, 0, 0);
-          doc.text('Elementos e verificações:', listX, yPos);
-          yPos += PDF_BODY_LINE_MM;
-          doc.setFont(PDF_FONT, 'normal');
-          yPos = drawBodyParagraphs(
-            doc,
-            mainVerify,
-            listX,
-            checklistTextWidth,
-            yPos,
-            checkNewPage
-          );
-          yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
-        }
-
-        // Fotos: legenda `Foto N: …` com quebra na largura da imagem; sem cabeçalho "Fotos:"
-        const photos = item.photos || [];
-        if (photos.length > 0) {
-          /* 15 cm largura × 10 cm altura (paisagem) */
-          const imgWidth = 150;
-          const imgHeight = 100;
-
-          for (const photo of photos) {
-            /* 1,5 mm face ao conteúdo acima; topo da foto colado à legenda (ver drawPdfPhotoCaptionBoldPrefix) */
-            const gapAboveCaption = 1.5;
-            yPos += gapAboveCaption;
-
-            const imgX = (pageWidth - imgWidth) / 2;
-            const parts = buildPdfPhotoCaptionParts(photo.caption, photo.number);
-            const approxLines = wrapPdfCaptionToImageWidth(
-              doc,
-              `${parts.prefix}${parts.body}`,
-              imgWidth
-            ).length;
-            const captionBlockH = approxLines * PDF_BODY_LINE_MM + 1;
-            checkNewPage(captionBlockH + imgHeight + 14);
-
-            yPos = drawPdfPhotoCaptionBoldPrefix(
-              doc,
-              imgX,
-              imgWidth,
-              yPos,
-              parts
-            );
-
-            if (photo.url) {
-              try {
-                doc.addImage(photo.url, 'JPEG', imgX, yPos, imgWidth, imgHeight);
-                yPos += imgHeight + 8;
-              } catch (e) {
-                console.error('Erro ao adicionar imagem:', e);
-                doc.setFont(PDF_FONT, 'italic');
-                doc.text('[Imagem não disponível]', pageWidth / 2, yPos, {
-                  align: 'center',
-                });
-                yPos += 8;
-              }
-            }
+        for (const p of item.photos || []) {
+          if (p && p.url) {
+            ncPhotoEntries.push({ room, photo: p });
           }
         }
-
-        yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
       }
 
       yPos += PDF_LIST_ITEM_EXTRA_GAP_MM * 2;
@@ -897,7 +869,94 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   // ============================================================
-  // 5. CONCLUSÃO (espaço antes do título = 12 pt via drawChapterTitle; corpo = drawBodyParagraphs)
+  // N. NÃO CONFORMIDADES (fotos e descrições)
+  // ============================================================
+  checkNewPage(40);
+  yPos = drawChapterTitle(
+    doc,
+    margin,
+    contentWidth,
+    yPos,
+    `${ncChapterNum}. NÃO CONFORMIDADES`,
+    { minFollowingMm: 52 }
+  );
+
+  const imgWidthNc = 150;
+  const imgHeightNc = 100;
+
+  if (ncPhotoEntries.length === 0) {
+    doc.setFont(PDF_FONT, 'italic');
+    doc.setFontSize(PDF_BODY_PT);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Nenhuma não conformidade registrada fotograficamente.', listX, yPos);
+    yPos += PDF_BODY_LINE_MM;
+  } else {
+    let ncIdx = 0;
+    for (const { room, photo } of ncPhotoEntries) {
+      ncIdx += 1;
+      const imgX = (pageWidth - imgWidthNc) / 2;
+      const parts = buildPdfPhotoCaptionParts(photo.caption, photo.number);
+      const approxLines = wrapPdfCaptionToImageWidth(
+        doc,
+        `${parts.prefix}${parts.body}`,
+        imgWidthNc
+      ).length;
+      const captionBlockH = approxLines * PDF_BODY_LINE_MM + 1;
+      const descText = pdfTrim(photo.description);
+      const descLines = descText
+        ? doc.splitTextToSize(descText, contentWidth).length
+        : 1;
+      const descBlockH = descLines * PDF_BODY_LINE_MM + PDF_BODY_LINE_MM * 2;
+      checkNewPage(
+        PDF_BODY_LINE_MM * 4 + captionBlockH + imgHeightNc + descBlockH + 12
+      );
+
+      yPos += 2;
+      doc.setFont(PDF_FONT, 'bold');
+      doc.setFontSize(PDF_BODY_PT);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`ITEM${String(ncIdx).padStart(2, '0')}`, margin, yPos);
+      yPos += PDF_BODY_LINE_MM;
+      doc.text(`LOCAL: ${String(room.room_name || '').toUpperCase()}`, margin, yPos);
+      yPos += PDF_BODY_LINE_MM + 1;
+
+      doc.setFont(PDF_FONT, 'normal');
+      const gapAboveCaption = 1.5;
+      yPos += gapAboveCaption;
+
+      yPos = drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidthNc, yPos, parts);
+
+      if (photo.url) {
+        try {
+          const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
+          doc.addImage(photo.url, imgFmt, imgX, yPos, imgWidthNc, imgHeightNc);
+          yPos += imgHeightNc + 6;
+        } catch (e) {
+          console.error('Erro ao adicionar imagem (NC):', e);
+          doc.setFont(PDF_FONT, 'italic');
+          doc.text('[Imagem não disponível]', pageWidth / 2, yPos, { align: 'center' });
+          yPos += 8;
+        }
+      }
+
+      doc.setFont(PDF_FONT, 'bold');
+      doc.text('DESCRIÇÃO:', margin, yPos);
+      yPos += PDF_BODY_LINE_MM;
+      doc.setFont(PDF_FONT, 'normal');
+      yPos = drawBodyParagraphs(
+        doc,
+        descText || '\u2014',
+        margin,
+        contentWidth,
+        yPos,
+        checkNewPage
+      );
+      yPos += PDF_LIST_ITEM_EXTRA_GAP_MM * 2;
+    }
+  }
+
+  // ============================================================
+  // CONCLUSÃO
   // ============================================================
   checkNewPage(40);
   yPos = drawChapterTitle(

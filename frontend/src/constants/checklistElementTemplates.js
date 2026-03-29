@@ -111,49 +111,49 @@ const V = {
 /**
  * Catálogo completo para «Adicionar item» (qualquer ambiente).
  * Itens já presentes no ambiente são filtrados por nome.
+ * Ordem: geral → estrutura/circulação → pisos → fachadas/acessos → verticais → esquadrias → elétrica → água/gás → banho/lavanderia → lazer → mobiliário.
  */
 export const MASTER_ITEM_CATALOG = [
-  E('Piso (Área Externa)', V.pisoAreaExterna),
+  E('Limpeza', V.limpeza),
+  E('Dimensões', V.dimensoes),
+  E('Estrutura Aparente (Vigas e Pilares)', V.estruturaVigas),
+  E('Escada', V.escada),
+  E('Guarda-corpo', V.guardaCorpo),
   E('Piso (Cerâmica)', V.pisoCeramica),
   E('Piso (Contrapiso)', V.pisoContrapiso),
-  E('Ralos e Drenagem (Área Externa)', V.ralosDrenagemExterna),
+  E('Piso (Área Externa)', V.pisoAreaExterna),
+  E('Piso (Área Molhada)', V.pisoAreaMolhada),
+  E('Calçadas e Acessos', V.calcadasAcessos),
   E('Muros e Fechamentos', V.murosFechamentos),
   E('Fachada', V.fachada),
   E('Portões e Acessos', V.portoesAcessos),
-  E('Calçadas e Acessos', V.calcadasAcessos),
-  E('Estrutura Aparente (Vigas e Pilares)', V.estruturaVigas),
-  E('Limpeza', V.limpeza),
-  E('Dimensões', V.dimensoes),
-  E('Piscina', V.piscina),
-  E('Instalações Hidráulicas', V.instalacoesHidraulicas),
-  E('Rodapés', V.rodapes),
+  E('Ralos e Drenagem (Área Externa)', V.ralosDrenagemExterna),
+  E('Ralos', V.ralos),
   E('Paredes', V.paredes),
   E('Pintura', V.pintura),
   E('Teto', V.teto),
+  E('Rodapés', V.rodapes),
+  E('Revestimento da Parede (Azulejo)', V.revestimentoAzulejo),
+  E('Esquadria (Porta)', V.esquadriaPorta),
+  E('Esquadria (Janela)', V.esquadriaJanela),
+  E('Peitoril', V.peitoril),
+  E('Soleira / Baguete', V.soleiraBaguete),
   E('Tomadas e Interruptores', V.tomadasInterruptores),
   E('Iluminação', V.iluminacao),
   E('Quadro de energia', V.quadroEnergia),
-  E('Esquadria (Porta)', V.esquadriaPorta),
-  E('Esquadria (Janela)', V.esquadriaJanela),
-  E('Vidro', V.vidro),
-  E('Peitoril', V.peitoril),
-  E('Soleira / Baguete', V.soleiraBaguete),
   E('Infraestrutura para Ar-Condicionado', V.infraAC),
-  E('Revestimento da Parede (Azulejo)', V.revestimentoAzulejo),
-  E('Bancadas', V.bancadas),
-  E('Pia', V.pia),
-  E('Ralos', V.ralos),
+  E('Instalações Hidráulicas', V.instalacoesHidraulicas),
+  E('Instalações de Gás', V.instalacoesGas),
   E('Ventilação', V.ventilacao),
-  E('Piso (Área Molhada)', V.pisoAreaMolhada),
+  E('Pia', V.pia),
+  E('Bancadas', V.bancadas),
   E('Vaso Sanitário', V.vasoSanitario),
   E('Lavatório / Cuba', V.lavatorioCuba),
   E('Box / Área de Banho', V.boxBanho),
-  E('Escada', V.escada),
   E('Tanque', V.tanque),
   E('Instalação para Máquina de Lavar', V.instalacaoMaquina),
-  E('Guarda-corpo', V.guardaCorpo),
+  E('Piscina', V.piscina),
   E('Churrasqueira (Estrutura)', V.churrasqueiraEstrutura),
-  E('Instalações de Gás', V.instalacoesGas),
   E('Móveis', V.moveis),
   E('Eletrodomésticos', V.eletrodomesticos),
 ];
@@ -171,7 +171,6 @@ export const ROOM_ELEMENT_TEMPLATES = {
     E('Quadro de energia', V.quadroEnergia),
     E('Esquadria (Porta)', V.esquadriaPorta),
     E('Esquadria (Janela)', V.esquadriaJanela),
-    E('Vidro', V.vidro),
     E('Peitoril', V.peitoril),
     E('Soleira / Baguete', V.soleiraBaguete),
     E('Limpeza', V.limpeza),
@@ -298,7 +297,8 @@ export function getElementsForRoomType(roomType) {
   return ROOM_ELEMENT_TEMPLATES[roomType] || [];
 }
 
-function normalizeItemName(s) {
+/** Comparação de nomes de item (acentos, maiúsculas). */
+export function normalizeChecklistItemName(s) {
   return String(s || '')
     .trim()
     .toLowerCase()
@@ -306,10 +306,16 @@ function normalizeItemName(s) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+/** Texto de verificação do catálogo mestre para um nome de item (ou null). */
+export function getMasterCatalogEntryByName(itemName) {
+  const n = normalizeChecklistItemName(itemName);
+  return MASTER_ITEM_CATALOG.find((el) => normalizeChecklistItemName(el.name) === n) || null;
+}
+
 /** Itens do catálogo global ainda não adicionados ao ambiente (comparação por nome, sem acentos). */
 export function getAvailableElementsToAdd(existingItemNames) {
-  const used = new Set((existingItemNames || []).map(normalizeItemName));
-  return MASTER_ITEM_CATALOG.filter((el) => !used.has(normalizeItemName(el.name)));
+  const used = new Set((existingItemNames || []).map(normalizeChecklistItemName));
+  return MASTER_ITEM_CATALOG.filter((el) => !used.has(normalizeChecklistItemName(el.name)));
 }
 
 export function buildItemsFromRoomType(roomType, roomIdPrefix) {

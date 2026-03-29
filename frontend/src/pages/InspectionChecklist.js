@@ -21,6 +21,8 @@ import {
   buildItemsFromRoomType,
   getAvailableElementsToAdd,
   getElementsForRoomType,
+  getMasterCatalogEntryByName,
+  normalizeChecklistItemName,
 } from '../constants/checklistElementTemplates';
 
 function capitalizeFirst(text) {
@@ -46,10 +48,12 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
 
   const templateEls = getElementsForRoomType(roomType);
   const match = templateEls.find(
-    (e) => (e.name || '').toLowerCase() === (item.name || '').toLowerCase()
+    (e) => normalizeChecklistItemName(e.name) === normalizeChecklistItemName(item.name)
   );
-  if (!verification_text && match?.verificationText) {
-    verification_text = match.verificationText;
+  const catalogMatch = getMasterCatalogEntryByName(item.name);
+  const resolvedText = match?.verificationText || catalogMatch?.verificationText;
+  if (!verification_text && resolvedText) {
+    verification_text = resolvedText;
   }
   if (!verification_text) {
     verification_text = 'Pontos de verificação do elemento';
@@ -159,15 +163,16 @@ const InspectionChecklist = () => {
       ...room,
       items: room.items.map((item) => {
         const photos = (item.photos || []).map((photo) => {
-          // Preserva a parte da legenda após o número (se houver)
           const existingCaption = photo.caption || '';
           const captionParts = existingCaption.match(/^Foto \d+\.\s*(.*)/);
           const userText = captionParts ? captionParts[1] : '';
-          
+          const description = photo?.description ?? '';
+
           const updatedPhoto = {
             ...photo,
             number: globalNumber,
-            caption: `Foto ${globalNumber}. ${userText}`
+            caption: `Foto ${globalNumber}. ${userText}`,
+            description,
           };
           globalNumber++;
           return updatedPhoto;
@@ -199,7 +204,8 @@ const InspectionChecklist = () => {
     const newPhoto = {
       url: photoData,
       caption: `Foto 0. `,
-      number: 0
+      number: 0,
+      description: '',
     };
     
     item.photos = [...(item.photos || []), newPhoto];
@@ -306,19 +312,23 @@ const InspectionChecklist = () => {
 
   const addTemplateElementToRoom = (el) => {
     if (!addItemForRoomId || !el) return;
-    const rIdx = roomsData.findIndex((r) => r.room_id === addItemForRoomId);
-    if (rIdx < 0) return;
-    const room = roomsData[rIdx];
-    const itemId = `item_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-    const newItem = {
-      id: itemId,
-      name: el.name,
-      verification_text: el.verificationText,
-      photos: [],
-    };
-    const newRoomsData = [...roomsData];
-    newRoomsData[rIdx] = { ...room, items: [...room.items, newItem] };
-    setRoomsData(newRoomsData);
+    const addKey = normalizeChecklistItemName(el.name);
+    setRoomsData((prev) => {
+      const rIdx = prev.findIndex((r) => r.room_id === addItemForRoomId);
+      if (rIdx < 0) return prev;
+      const room = prev[rIdx];
+      if (room.items.some((it) => normalizeChecklistItemName(it.name) === addKey)) return prev;
+      const itemId = `item_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const newItem = {
+        id: itemId,
+        name: el.name,
+        verification_text: el.verificationText,
+        photos: [],
+      };
+      const next = [...prev];
+      next[rIdx] = { ...room, items: [...room.items, newItem] };
+      return next;
+    });
     cancelAddItemModal();
     toast.success(`Item «${el.name}» adicionado.`);
   };

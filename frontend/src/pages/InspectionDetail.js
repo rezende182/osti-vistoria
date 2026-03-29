@@ -74,6 +74,20 @@ function empreendimentoConstrutoraExibicao(emp, cons) {
   return '';
 }
 
+/** Empreendimento e construtora em linhas separadas (quebra de palavras longas). */
+function EmpreendimentoConstrutoraValue({ empreendimento, construtora }) {
+  const e = tStr(empreendimento);
+  const k = tStr(construtora);
+  if (!e && !k) return null;
+  return (
+    <div className="break-words text-sm font-medium leading-snug text-slate-900">
+      {e ? <p>{e}</p> : null}
+      {e && k ? <p className="py-0.5 text-center text-slate-400">/</p> : null}
+      {k ? <p>{k}</p> : null}
+    </div>
+  );
+}
+
 function IdBlock({ title, children }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50/90 to-white p-4 shadow-sm">
@@ -338,10 +352,10 @@ const InspectionDetail = () => {
                     inspection.construtora
                   ) ? (
                     <IdRow label="Empreendimento/Construtora">
-                      {empreendimentoConstrutoraExibicao(
-                        inspection.empreendimento,
-                        inspection.construtora
-                      )}
+                      <EmpreendimentoConstrutoraValue
+                        empreendimento={inspection.empreendimento}
+                        construtora={inspection.construtora}
+                      />
                     </IdRow>
                   ) : null}
                   {condicaoImovelLabel(inspection.tipo_imovel) ? (
@@ -433,10 +447,10 @@ const InspectionDetail = () => {
                     inspection.construtora
                   ) ? (
                     <IdRow label="Empreendimento/Construtora">
-                      {empreendimentoConstrutoraExibicao(
-                        inspection.empreendimento,
-                        inspection.construtora
-                      )}
+                      <EmpreendimentoConstrutoraValue
+                        empreendimento={inspection.empreendimento}
+                        construtora={inspection.construtora}
+                      />
                     </IdRow>
                   ) : null}
                   {tipoImovelUnificadoLabel(inspection) ? (
@@ -498,29 +512,32 @@ const InspectionDetail = () => {
         {/* Checklist Summary */}
         {inspection.rooms_checklist?.length > 0 && (
           <div className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6 mb-4">
-            <h2 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">Inspeção Técnica e Checklist de Verificação</h2>
+            <h2 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">
+              Verificações dos Ambientes e Não Conformidades
+            </h2>
             {inspection.rooms_checklist.map((room, index) => {
-              // Filtrar apenas itens que existem (aprovados ou reprovados)
               const itensLista = (room.items || []).filter((item) => item && item.name);
 
               if (itensLista.length === 0) return null;
-              
+
               return (
                 <div key={index} className="mb-4 pb-4 border-b border-slate-200 last:border-0">
-                  <h3 className="font-bold text-slate-900 mb-2">{room.room_name}</h3>
-                  <div className="space-y-1">
+                  <h3 className="font-bold text-slate-900 mb-3 font-secondary uppercase tracking-tight">
+                    {room.room_name}
+                  </h3>
+                  <div className="space-y-2 font-mono text-[13px] leading-snug">
                     {itensLista.map((item, itemIndex) => {
-                      const fotoOk = item.photos && item.photos.length > 0;
-                      const registo = fotoOk;
+                      const nc = (item.photos || []).length;
                       return (
-                        <div key={itemIndex} className="flex items-start justify-between gap-2 text-sm">
-                          <div className="min-w-0 flex-1">
-                            <span className="text-slate-700">{item.name}</span>
-                          </div>
-                          <span
-                            className={`shrink-0 font-semibold ${registo ? 'text-green-600' : 'text-slate-400'}`}
-                          >
-                            {registo ? 'Registado' : '—'}
+                        <div
+                          key={itemIndex}
+                          className="flex items-baseline justify-between gap-4 border-b border-dashed border-slate-100 pb-2 last:border-0"
+                        >
+                          <span className="min-w-0 flex-1 whitespace-normal font-sans text-slate-800">
+                            {item.name}
+                          </span>
+                          <span className="shrink-0 text-right font-sans font-semibold tabular-nums text-slate-700">
+                            {nc > 0 ? `Não Conformidades (${nc})` : '—'}
                           </span>
                         </div>
                       );

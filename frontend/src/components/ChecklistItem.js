@@ -121,6 +121,12 @@ const ChecklistItem = ({
     onChange({ ...item, photos: newPhotos });
   };
 
+  const updatePhotoDescription = (index, description) => {
+    const newPhotos = [...(item.photos || [])];
+    newPhotos[index] = { ...newPhotos[index], description };
+    onChange({ ...item, photos: newPhotos });
+  };
+
   const photos = (item.photos || []).map((photo, index) => {
     if (typeof photo === 'string') {
       return { url: photo, caption: `Foto ${index + 1}`, number: index + 1 };
@@ -179,8 +185,9 @@ const ChecklistItem = ({
         <div className="flex min-w-0 items-start gap-2">
           {reorder}
           <div className="min-w-0 flex-1">
+            <div className="rounded-lg border border-slate-200/90 bg-gradient-to-br from-slate-50/95 to-white px-3 py-2.5 shadow-sm ring-1 ring-slate-100/70 sm:px-3.5 sm:py-3">
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-              <h4 className="min-w-0 flex-1 text-[0.9375rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[15px] font-secondary">
+              <h4 className="min-w-0 flex-1 text-base font-bold leading-snug tracking-tight text-slate-950 sm:text-[1.05rem] font-secondary">
                 {item.name}
               </h4>
               <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
@@ -207,6 +214,7 @@ const ChecklistItem = ({
                   </button>
                 )}
               </div>
+            </div>
             </div>
           </div>
         </div>
@@ -337,11 +345,23 @@ const ChecklistItem = ({
                         </div>
                         <input
                           type="text"
-                          value={photo.caption}
+                          value={photo.caption || ''}
                           onChange={(e) => updatePhotoCaption(index, e.target.value)}
                           placeholder="Legenda…"
                           className="w-full rounded-md border border-slate-200/90 bg-slate-50/50 px-2 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:outline-none focus:ring-1 focus:ring-sky-500/25"
                         />
+                        <label className="mt-1.5 block">
+                          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                            Descrição da não conformidade
+                          </span>
+                          <textarea
+                            value={photo.description != null ? photo.description : ''}
+                            onChange={(e) => updatePhotoDescription(index, e.target.value)}
+                            placeholder="Descreva a não conformidade…"
+                            rows={2}
+                            className="w-full resize-y rounded-md border border-slate-200/90 bg-white px-2 py-1.5 text-xs leading-snug text-slate-800 placeholder:text-slate-400 focus:border-rose-300 focus:outline-none focus:ring-1 focus:ring-rose-400/30"
+                          />
+                        </label>
                       </div>
                     </div>
                   </div>

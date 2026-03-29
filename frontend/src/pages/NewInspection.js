@@ -88,17 +88,12 @@ function sectionTitle(text) {
 
 function laudoBlockTitle(text) {
   return (
-    <div className="mb-4 flex items-center gap-3">
-      <span className="h-9 w-1 shrink-0 rounded-full bg-blue-600" aria-hidden />
-      <h2 className="text-base font-bold uppercase tracking-wide text-slate-900 sm:text-lg">
-        {text}
-      </h2>
-    </div>
+    <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-600">{text}</h3>
   );
 }
 
 const laudoTextareaClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm leading-relaxed text-slate-800 shadow-inner shadow-slate-100/80 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25';
+  'w-full rounded-lg border border-slate-300 px-4 py-3 text-sm leading-relaxed text-slate-800 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25';
 
 const NewInspection = () => {
   const navigate = useNavigate();
@@ -347,9 +342,9 @@ const NewInspection = () => {
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6">
           {tipoImovelFluxo === 'apartamento' && entregaStep === 2 ? (
             <>
-              <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
+              <div className="mb-8">
                 {laudoBlockTitle('Objetivo')}
-                <div className="mb-4 flex flex-wrap gap-2">
+                <div className="mb-3 flex flex-wrap gap-2">
                   <button
                     type="button"
                     data-testid="laudo-objetivo-alternar"
@@ -359,7 +354,7 @@ const NewInspection = () => {
                         laudo_objetivo: nextObjetivoPreset(prev.laudo_objetivo),
                       }))
                     }
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
                   >
                     <RefreshCw size={16} />
                     Alternar texto
@@ -368,7 +363,7 @@ const NewInspection = () => {
                     type="button"
                     data-testid="laudo-objetivo-limpar"
                     onClick={() => setFormData((prev) => ({ ...prev, laudo_objetivo: '' }))}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
                   >
                     <Eraser size={16} />
                     Limpar
@@ -384,9 +379,9 @@ const NewInspection = () => {
                 />
               </div>
 
-              <div className="mb-8 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50/90 to-white p-5 shadow-sm sm:p-6">
+              <div className="mb-8">
                 {laudoBlockTitle('Metodologia')}
-                <div className="mb-4 flex flex-wrap gap-2">
+                <div className="mb-3 flex flex-wrap gap-2">
                   <button
                     type="button"
                     data-testid="laudo-metodologia-alternar"
@@ -396,7 +391,7 @@ const NewInspection = () => {
                         laudo_metodologia: nextMetodologiaPreset(prev.laudo_metodologia),
                       }))
                     }
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
                   >
                     <RefreshCw size={16} />
                     Alternar texto
@@ -405,7 +400,7 @@ const NewInspection = () => {
                     type="button"
                     data-testid="laudo-metodologia-limpar"
                     onClick={() => setFormData((prev) => ({ ...prev, laudo_metodologia: '' }))}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
                   >
                     <Eraser size={16} />
                     Limpar
