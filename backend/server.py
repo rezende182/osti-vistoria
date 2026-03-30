@@ -63,6 +63,10 @@ class PhotoData(BaseModel):
     url: str
     caption: str = ""
     number: int = 1
+    description: str = Field(
+        default="",
+        description="Descrição da não conformidade no app (separada da legenda da foto).",
+    )
 
 
 class ChecklistItemData(BaseModel):

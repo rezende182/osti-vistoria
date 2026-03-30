@@ -708,6 +708,8 @@ const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 3.5;
 const PDF_NC_FOOTER_TOP_PAD_MM = 6;
 /** Rótulo «DESCRIÇÃO:» no registo fotográfico: Helvetica/Arial 12 pt (igual ao corpo); largura à medida do texto. */
 const PDF_NC_DESC_LABEL_PT = PDF_BODY_PT;
+/** Padding vertical mínimo da faixa cinza do rótulo (mm) — mais baixa, mais próxima do texto. */
+const PDF_NC_DESC_GRAY_V_PAD_MM = 0.9;
 
 function buildEncerramentoPara1(nFolhas) {
   return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -791,8 +793,6 @@ function drawPdfNaoConformidadeTable(
   const footerContentH = Math.max(labelLineH, textBlockH);
   const footerRowH =
     PDF_NC_FOOTER_TOP_PAD_MM + innerFooterPad + footerContentH + innerFooterPad;
-  /** Altura da faixa cinza do rótulo (uma linha a 12 pt + padding interno). */
-  const descLabelGrayH = innerFooterPad + labelLineH + innerFooterPad;
 
   const imageRowH =
     cellPad + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM + captionBlockH + cellPad;
@@ -851,7 +851,9 @@ function drawPdfNaoConformidadeTable(
   );
 
   const footY = imgRowY + imageRowH;
-  const descLabelGrayY = footY + PDF_NC_FOOTER_TOP_PAD_MM;
+  const yFooterInner = footY + PDF_NC_FOOTER_TOP_PAD_MM + innerFooterPad;
+  const descLabelGrayH = PDF_NC_DESC_GRAY_V_PAD_MM * 2 + labelLineH;
+  const descLabelGrayY = yFooterInner - PDF_NC_DESC_GRAY_V_PAD_MM;
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(PDF_NC_LINE_W);
   doc.line(tableX, footY, tableX + contentWidth, footY);
@@ -860,8 +862,6 @@ function drawPdfNaoConformidadeTable(
   doc.rect(tableX, descLabelGrayY, descLabelW, descLabelGrayH, 'F');
   doc.setDrawColor(0, 0, 0);
   doc.line(tableX + descLabelW, footY, tableX + descLabelW, footY + footerRowH);
-
-  const yFooterInner = footY + PDF_NC_FOOTER_TOP_PAD_MM + innerFooterPad;
   const descLabelBaseline = yFooterInner + labelLineH * 0.85;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_NC_DESC_LABEL_PT);

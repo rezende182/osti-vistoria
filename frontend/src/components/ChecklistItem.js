@@ -129,9 +129,14 @@ const ChecklistItem = ({
 
   const photos = (item.photos || []).map((photo, index) => {
     if (typeof photo === 'string') {
-      return { url: photo, caption: `Foto ${index + 1}`, number: index + 1 };
+      return {
+        url: photo,
+        caption: `Foto ${index + 1}`,
+        number: index + 1,
+        description: '',
+      };
     }
-    return photo;
+    return { ...photo, description: photo.description ?? '' };
   });
 
   const reorder =
