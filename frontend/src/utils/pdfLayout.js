@@ -467,7 +467,7 @@ export function drawResponsavelAssinaturaSection(
   let y = ensureVerticalSpace(doc, yPos, blockH, pageOpts);
 
   const texto = String(localTexto || '').trim();
-  doc.setFont(PDF_FONT, 'normal');
+  doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
   if (texto) {

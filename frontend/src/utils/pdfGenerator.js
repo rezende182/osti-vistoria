@@ -96,8 +96,8 @@ function formatPdfIntroLocalizacao(inspection) {
 
 const PDF_IDENT_LABEL_FILL = [245, 245, 245];
 
-/** Tabela 1 mais compacta para caber melhor na primeira página. */
-const PDF_IDENT_TABLE_PT = 9;
+/** Tabela de identificação: Helvetica/Arial 12 pt (corpo do laudo). */
+const PDF_IDENT_TABLE_PT = 12;
 const PDF_IDENT_TABLE_CELL_PAD = 1.6;
 
 function pdfIdentLabelCell(text) {
@@ -197,7 +197,7 @@ function pdfIdentSectionRowCompact(title) {
       colSpan: 4,
       styles: {
         fontStyle: 'bold',
-        fontSize: PDF_IDENT_TABLE_PT + 0.75,
+        fontSize: PDF_IDENT_TABLE_PT,
         fillColor: [226, 232, 240],
         textColor: [51, 65, 85],
         cellPadding: { top: 2.2, bottom: 2.2, left: 3, right: 3 },
@@ -399,7 +399,7 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
 
 /** Rodapé esquerdo do laudo. */
 function buildPdfFooterLeftLine() {
-  return 'Laudo de Inspeção Técnica - Relatório de Vistoria';
+  return 'Laudo de Vistoria Técnica';
 }
 
 // Formatar data
@@ -704,8 +704,8 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (anexo: faixa azul escuro | foto+legenda | Descrição) ---------- */
 const PDF_NC_HEADER_DARK = [18, 45, 108];
-/** Fundo azul claro do bloco «Descrição:». */
-const PDF_NC_DESC_AREA_FILL = [200, 218, 235];
+/** Fundo do bloco «Descrição:» (#E2E8EF). */
+const PDF_NC_DESC_AREA_FILL = [226, 232, 239];
 const PDF_NC_LINE_W = 0.2;
 const PDF_NC_IMG_W_MM = 120;
 const PDF_NC_IMG_H_MM = 90;
