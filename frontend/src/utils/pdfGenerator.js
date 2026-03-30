@@ -699,7 +699,7 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 /** Células de cabeçalho / rótulo «DESCRIÇÃO:» (cinza-azulado). */
 const PDF_NC_HEADER_FILL = [200, 218, 235];
 const PDF_NC_LINE_W = 0.2;
-/** Foto em linha única: até 12 cm × 9 cm (proporção 4:3). */
+/** Registo fotográfico: dimensões fixas 12 cm × 9 cm (largura × altura). */
 const PDF_NC_IMG_LARGURA_MM = 120;
 const PDF_NC_IMG_ALTURA_MM = 90;
 /** Espaço entre o fim da imagem e a legenda abaixo da foto. */
@@ -710,8 +710,6 @@ const PDF_NC_FOOTER_TOP_PAD_MM = 2.4;
 const PDF_NC_FOOTER_INNER_V_PAD_MM = 1.1;
 /** Rótulo «DESCRIÇÃO:» no registo fotográfico: Helvetica/Arial 12 pt (igual ao corpo); largura à medida do texto. */
 const PDF_NC_DESC_LABEL_PT = PDF_BODY_PT;
-/** Padding vertical da faixa cinza em torno da palavra «DESCRIÇÃO:» (mm). */
-const PDF_NC_DESC_GRAY_V_PAD_MM = 0.55;
 
 function buildEncerramentoPara1(nFolhas) {
   return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -731,7 +729,7 @@ const PDF_ENCERRAMENTO_CORPO_RESTO =
 
 /**
  * Registro fotográfico (anexo): linha 1 — ITEM | LOCALIZAÇÃO; linha 2 — foto em largura total + legenda abaixo;
- * linha 3 — DESCRIÇÃO: (faixa cinza só na altura do rótulo) | texto da descrição da NC no app (`photo.description`).
+ * linha 3 — coluna «DESCRIÇÃO:» com fundo cinza em toda a célula | texto da NC no app (`photo.description`).
  * @returns {number} posição Y após o bloco
  */
 function drawPdfNaoConformidadeTable(
@@ -757,15 +755,11 @@ function drawPdfNaoConformidadeTable(
   const descTextW = contentWidth - descLabelW;
 
   const innerRowW = contentWidth - 2 * cellPad;
-  let imgW = Math.min(PDF_NC_IMG_LARGURA_MM, innerRowW);
-  let imgH = imgW * (9 / 12);
-  if (imgH > PDF_NC_IMG_ALTURA_MM) {
-    imgH = PDF_NC_IMG_ALTURA_MM;
-    imgW = imgH * (12 / 9);
-  }
+  let imgW = PDF_NC_IMG_LARGURA_MM;
+  let imgH = PDF_NC_IMG_ALTURA_MM;
   if (imgW > innerRowW) {
     imgW = innerRowW;
-    imgH = imgW * (9 / 12);
+    imgH = imgW * (PDF_NC_IMG_ALTURA_MM / PDF_NC_IMG_LARGURA_MM);
   }
 
   const imgX = tableX + (contentWidth - imgW) / 2;
@@ -854,20 +848,17 @@ function drawPdfNaoConformidadeTable(
 
   const footY = imgRowY + imageRowH;
   const yFooterInner = footY + PDF_NC_FOOTER_TOP_PAD_MM + footerInnerVPad;
-  const descLabelGrayH = PDF_NC_DESC_GRAY_V_PAD_MM * 2 + labelLineH;
-  const descLabelGrayY = Math.max(
-    footY + PDF_NC_FOOTER_TOP_PAD_MM,
-    yFooterInner - PDF_NC_DESC_GRAY_V_PAD_MM
-  );
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(PDF_NC_LINE_W);
   doc.line(tableX, footY, tableX + contentWidth, footY);
 
   doc.setFillColor(PDF_NC_HEADER_FILL[0], PDF_NC_HEADER_FILL[1], PDF_NC_HEADER_FILL[2]);
-  doc.rect(tableX, descLabelGrayY, descLabelW, descLabelGrayH, 'F');
+  doc.rect(tableX, footY, descLabelW, footerRowH, 'F');
   doc.setDrawColor(0, 0, 0);
   doc.line(tableX + descLabelW, footY, tableX + descLabelW, footY + footerRowH);
-  const descLabelBaseline = yFooterInner + labelLineH * 0.85;
+  const descLabelOffsetY =
+    footerContentH > labelLineH ? (footerContentH - labelLineH) / 2 : 0;
+  const descLabelBaseline = yFooterInner + descLabelOffsetY + labelLineH * 0.85;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_NC_DESC_LABEL_PT);
   doc.setTextColor(0, 0, 0);
