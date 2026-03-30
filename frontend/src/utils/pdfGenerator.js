@@ -11,6 +11,7 @@ import {
   PDF_BODY_LINE_MM,
   PDF_PAGE_BOTTOM_SAFE_MM,
   PDF_CHAPTER_TITLE_PT,
+  PDF_CHAPTER_TITLE_BEFORE_MM,
   PDF_CHAPTER_LINE_MM,
   PDF_LIST_INDENT_MM,
   PDF_LIST_ITEM_EXTRA_GAP_MM,
@@ -543,15 +544,15 @@ function parseRegistroCaptionPrefixBody(caption, photoNumber) {
   return { prefix, body };
 }
 
-/** Conta linhas: 1ª com «Foto NN. - …»; restante com largura total (10 pt). */
-function countRegistroCaptionLines(doc, maxW, prefix, sep, body) {
+/** Conta linhas da legenda centrada na largura da foto (10 pt): «Foto NN.» + texto, sem travessão. */
+function countRegistroCaptionLines(doc, maxW, prefix, body) {
   doc.setFontSize(PDF_NC_CAPTION_PT);
   if (!body) return 1;
   doc.setFont(PDF_FONT, 'bold');
   const pw = doc.getTextWidth(prefix);
   doc.setFont(PDF_FONT, 'normal');
-  const sw = doc.getTextWidth(sep);
-  const wFirst = Math.max(8, maxW - pw - sw);
+  const gapW = doc.getTextWidth(' ');
+  const wFirst = Math.max(8, maxW - pw - gapW);
   const firstLine = doc.splitTextToSize(body, wFirst)[0];
   let rest = body;
   const p = rest.indexOf(firstLine);
@@ -562,24 +563,22 @@ function countRegistroCaptionLines(doc, maxW, prefix, sep, body) {
   return 1 + restLines.length;
 }
 
-function measureRegistroCaptionHeightFromApp(doc, contentWidth, pad, captionText, photoNumber) {
+function measureRegistroCaptionHeightFromApp(doc, picW, captionText, photoNumber) {
   const parsed = parseRegistroCaptionPrefixBody(captionText, photoNumber);
   if (!parsed) return 0;
-  const maxW = Math.max(24, contentWidth - 2 * pad);
-  const sep = ' - ';
-  const nLines = countRegistroCaptionLines(doc, maxW, parsed.prefix, sep, parsed.body);
+  const maxW = Math.max(20, picW);
+  const nLines = countRegistroCaptionLines(doc, maxW, parsed.prefix, parsed.body);
   doc.setFontSize(PDF_BODY_PT);
   return nLines * PDF_NC_CAPTION_LINE_MM + 0.35;
 }
 
 /**
- * Legenda: **Foto NN.** negrito + « - » normal + texto normal (como no app); alinhada à esquerda, próxima da foto.
+ * Legenda centrada com a foto: **Foto NN.** (negrito) + espaço + texto (normal), sem « - ».
  */
 function drawPdfRegistroFotoCaptionFromApp(
   doc,
-  tableX,
-  contentWidth,
-  pad,
+  picX,
+  picW,
   yStart,
   captionText,
   photoNumber
@@ -587,9 +586,8 @@ function drawPdfRegistroFotoCaptionFromApp(
   const parsed = parseRegistroCaptionPrefixBody(captionText, photoNumber);
   if (!parsed) return yStart;
   const { prefix, body } = parsed;
-  const sep = ' - ';
-  const maxW = Math.max(24, contentWidth - 2 * pad);
-  const x = tableX + pad;
+  const maxW = Math.max(20, picW);
+  const cx = picX + picW / 2;
   const lh = PDF_NC_CAPTION_LINE_MM;
 
   doc.setFontSize(PDF_NC_CAPTION_PT);
@@ -599,23 +597,27 @@ function drawPdfRegistroFotoCaptionFromApp(
   doc.setFont(PDF_FONT, 'bold');
   const pw = doc.getTextWidth(prefix);
   doc.setFont(PDF_FONT, 'normal');
-  const sw = doc.getTextWidth(sep);
-  const wFirst = Math.max(8, maxW - pw - sw);
+  const gapW = doc.getTextWidth(' ');
+  const wFirst = Math.max(8, maxW - pw - gapW);
 
   if (!body) {
     doc.setFont(PDF_FONT, 'bold');
-    doc.text(prefix, x, y);
+    doc.text(prefix, cx, y, { align: 'center' });
     doc.setFont(PDF_FONT, 'normal');
     doc.setFontSize(PDF_BODY_PT);
     return y + lh * 0.2;
   }
 
   const line0 = doc.splitTextToSize(body, wFirst)[0];
-  doc.setFont(PDF_FONT, 'bold');
-  doc.text(prefix, x, y);
   doc.setFont(PDF_FONT, 'normal');
-  doc.text(sep, x + pw, y);
-  doc.text(line0, x + pw + sw, y);
+  const tw0 = doc.getTextWidth(line0);
+  const totalW = pw + gapW + tw0;
+  let xStart = cx - totalW / 2;
+
+  doc.setFont(PDF_FONT, 'bold');
+  doc.text(prefix, xStart, y);
+  doc.setFont(PDF_FONT, 'normal');
+  doc.text(line0, xStart + pw + gapW, y);
 
   let rest = body;
   const p = rest.indexOf(line0);
@@ -625,7 +627,7 @@ function drawPdfRegistroFotoCaptionFromApp(
   if (rest) {
     doc.splitTextToSize(rest, maxW).forEach((ln) => {
       y += lh;
-      doc.text(ln, x, y);
+      doc.text(ln, cx, y, { align: 'center', maxWidth: maxW });
     });
   }
 
@@ -635,10 +637,13 @@ function drawPdfRegistroFotoCaptionFromApp(
 
 function measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH) {
   const maxW = contentWidth - 2 * pad;
-  doc.setFont(PDF_FONT, 'normal');
+  doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
-  const bodyLines = doc.splitTextToSize(ncBody, maxW);
-  return pad + lineH + bodyLines.length * lineH + pad;
+  const label = 'Descrição: ';
+  const lw = doc.getTextWidth(label);
+  doc.setFont(PDF_FONT, 'normal');
+  const lines = doc.splitTextToSize(ncBody, Math.max(8, maxW - lw));
+  return pad + Math.max(1, lines.length) * lineH + pad;
 }
 
 function drawPdfDescricaoBlock(doc, tableX, yTop, contentWidth, pad, ncBody, lineH) {
@@ -649,16 +654,21 @@ function drawPdfDescricaoBlock(doc, tableX, yTop, contentWidth, pad, ncBody, lin
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
-  doc.text('Descrição:', x, y);
-  y += lineH;
-
+  const label = 'Descrição: ';
+  const lw = doc.getTextWidth(label);
   doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_BODY_PT);
-  const lines = doc.splitTextToSize(ncBody, maxW);
-  lines.forEach((ln) => {
-    doc.text(ln, x, y, { align: 'justify', maxWidth: maxW });
-    y += lineH;
-  });
+  const lines = doc.splitTextToSize(ncBody, Math.max(8, maxW - lw));
+
+  doc.setFont(PDF_FONT, 'bold');
+  doc.text(label.trimEnd(), x, y);
+  doc.setFont(PDF_FONT, 'normal');
+  if (lines.length) {
+    doc.text(lines[0], x + lw, y, { align: 'justify', maxWidth: maxW - lw });
+    for (let i = 1; i < lines.length; i++) {
+      y += lineH;
+      doc.text(lines[i], x, y, { align: 'justify', maxWidth: maxW });
+    }
+  }
 
   return y + pad;
 }
@@ -740,13 +750,7 @@ function drawPdfNaoConformidadeTable(
   const picX = tableX + (contentWidth - picW) / 2;
 
   const captionFromApp = pdfTrim(photo.caption);
-  const capH = measureRegistroCaptionHeightFromApp(
-    doc,
-    contentWidth,
-    pad,
-    captionFromApp,
-    photo.number
-  );
+  const capH = measureRegistroCaptionHeightFromApp(doc, picW, captionFromApp, photo.number);
 
   const ncBody = pdfTrim(photo.description) || '\u2014';
   const descH = measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH);
@@ -788,6 +792,9 @@ function drawPdfNaoConformidadeTable(
     PDF_NC_DESC_AREA_FILL[2]
   );
   doc.rect(tableX, yAfterPhoto, contentWidth, descH, 'F');
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(PDF_NC_LINE_W);
+  doc.rect(tableX, yAfterPhoto, contentWidth, descH, 'S');
 
   doc.setTextColor(255, 255, 255);
   let hy = y + pad + lineH * 0.85;
@@ -816,9 +823,8 @@ function drawPdfNaoConformidadeTable(
   if (captionFromApp) {
     drawPdfRegistroFotoCaptionFromApp(
       doc,
-      tableX,
-      contentWidth,
-      pad,
+      picX,
+      picW,
       yPic + picH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
       captionFromApp,
       photo.number
@@ -1213,6 +1219,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   // CONCLUSÃO
   // ============================================================
+  yPos += PDF_CHAPTER_TITLE_BEFORE_MM;
   checkNewPage(40);
   yPos = drawChapterTitle(
     doc,
