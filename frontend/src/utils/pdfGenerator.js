@@ -518,75 +518,149 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   return lastBaseline + belowBaselineMm;
 }
 
-/** Legenda sob a foto no registo fotográfico: mesmo corpo 12 pt (Helvetica ≈ Arial). */
-const PDF_NC_CAPTION_PT = PDF_BODY_PT;
-const PDF_NC_CAPTION_LINE_MM = PDF_BODY_LINE_MM;
+/** Legenda: Helvetica/Arial 10 pt (corpo do PDF = 12 pt). */
+const PDF_NC_CAPTION_PT = 10;
+const PDF_NC_CAPTION_LINE_MM = (PDF_NC_CAPTION_PT / PDF_BODY_PT) * PDF_BODY_LINE_MM;
 
-/** Altura da legenda = mesmo texto que no app (`photo.caption`), 12 pt. */
-function measureRegistroCaptionHeightFromApp(doc, contentWidth, pad, captionText) {
-  const t = pdfTrim(captionText);
-  if (!t) return 0;
-  doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_NC_CAPTION_PT);
-  const maxW = Math.max(24, contentWidth - 2 * pad);
-  const lines = doc.splitTextToSize(t, maxW);
-  doc.setFontSize(PDF_BODY_PT);
-  return Math.max(1, lines.length) * PDF_NC_CAPTION_LINE_MM + 0.5;
+function parseRegistroCaptionPrefixBody(caption, photoNumber) {
+  const raw = pdfTrim(caption);
+  if (!raw) return null;
+  const m = raw.match(/^(Foto|Imagem)\s*(\d+)\s*\.\s*(.*)$/i);
+  let prefix;
+  let body;
+  if (m) {
+    const num = String(parseInt(m[2], 10)).padStart(2, '0');
+    prefix = `Foto ${num}.`;
+    body = pdfTrim(m[3]);
+  } else {
+    const n =
+      photoNumber != null && photoNumber !== '' && !Number.isNaN(Number(photoNumber))
+        ? Number(photoNumber)
+        : 1;
+    prefix = `Foto ${String(n).padStart(2, '0')}.`;
+    body = raw;
+  }
+  return { prefix, body };
 }
 
-/** Legenda sob a foto: texto idêntico ao campo «Legenda» no app; centrada. */
-function drawPdfRegistroFotoCaptionFromApp(doc, tableX, contentWidth, pad, yStart, captionText) {
-  const t = pdfTrim(captionText);
-  if (!t) return yStart;
+/** Conta linhas: 1ª com «Foto NN. - …»; restante com largura total (10 pt). */
+function countRegistroCaptionLines(doc, maxW, prefix, sep, body) {
+  doc.setFontSize(PDF_NC_CAPTION_PT);
+  if (!body) return 1;
+  doc.setFont(PDF_FONT, 'bold');
+  const pw = doc.getTextWidth(prefix);
   doc.setFont(PDF_FONT, 'normal');
+  const sw = doc.getTextWidth(sep);
+  const wFirst = Math.max(8, maxW - pw - sw);
+  const firstLine = doc.splitTextToSize(body, wFirst)[0];
+  let rest = body;
+  const p = rest.indexOf(firstLine);
+  if (p >= 0) rest = rest.slice(p + firstLine.length).trim();
+  else rest = '';
+  if (!rest) return 1;
+  const restLines = doc.splitTextToSize(rest, maxW);
+  return 1 + restLines.length;
+}
+
+function measureRegistroCaptionHeightFromApp(doc, contentWidth, pad, captionText, photoNumber) {
+  const parsed = parseRegistroCaptionPrefixBody(captionText, photoNumber);
+  if (!parsed) return 0;
+  const maxW = Math.max(24, contentWidth - 2 * pad);
+  const sep = ' - ';
+  const nLines = countRegistroCaptionLines(doc, maxW, parsed.prefix, sep, parsed.body);
+  doc.setFontSize(PDF_BODY_PT);
+  return nLines * PDF_NC_CAPTION_LINE_MM + 0.35;
+}
+
+/**
+ * Legenda: **Foto NN.** negrito + « - » normal + texto normal (como no app); alinhada à esquerda, próxima da foto.
+ */
+function drawPdfRegistroFotoCaptionFromApp(
+  doc,
+  tableX,
+  contentWidth,
+  pad,
+  yStart,
+  captionText,
+  photoNumber
+) {
+  const parsed = parseRegistroCaptionPrefixBody(captionText, photoNumber);
+  if (!parsed) return yStart;
+  const { prefix, body } = parsed;
+  const sep = ' - ';
+  const maxW = Math.max(24, contentWidth - 2 * pad);
+  const x = tableX + pad;
+  const lh = PDF_NC_CAPTION_LINE_MM;
+
   doc.setFontSize(PDF_NC_CAPTION_PT);
   doc.setTextColor(0, 0, 0);
-  const maxW = Math.max(24, contentWidth - 2 * pad);
-  const lines = doc.splitTextToSize(t, maxW);
-  const cx = tableX + contentWidth / 2;
-  let y = yStart + PDF_NC_CAPTION_LINE_MM * 0.85;
-  lines.forEach((ln) => {
-    doc.text(ln, cx, y, { align: 'center' });
-    y += PDF_NC_CAPTION_LINE_MM;
-  });
-  doc.setFontSize(PDF_BODY_PT);
-  return y;
-}
+  let y = yStart + lh * 0.85;
 
-const PDF_NC_DESC_NC_LABEL = 'Descrição da não conformidade: ';
+  doc.setFont(PDF_FONT, 'bold');
+  const pw = doc.getTextWidth(prefix);
+  doc.setFont(PDF_FONT, 'normal');
+  const sw = doc.getTextWidth(sep);
+  const wFirst = Math.max(8, maxW - pw - sw);
+
+  if (!body) {
+    doc.setFont(PDF_FONT, 'bold');
+    doc.text(prefix, x, y);
+    doc.setFont(PDF_FONT, 'normal');
+    doc.setFontSize(PDF_BODY_PT);
+    return y + lh * 0.2;
+  }
+
+  const line0 = doc.splitTextToSize(body, wFirst)[0];
+  doc.setFont(PDF_FONT, 'bold');
+  doc.text(prefix, x, y);
+  doc.setFont(PDF_FONT, 'normal');
+  doc.text(sep, x + pw, y);
+  doc.text(line0, x + pw + sw, y);
+
+  let rest = body;
+  const p = rest.indexOf(line0);
+  if (p >= 0) rest = rest.slice(p + line0.length).trim();
+  else rest = '';
+
+  if (rest) {
+    doc.splitTextToSize(rest, maxW).forEach((ln) => {
+      y += lh;
+      doc.text(ln, x, y);
+    });
+  }
+
+  doc.setFontSize(PDF_BODY_PT);
+  return y + lh * 0.2;
+}
 
 function measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH) {
   const maxW = contentWidth - 2 * pad;
-  doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_BODY_PT);
-  const lw = doc.getTextWidth(PDF_NC_DESC_NC_LABEL);
   doc.setFont(PDF_FONT, 'normal');
-  const lines = doc.splitTextToSize(ncBody, Math.max(8, maxW - lw));
   doc.setFontSize(PDF_BODY_PT);
-  return pad + Math.max(1, lines.length) * lineH + pad;
+  const bodyLines = doc.splitTextToSize(ncBody, maxW);
+  return pad + lineH + bodyLines.length * lineH + pad;
 }
 
 function drawPdfDescricaoBlock(doc, tableX, yTop, contentWidth, pad, ncBody, lineH) {
   const x = tableX + pad;
   const maxW = contentWidth - 2 * pad;
+  let y = yTop + pad + lineH * 0.85;
+
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
-  const lw = doc.getTextWidth(PDF_NC_DESC_NC_LABEL);
-  doc.setFont(PDF_FONT, 'normal');
-  const lines = doc.splitTextToSize(ncBody, Math.max(8, maxW - lw));
-  let y = yTop + pad + lineH * 0.85;
-  doc.setFont(PDF_FONT, 'bold');
-  doc.text(PDF_NC_DESC_NC_LABEL.trimEnd(), x, y);
-  doc.setFont(PDF_FONT, 'normal');
-  if (lines.length) {
-    doc.text(lines[0], x + lw, y);
-    for (let i = 1; i < lines.length; i++) {
-      y += lineH;
-      doc.text(lines[i], x, y);
-    }
-  }
   doc.setTextColor(0, 0, 0);
-  return y + lineH * 0.2 + pad;
+  doc.text('Descrição:', x, y);
+  y += lineH;
+
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  const lines = doc.splitTextToSize(ncBody, maxW);
+  lines.forEach((ln) => {
+    doc.text(ln, x, y, { align: 'justify', maxWidth: maxW });
+    y += lineH;
+  });
+
+  return y + pad;
 }
 
 /**
@@ -620,12 +694,12 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (anexo: faixa azul escuro | foto+legenda | Descrição) ---------- */
 const PDF_NC_HEADER_DARK = [18, 45, 108];
-/** Fundo azul claro do bloco «Descrição da não conformidade» (como no anexo). */
+/** Fundo azul claro do bloco «Descrição:». */
 const PDF_NC_DESC_AREA_FILL = [200, 218, 235];
 const PDF_NC_LINE_W = 0.2;
 const PDF_NC_IMG_W_MM = 120;
 const PDF_NC_IMG_H_MM = 90;
-const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 2.8;
+const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1.1;
 
 function buildEncerramentoPara1(nFolhas) {
   return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -666,7 +740,13 @@ function drawPdfNaoConformidadeTable(
   const picX = tableX + (contentWidth - picW) / 2;
 
   const captionFromApp = pdfTrim(photo.caption);
-  const capH = measureRegistroCaptionHeightFromApp(doc, contentWidth, pad, captionFromApp);
+  const capH = measureRegistroCaptionHeightFromApp(
+    doc,
+    contentWidth,
+    pad,
+    captionFromApp,
+    photo.number
+  );
 
   const ncBody = pdfTrim(photo.description) || '\u2014';
   const descH = measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH);
@@ -740,7 +820,8 @@ function drawPdfNaoConformidadeTable(
       contentWidth,
       pad,
       yPic + picH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
-      captionFromApp
+      captionFromApp,
+      photo.number
     );
   }
 
