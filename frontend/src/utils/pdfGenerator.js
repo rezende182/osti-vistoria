@@ -531,6 +531,123 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
   return out.length ? out : [String(text)];
 }
 
+/** Cabeçalho tabela NC (cinza-azulado). */
+const PDF_NC_HEADER_FILL = [226, 232, 240];
+const PDF_NC_COL_LEFT_RATIO = 0.62;
+const PDF_NC_LINE_W = 0.2;
+
+/**
+ * Bloco em tabela: cabeçalho ITEM | LOCALIZAÇÃO; corpo com foto+legenda (esq.) e Descrição/Recomendação (dir.).
+ * @returns {number} posição Y após o bloco
+ */
+function drawPdfNaoConformidadeTable(
+  doc,
+  yStart,
+  margin,
+  contentWidth,
+  ncIdx,
+  roomNameUpper,
+  photo
+) {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const colLeftW = contentWidth * PDF_NC_COL_LEFT_RATIO;
+  const colRightW = contentWidth - colLeftW;
+  const cellPad = 2.8;
+
+  const imgMaxW = colLeftW - 2 * cellPad;
+  const imgW = Math.min(108, Math.max(40, imgMaxW));
+  const imgH = Math.min(74, Math.max(36, imgW * 0.62));
+
+  const parts = buildPdfPhotoCaptionParts(photo.caption, photo.number);
+  const capFull = `${parts.prefix}${parts.body || ''}`.trim();
+  const capLinesArr = wrapPdfCaptionToImageWidth(doc, capFull, imgW);
+  const captionBlockH = Math.max(1, capLinesArr.length) * PDF_BODY_LINE_MM + 2;
+
+  const descRaw = pdfTrim(photo.description) || '\u2014';
+  const rightTextW = Math.max(18, colRightW - 2 * cellPad);
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  const descLineArr = doc.splitTextToSize(descRaw, rightTextW);
+
+  const itemHeader = `ITEM: ${String(ncIdx).padStart(2, '0')}`;
+  const locHeader = `LOCALIZAÇÃO: ${roomNameUpper}`;
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_BODY_PT);
+  const locHeadLines = doc.splitTextToSize(locHeader, colRightW - 2 * cellPad);
+  const headerPadTop = 3.5;
+  const headerH = headerPadTop + locHeadLines.length * PDF_BODY_LINE_MM + 3;
+
+  const leftColH = cellPad + captionBlockH + imgH + cellPad + 1;
+  const rightColH =
+    cellPad +
+    PDF_BODY_LINE_MM +
+    1.5 +
+    Math.max(0, descLineArr.length) * PDF_BODY_LINE_MM +
+    cellPad;
+  const bodyH = Math.max(leftColH, rightColH, 38);
+
+  const totalH = headerH + bodyH;
+
+  let y = yStart;
+  if (y + totalH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
+    doc.addPage();
+    y = margin;
+  }
+
+  const tableX = margin;
+
+  doc.setFillColor(PDF_NC_HEADER_FILL[0], PDF_NC_HEADER_FILL[1], PDF_NC_HEADER_FILL[2]);
+  doc.rect(tableX, y, contentWidth, headerH, 'F');
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(PDF_NC_LINE_W);
+  doc.rect(tableX, y, contentWidth, totalH, 'S');
+  doc.line(tableX, y + headerH, tableX + contentWidth, y + headerH);
+  doc.line(tableX + colLeftW, y, tableX + colLeftW, y + totalH);
+
+  const firstBaseline = y + headerPadTop + PDF_BODY_LINE_MM;
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+  doc.text(itemHeader, tableX + cellPad, firstBaseline);
+  locHeadLines.forEach((ln, i) => {
+    doc.text(ln, tableX + colLeftW + cellPad, firstBaseline + i * PDF_BODY_LINE_MM);
+  });
+
+  const bodyY = y + headerH;
+  const imgX = tableX + cellPad;
+  let yLeft = bodyY + cellPad;
+
+  yLeft = drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgW, yLeft, parts);
+
+  if (photo.url) {
+    try {
+      const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
+      doc.addImage(photo.url, imgFmt, imgX, yLeft, imgW, imgH);
+    } catch (e) {
+      console.error('Erro ao adicionar imagem (NC):', e);
+      doc.setFont(PDF_FONT, 'italic');
+      doc.setFontSize(PDF_BODY_PT);
+      doc.text('[Imagem não disponível]', imgX + imgW / 2, yLeft + imgH / 2, {
+        align: 'center',
+      });
+      doc.setFont(PDF_FONT, 'normal');
+    }
+  }
+
+  const rightFirstBaseline = bodyY + cellPad + PDF_BODY_LINE_MM;
+  doc.setFont(PDF_FONT, 'bold');
+  doc.text('Descrição/Recomendação:', tableX + colLeftW + cellPad, rightFirstBaseline);
+  let yDesc = rightFirstBaseline + PDF_BODY_LINE_MM + 1.5;
+  doc.setFont(PDF_FONT, 'normal');
+  descLineArr.forEach((ln) => {
+    doc.text(ln, tableX + colLeftW + cellPad, yDesc);
+    yDesc += PDF_BODY_LINE_MM;
+  });
+
+  return y + totalH + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
+}
+
 // Gerar PDF
 export const generateInspectionPDF = async (inspection, forPreview = false) => {
   if (!inspection) {
@@ -893,9 +1010,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     { minFollowingMm: 52 }
   );
 
-  const imgWidthNc = 150;
-  const imgHeightNc = 100;
-
   if (ncPhotoEntries.length === 0) {
     doc.setFont(PDF_FONT, 'italic');
     doc.setFontSize(PDF_BODY_PT);
@@ -906,64 +1020,15 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     let ncIdx = 0;
     for (const { room, photo } of ncPhotoEntries) {
       ncIdx += 1;
-      const imgX = (pageWidth - imgWidthNc) / 2;
-      const parts = buildPdfPhotoCaptionParts(photo.caption, photo.number);
-      const approxLines = wrapPdfCaptionToImageWidth(
+      yPos = drawPdfNaoConformidadeTable(
         doc,
-        `${parts.prefix}${parts.body}`,
-        imgWidthNc
-      ).length;
-      const captionBlockH = approxLines * PDF_BODY_LINE_MM + 1;
-      const descText = pdfTrim(photo.description);
-      const descLines = descText
-        ? doc.splitTextToSize(descText, contentWidth).length
-        : 1;
-      const descBlockH = descLines * PDF_BODY_LINE_MM + PDF_BODY_LINE_MM * 2;
-      checkNewPage(
-        PDF_BODY_LINE_MM * 4 + captionBlockH + imgHeightNc + descBlockH + 12
-      );
-
-      yPos += 2;
-      doc.setFont(PDF_FONT, 'bold');
-      doc.setFontSize(PDF_BODY_PT);
-      doc.setTextColor(0, 0, 0);
-      doc.text(`ITEM${String(ncIdx).padStart(2, '0')}`, margin, yPos);
-      yPos += PDF_BODY_LINE_MM;
-      doc.text(`LOCAL: ${String(room.room_name || '').toUpperCase()}`, margin, yPos);
-      yPos += PDF_BODY_LINE_MM + 1;
-
-      doc.setFont(PDF_FONT, 'normal');
-      const gapAboveCaption = 1.5;
-      yPos += gapAboveCaption;
-
-      yPos = drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidthNc, yPos, parts);
-
-      if (photo.url) {
-        try {
-          const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
-          doc.addImage(photo.url, imgFmt, imgX, yPos, imgWidthNc, imgHeightNc);
-          yPos += imgHeightNc + 6;
-        } catch (e) {
-          console.error('Erro ao adicionar imagem (NC):', e);
-          doc.setFont(PDF_FONT, 'italic');
-          doc.text('[Imagem não disponível]', pageWidth / 2, yPos, { align: 'center' });
-          yPos += 8;
-        }
-      }
-
-      doc.setFont(PDF_FONT, 'bold');
-      doc.text('DESCRIÇÃO:', margin, yPos);
-      yPos += PDF_BODY_LINE_MM;
-      doc.setFont(PDF_FONT, 'normal');
-      yPos = drawBodyParagraphs(
-        doc,
-        descText || '\u2014',
+        yPos,
         margin,
         contentWidth,
-        yPos,
-        checkNewPage
+        ncIdx,
+        String(room.room_name || '').toUpperCase(),
+        photo
       );
-      yPos += PDF_LIST_ITEM_EXTRA_GAP_MM * 2;
     }
   }
 
