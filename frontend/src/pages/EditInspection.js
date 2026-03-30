@@ -12,6 +12,7 @@ import { BRASIL_UFS } from '../constants/brasilEstados';
 import BrandLogo from '@/components/BrandLogo';
 import InspectionPdfLogoField from '@/components/InspectionPdfLogoField';
 import {
+  LAUDO_METODOLOGIA_PRESETS,
   LAUDO_OBJETIVO_PRESETS,
   nextMetodologiaPreset,
   nextObjetivoPreset,
@@ -68,7 +69,7 @@ function laudoBlockTitle(text) {
 }
 
 const laudoTextareaClass =
-  'w-full rounded-lg border border-slate-300 px-4 py-3 text-sm leading-relaxed text-slate-800 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25';
+  'w-full rounded-lg border border-slate-300 px-4 py-3 text-sm leading-relaxed text-slate-800 text-justify transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25';
 
 const EditInspection = () => {
   const { id } = useParams();
@@ -182,18 +183,6 @@ const EditInspection = () => {
     loadInspection();
   }, [loadInspection]);
 
-  useEffect(() => {
-    if (loading) return;
-    if (location.hash !== '#objetivo-metodologia') return;
-    if (formData.tipo_vistoria_fluxo !== 'apartamento') return;
-    const el = document.getElementById('objetivo-metodologia');
-    if (el) {
-      requestAnimationFrame(() => {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-    }
-  }, [loading, location.hash, formData.tipo_vistoria_fluxo]);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -246,7 +235,10 @@ const EditInspection = () => {
       }
       payload.pdf_empresa_nome = '';
       payload.pdf_empresa_cnpj = '';
-      if (formData.tipo_vistoria_fluxo === 'apartamento') {
+      if (
+        formData.tipo_vistoria_fluxo === 'apartamento' ||
+        formData.tipo_vistoria_fluxo === 'area_comum'
+      ) {
         payload.laudo_relato_vistoria = '';
         payload.laudo_relato_adendo_descricao = '';
         payload.laudo_relato_adendo_retrabalho = '';
@@ -269,6 +261,164 @@ const EditInspection = () => {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  const isLaudoEntregaFlux =
+    formData.tipo_vistoria_fluxo === 'apartamento' ||
+    formData.tipo_vistoria_fluxo === 'area_comum';
+  const laudoOnlyPage = isLaudoEntregaFlux && location.hash === '#objetivo-metodologia';
+
+  const laudoObjetivoMetodologiaFields = (
+    <>
+      <div className="mb-8">
+        {laudoBlockTitle('Objetivo')}
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              setFormData((prev) => ({
+                ...prev,
+                laudo_objetivo: nextObjetivoPreset(prev.laudo_objetivo),
+              }))
+            }
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+          >
+            <RefreshCw size={16} />
+            Alternar texto
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, laudo_objetivo: '' }))}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+          >
+            <Eraser size={16} />
+            Limpar
+          </button>
+        </div>
+        <textarea
+          name="laudo_objetivo"
+          value={formData.laudo_objetivo}
+          onChange={handleChange}
+          rows={8}
+          placeholder={
+            LAUDO_OBJETIVO_PRESETS[0]
+              ? `${LAUDO_OBJETIVO_PRESETS[0].slice(0, 80)}…`
+              : 'Texto do objetivo do laudo…'
+          }
+          className={laudoTextareaClass}
+        />
+      </div>
+
+      <div className="mb-8">
+        {laudoBlockTitle('Metodologia')}
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              setFormData((prev) => ({
+                ...prev,
+                laudo_metodologia: nextMetodologiaPreset(prev.laudo_metodologia),
+              }))
+            }
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+          >
+            <RefreshCw size={16} />
+            Alternar texto
+          </button>
+          <button
+            type="button"
+            onClick={() => setFormData((prev) => ({ ...prev, laudo_metodologia: '' }))}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
+          >
+            <Eraser size={16} />
+            Limpar
+          </button>
+        </div>
+        <textarea
+          name="laudo_metodologia"
+          value={formData.laudo_metodologia}
+          onChange={handleChange}
+          rows={16}
+          placeholder={
+            LAUDO_METODOLOGIA_PRESETS[0]
+              ? `${LAUDO_METODOLOGIA_PRESETS[0].slice(0, 80).replace(/\s+/g, ' ').trim()}…`
+              : 'Texto da metodologia do laudo…'
+          }
+          className={laudoTextareaClass}
+        />
+      </div>
+    </>
+  );
+
+  if (laudoOnlyPage) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-4 py-6 text-white">
+          <div className="mx-auto max-w-md md:max-w-2xl">
+            <button
+              data-testid="home-button"
+              type="button"
+              onClick={() => setShowExitModal(true)}
+              className="mb-4 flex items-center gap-2 text-slate-300 transition-colors hover:text-white"
+            >
+              <Home size={20} />
+              Página Inicial
+            </button>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-1 items-center gap-4">
+                <BrandLogo className="h-16 w-auto max-w-[12rem] shrink-0 object-contain object-left py-1 sm:h-[5.25rem] sm:max-w-[14rem]" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
+                    Objetivo e Metodologia
+                  </h1>
+                  {formData.tipo_vistoria_fluxo &&
+                    SUBTIPO_FLUXO_LABEL[formData.tipo_vistoria_fluxo] && (
+                      <p className="w-full text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-300 sm:text-base">
+                        ({SUBTIPO_FLUXO_LABEL[formData.tipo_vistoria_fluxo]})
+                      </p>
+                    )}
+                </div>
+              </div>
+              <LogoutHeaderButton />
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-auto max-w-md px-4 py-6 md:max-w-2xl">
+          <form
+            onSubmit={handleSubmit}
+            className="min-h-[calc(100dvh-12rem)] rounded-lg bg-white p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)]"
+          >
+            {laudoObjetivoMetodologiaFields}
+            <button
+              type="button"
+              onClick={() =>
+                navigate({ pathname: `/inspection/${id}/edit`, hash: '' }, { replace: true })
+              }
+              className="mb-4 w-full rounded-lg border-2 border-slate-300 py-3 font-bold font-secondary uppercase tracking-wide text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Voltar à identificação
+            </button>
+            <button
+              data-testid="submit-button"
+              type="submit"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 text-lg font-bold font-secondary uppercase text-white transition-all duration-200 hover:bg-blue-700 active:scale-95"
+            >
+              Verificação dos ambientes e não conformidades
+              <ArrowRight size={20} />
+            </button>
+          </form>
+        </div>
+
+        <NavigationModal
+          isOpen={showExitModal}
+          onClose={() => setShowExitModal(false)}
+          onConfirm={() => navigate('/')}
+          title="Voltar para Início"
+          message="Tem certeza que deseja voltar para a página inicial? Os dados não salvos serão perdidos."
+        />
       </div>
     );
   }
@@ -647,81 +797,19 @@ const EditInspection = () => {
                 </div>
               </div>
 
-              <div id="objetivo-metodologia" className="scroll-mt-20">
-                {sectionTitle('Objetivo e Metodologia')}
-
-                <div className="mb-8">
-                  {laudoBlockTitle('Objetivo')}
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          laudo_objetivo: nextObjetivoPreset(prev.laudo_objetivo),
-                        }))
-                      }
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
-                    >
-                      <RefreshCw size={16} />
-                      Alternar texto
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, laudo_objetivo: '' }))}
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
-                    >
-                      <Eraser size={16} />
-                      Limpar
-                    </button>
-                  </div>
-                  <textarea
-                    name="laudo_objetivo"
-                    value={formData.laudo_objetivo}
-                    onChange={handleChange}
-                    rows={8}
-                    placeholder={
-                      LAUDO_OBJETIVO_PRESETS[0]
-                        ? `${LAUDO_OBJETIVO_PRESETS[0].slice(0, 80)}…`
-                        : 'Texto do objetivo do laudo…'
-                    }
-                    className={laudoTextareaClass}
-                  />
-                </div>
-
-                <div className="mb-8">
-                  {laudoBlockTitle('Metodologia')}
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          laudo_metodologia: nextMetodologiaPreset(prev.laudo_metodologia),
-                        }))
-                      }
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
-                    >
-                      <RefreshCw size={16} />
-                      Alternar texto
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, laudo_metodologia: '' }))}
-                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-700 hover:bg-slate-50"
-                    >
-                      <Eraser size={16} />
-                      Limpar
-                    </button>
-                  </div>
-                  <textarea
-                    name="laudo_metodologia"
-                    value={formData.laudo_metodologia}
-                    onChange={handleChange}
-                    rows={16}
-                    className={laudoTextareaClass}
-                  />
-                </div>
+              <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="mb-3 text-sm text-slate-600">
+                  O objetivo e a metodologia do laudo são preenchidos numa página dedicada.
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate({ pathname: `/inspection/${id}/edit`, hash: '#objetivo-metodologia' })
+                  }
+                  className="w-full rounded-lg border border-slate-300 bg-white py-3 text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-800 transition-colors hover:bg-slate-100"
+                >
+                  Abrir objetivo e metodologia
+                </button>
               </div>
             </>
           ) : (
@@ -978,6 +1066,22 @@ const EditInspection = () => {
                   ))}
                 </div>
               </div>
+              {formData.tipo_vistoria_fluxo === 'area_comum' && (
+                <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                  <p className="mb-3 text-sm text-slate-600">
+                    O objetivo e a metodologia do laudo são preenchidos numa página dedicada.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate({ pathname: `/inspection/${id}/edit`, hash: '#objetivo-metodologia' })
+                    }
+                    className="w-full rounded-lg border border-slate-300 bg-white py-3 text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-800 transition-colors hover:bg-slate-100"
+                  >
+                    Abrir objetivo e metodologia
+                  </button>
+                </div>
+              )}
             </>
           )}
 

@@ -93,7 +93,7 @@ function laudoBlockTitle(text) {
 }
 
 const laudoTextareaClass =
-  'w-full rounded-lg border border-slate-300 px-4 py-3 text-sm leading-relaxed text-slate-800 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25';
+  'w-full rounded-lg border border-slate-300 px-4 py-3 text-sm leading-relaxed text-slate-800 text-justify transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/25';
 
 const NewInspection = () => {
   const navigate = useNavigate();
@@ -156,7 +156,11 @@ const NewInspection = () => {
   }, [tipoImovelFluxo]);
 
   useEffect(() => {
-    if (tipoImovelFluxo !== 'apartamento' || entregaStep !== 2) return;
+    if (
+      (tipoImovelFluxo !== 'apartamento' && tipoImovelFluxo !== 'area_comum') ||
+      entregaStep !== 2
+    )
+      return;
     setFormData((prev) => {
       const next = { ...prev };
       let changed = false;
@@ -209,6 +213,18 @@ const NewInspection = () => {
       return;
     }
 
+    if (tipoImovelFluxo === 'area_comum' && entregaStep === 1) {
+      if (!validateIdentificationRequired(formData)) {
+        toast.error(
+          'Preencha os campos obrigatórios: cliente, data, endereço, cidade, UF, responsável técnico e CREA.'
+        );
+        return;
+      }
+      setEntregaStep(2);
+      window.scrollTo(0, 0);
+      return;
+    }
+
     if (tipoImovelFluxo === 'apartamento') {
       if (!validateEntregaImovel(formData)) {
         toast.error(
@@ -251,7 +267,7 @@ const NewInspection = () => {
     payload.pdf_empresa_nome = '';
     payload.pdf_empresa_cnpj = '';
 
-    if (tipoImovelFluxo === 'apartamento') {
+    if (tipoImovelFluxo === 'apartamento' || tipoImovelFluxo === 'area_comum') {
       payload.laudo_relato_vistoria = '';
       payload.laudo_relato_adendo_descricao = '';
       payload.laudo_relato_adendo_retrabalho = '';
@@ -321,7 +337,8 @@ const NewInspection = () => {
               <BrandLogo className="h-16 w-auto max-w-[12rem] shrink-0 object-contain object-left py-1 sm:h-[5.25rem] sm:max-w-[14rem]" />
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
-                  {tipoImovelFluxo === 'apartamento' && entregaStep === 2
+                  {(tipoImovelFluxo === 'apartamento' || tipoImovelFluxo === 'area_comum') &&
+                  entregaStep === 2
                     ? 'Objetivo e Metodologia'
                     : 'Identificação da Vistoria Técnica'}
                 </h1>
@@ -340,7 +357,8 @@ const NewInspection = () => {
       {/* Form */}
       <div className="max-w-md mx-auto md:max-w-2xl px-4 py-6">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6">
-          {tipoImovelFluxo === 'apartamento' && entregaStep === 2 ? (
+          {(tipoImovelFluxo === 'apartamento' || tipoImovelFluxo === 'area_comum') &&
+          entregaStep === 2 ? (
             <>
               <div className="mb-8">
                 {laudoBlockTitle('Objetivo')}
@@ -1029,7 +1047,8 @@ const NewInspection = () => {
             type="submit"
             className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 flex items-center justify-center gap-2"
           >
-            {tipoImovelFluxo === 'apartamento' && entregaStep === 1
+            {(tipoImovelFluxo === 'apartamento' || tipoImovelFluxo === 'area_comum') &&
+            entregaStep === 1
               ? 'Salvar e continuar'
               : 'VERIFICAÇÃO DOS AMBIENTES E NÃO CONFORMIDADES'}
             <ArrowRight size={20} />

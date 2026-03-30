@@ -537,7 +537,7 @@ const InspectionChecklist = () => {
             data-testid="back-from-checklist-button"
             onClick={() =>
               navigate(
-                tipoVistoriaFluxo === 'apartamento'
+                tipoVistoriaFluxo === 'apartamento' || tipoVistoriaFluxo === 'area_comum'
                   ? `/inspection/${id}/edit#objetivo-metodologia`
                   : `/inspection/${id}/edit`
               )
@@ -546,7 +546,7 @@ const InspectionChecklist = () => {
           >
             <ArrowLeft size={20} className="shrink-0" />
             <span className="text-left text-sm sm:text-base">
-              {tipoVistoriaFluxo === 'apartamento'
+              {tipoVistoriaFluxo === 'apartamento' || tipoVistoriaFluxo === 'area_comum'
                 ? 'Voltar para Objetivo e Metodologia'
                 : 'Voltar para Identificação'}
             </span>
