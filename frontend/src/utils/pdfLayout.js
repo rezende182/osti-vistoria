@@ -163,6 +163,33 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
 }
 
 /**
+ * Altura vertical (mm) que `drawBodyParagraphs` ocuparia para o mesmo texto e largura de coluna,
+ * incluindo espaços entre parágrafos. Útil para reservar espaço antes de se conhecer o texto final
+ * (ex.: parágrafo com número de folhas no encerramento).
+ */
+export function measureBodyParagraphsHeightMm(doc, text, contentWidth, options = {}) {
+  if (!text || !String(text).trim()) return 0;
+  const firstLineIndentMm = options.firstLineIndentMm ?? PDF_BODY_FIRST_LINE_INDENT_MM;
+  const normalized = String(text)
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ');
+  const blocks = normalized
+    .split(/\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  let h = 0;
+  blocks.forEach((block, blockIdx) => {
+    const paraLines = buildParagraphVisualLines(doc, block, contentWidth, firstLineIndentMm);
+    h += paraLines.length * PDF_BODY_LINE_MM;
+    if (blockIdx < blocks.length - 1) {
+      h += PDF_PARAGRAPH_GAP_MM;
+    }
+  });
+  return h;
+}
+
+/**
  * Bloco de texto estilo “card” do app: fundo claro, barra azul à esquerda, cantos arredondados.
  * Texto vazio exibe traço em itálico. Textos muito longos caem em parágrafos normais (sem card).
  */

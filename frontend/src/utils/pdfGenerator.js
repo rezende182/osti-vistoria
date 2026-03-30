@@ -6,6 +6,7 @@ import {
   drawResponsavelAssinaturaSection,
   drawChapterTitle,
   drawSubsectionTitle,
+  measureBodyParagraphsHeightMm,
   PDF_FONT,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
@@ -636,41 +637,30 @@ function drawPdfRegistroFotoCaptionFromApp(
 }
 
 function measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH) {
-  const maxW = contentWidth - 2 * pad;
-  doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_BODY_PT);
-  const label = 'Descrição: ';
-  const lw = doc.getTextWidth(label);
+  const innerW = Math.max(20, contentWidth - 2 * pad);
   doc.setFont(PDF_FONT, 'normal');
-  const lines = doc.splitTextToSize(ncBody, Math.max(8, maxW - lw));
-  return pad + Math.max(1, lines.length) * lineH + pad;
+  doc.setFontSize(PDF_BODY_PT);
+  const labelH = lineH;
+  const gapAfterLabel = PDF_PARAGRAPH_GAP_MM * 0.35;
+  const bodyH = measureBodyParagraphsHeightMm(doc, ncBody, innerW);
+  return pad + labelH + gapAfterLabel + bodyH + pad;
 }
 
 function drawPdfDescricaoBlock(doc, tableX, yTop, contentWidth, pad, ncBody, lineH) {
-  const x = tableX + pad;
-  const maxW = contentWidth - 2 * pad;
+  const innerX = tableX + pad;
+  const innerW = Math.max(20, contentWidth - 2 * pad);
   let y = yTop + pad + lineH * 0.85;
 
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
-  const label = 'Descrição: ';
-  const lw = doc.getTextWidth(label);
+  doc.text('Descrição:', innerX, y);
   doc.setFont(PDF_FONT, 'normal');
-  const lines = doc.splitTextToSize(ncBody, Math.max(8, maxW - lw));
 
-  doc.setFont(PDF_FONT, 'bold');
-  doc.text(label.trimEnd(), x, y);
-  doc.setFont(PDF_FONT, 'normal');
-  if (lines.length) {
-    doc.text(lines[0], x + lw, y, { align: 'justify', maxWidth: maxW - lw });
-    for (let i = 1; i < lines.length; i++) {
-      y += lineH;
-      doc.text(lines[i], x, y, { align: 'justify', maxWidth: maxW });
-    }
-  }
+  y += lineH + PDF_PARAGRAPH_GAP_MM * 0.35;
+  const yAfter = drawBodyParagraphs(doc, ncBody, innerX, innerW, y, () => {});
 
-  return y + pad;
+  return yAfter + pad;
 }
 
 /**
@@ -719,8 +709,8 @@ function measureEncerramentoPara1BlockMm(doc, contentWidth, nFolhas) {
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   const t = buildEncerramentoPara1(nFolhas);
-  const lines = doc.splitTextToSize(t, contentWidth);
-  return lines.length * PDF_BODY_LINE_MM + PDF_PARAGRAPH_GAP_MM;
+  /** Mesma lógica de quebras que `drawBodyParagraphs` (recuo 1.ª linha); evita retângulo branco sobre o texto seguinte. */
+  return measureBodyParagraphsHeightMm(doc, t, contentWidth);
 }
 
 const PDF_ENCERRAMENTO_CORPO_RESTO =
