@@ -3,10 +3,12 @@ import autoTable from 'jspdf-autotable';
 import { TEXTOS_CONCLUSAO } from '../constants/inspectionClassificacao';
 import {
   drawBodyParagraphs,
+  drawInlineLabelParagraph,
   drawResponsavelAssinaturaSection,
   drawChapterTitle,
   drawSubsectionTitle,
   measureBodyParagraphsHeightMm,
+  measureInlineLabelParagraphMm,
   PDF_FONT,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
@@ -640,26 +642,15 @@ function measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH) {
   const innerW = Math.max(20, contentWidth - 2 * pad);
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
-  const labelH = lineH;
-  const gapAfterLabel = PDF_PARAGRAPH_GAP_MM * 0.35;
-  const bodyH = measureBodyParagraphsHeightMm(doc, ncBody, innerW);
-  return pad + labelH + gapAfterLabel + bodyH + pad;
+  const bodyH = measureInlineLabelParagraphMm(doc, innerW, 'Descrição:', ncBody);
+  return pad + bodyH + pad;
 }
 
 function drawPdfDescricaoBlock(doc, tableX, yTop, contentWidth, pad, ncBody, lineH) {
   const innerX = tableX + pad;
   const innerW = Math.max(20, contentWidth - 2 * pad);
-  let y = yTop + pad + lineH * 0.85;
-
-  doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_BODY_PT);
-  doc.setTextColor(0, 0, 0);
-  doc.text('Descrição:', innerX, y);
-  doc.setFont(PDF_FONT, 'normal');
-
-  y += lineH + PDF_PARAGRAPH_GAP_MM * 0.35;
-  const yAfter = drawBodyParagraphs(doc, ncBody, innerX, innerW, y, () => {});
-
+  const y0 = yTop + pad + lineH * 0.85;
+  const yAfter = drawInlineLabelParagraph(doc, innerX, innerW, y0, 'Descrição:', ncBody, {});
   return yAfter + pad;
 }
 
@@ -701,21 +692,21 @@ const PDF_NC_IMG_W_MM = 120;
 const PDF_NC_IMG_H_MM = 90;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1.1;
 
-function buildEncerramentoPara1(nFolhas) {
-  return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
+/** Texto completo do capítulo ENCERRAMENTO (n.º de folhas só após fecho do documento). */
+function buildEncerramentoCompletoPdf(nFolhas) {
+  const p1 = `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
+  const p2 =
+    'Todas as informações contidas neste documento são verdadeiras. Este é um trabalho isento e ético, atendendo às determinações da Resolução nº 205 do Conselho Federal de Engenharia, Arquitetura e Agronomia, de 30/09/71, que adota o Código de Ética Profissional.';
+  const p3 =
+    'O responsável técnico pela elaboração deste laudo de vistoria se coloca à disposição para quaisquer esclarecimentos adicionais que se fizerem necessários.';
+  return `${p1}\n\n${p2}\n\n${p3}`;
 }
 
-function measureEncerramentoPara1BlockMm(doc, contentWidth, nFolhas) {
+function measureEncerramentoCompletoMm(doc, contentWidth, nFolhas) {
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
-  const t = buildEncerramentoPara1(nFolhas);
-  /** Mesma lógica de quebras que `drawBodyParagraphs` (recuo 1.ª linha); evita retângulo branco sobre o texto seguinte. */
-  return measureBodyParagraphsHeightMm(doc, t, contentWidth);
+  return measureBodyParagraphsHeightMm(doc, buildEncerramentoCompletoPdf(nFolhas), contentWidth);
 }
-
-const PDF_ENCERRAMENTO_CORPO_RESTO =
-  'Todas as informações contidas neste documento são verdadeiras. Este é um trabalho isento e ético, atendendo às determinações da Resolução nº 205 do Conselho Federal de Engenharia, Arquitetura e Agronomia, de 30/09/71, que adota o Código de Ética Profissional.\n\n' +
-  'O responsável técnico pela elaboração deste laudo de vistoria se coloca à disposição para quaisquer esclarecimentos adicionais que se fizerem necessários.';
 
 /**
  * Registo fotográfico: legenda = campo «Legenda» do app (`photo.caption`);
@@ -1250,7 +1241,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += PDF_PARAGRAPH_GAP_MM;
 
   // ============================================================
-  // ENCERRAMENTO (texto legal de encerramento; 1.º parágrafo com n.º de folhas após assinatura)
+  // ENCERRAMENTO — reserva de espaço + desenho único após total de páginas (sem retângulo branco)
   // ============================================================
   checkNewPage(40);
   yPos = drawChapterTitle(
@@ -1264,16 +1255,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const encStartPage = doc.internal.getNumberOfPages();
   yPos += PDF_PARAGRAPH_GAP_MM;
   const encBodyTopY = yPos;
-  const reservedEncPara1H = measureEncerramentoPara1BlockMm(doc, contentWidth, 9999);
-  yPos = encBodyTopY + reservedEncPara1H;
-  yPos = drawBodyParagraphs(
-    doc,
-    PDF_ENCERRAMENTO_CORPO_RESTO,
-    margin,
-    contentWidth,
-    yPos,
-    checkNewPage
-  );
+  /** Reserva com n.º de folhas “máximo” para não sobrepor a assinatura; texto final desenhado depois. */
+  const reservedEncH = measureEncerramentoCompletoMm(doc, contentWidth, 99999);
+  yPos = encBodyTopY + reservedEncH;
   yPos += PDF_PARAGRAPH_GAP_MM;
 
   // ============================================================
@@ -1308,13 +1292,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const totalPagesLaudo = doc.internal.getNumberOfPages();
   doc.setPage(encStartPage);
-  doc.setFillColor(255, 255, 255);
-  doc.rect(margin, encBodyTopY, contentWidth, reservedEncPara1H, 'F');
-  doc.setDrawColor(0, 0, 0);
   doc.setTextColor(0, 0, 0);
   drawBodyParagraphs(
     doc,
-    buildEncerramentoPara1(totalPagesLaudo),
+    buildEncerramentoCompletoPdf(totalPagesLaudo),
     margin,
     contentWidth,
     encBodyTopY,

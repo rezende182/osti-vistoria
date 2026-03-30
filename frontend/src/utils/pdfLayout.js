@@ -190,6 +190,102 @@ export function measureBodyParagraphsHeightMm(doc, text, contentWidth, options =
 }
 
 /**
+ * Rótulo em negrito na 1.ª linha («Descrição: ») com o texto a seguir na mesma linha; continuação
+ * justificada na largura da coluna (Helvetica 12 pt = Arial no PDF).
+ */
+export function measureInlineLabelParagraphMm(doc, columnWidth, boldLabel, bodyText) {
+  const normalized = String(bodyText ?? '')
+    .replace(/\r\n/g, ' ')
+    .replace(/\n/g, ' ')
+    .trim();
+  const filler = normalized || '\u2014';
+
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setFont(PDF_FONT, 'bold');
+  const label = /\s$/.test(boldLabel) ? boldLabel : `${boldLabel} `;
+  const lw = doc.getTextWidth(label);
+  doc.setFont(PDF_FONT, 'normal');
+
+  const firstLineMaxW = Math.max(12, columnWidth - lw);
+  const words = filler.split(/\s+/).filter(Boolean);
+  const { rest } = takeFirstLineWords(doc, words, firstLineMaxW);
+  let lineCount = 1;
+  if (rest.length > 0) {
+    const restStr = rest.join(' ');
+    const paraLines = buildParagraphVisualLines(doc, restStr, columnWidth, 0);
+    lineCount += paraLines.length;
+  }
+  return lineCount * PDF_BODY_LINE_MM;
+}
+
+export function drawInlineLabelParagraph(
+  doc,
+  xLeft,
+  columnWidth,
+  yStart,
+  boldLabel,
+  bodyText,
+  pageOpts = {}
+) {
+  const opts = {
+    bottomMarginMm: pageOpts.bottomMarginMm ?? PDF_PAGE_BOTTOM_SAFE_MM,
+    topMarginMm: pageOpts.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM,
+  };
+  const normalized = String(bodyText ?? '')
+    .replace(/\r\n/g, ' ')
+    .replace(/\n/g, ' ')
+    .trim();
+  const filler = normalized || '\u2014';
+
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont(PDF_FONT, 'bold');
+  const label = /\s$/.test(boldLabel) ? boldLabel : `${boldLabel} `;
+  const lw = doc.getTextWidth(label);
+  doc.setFont(PDF_FONT, 'normal');
+
+  const firstLineMaxW = Math.max(12, columnWidth - lw);
+  const words = filler.split(/\s+/).filter(Boolean);
+  const { line: firstBodyLine, rest } = takeFirstLineWords(doc, words, firstLineMaxW);
+
+  let y = yStart;
+  y = ensureVerticalSpace(doc, y, PDF_BODY_LINE_MM, opts);
+
+  doc.setFont(PDF_FONT, 'bold');
+  doc.text(label, xLeft, y);
+  doc.setFont(PDF_FONT, 'normal');
+
+  const firstWords = firstBodyLine.trim().split(/\s+/).filter(Boolean);
+  const hasMore = rest.length > 0;
+  if (firstWords.length > 1 && hasMore) {
+    justifyLine(doc, firstWords, xLeft + lw, y, firstLineMaxW);
+  } else if (firstWords.length) {
+    doc.text(firstBodyLine, xLeft + lw, y);
+  }
+
+  y += PDF_BODY_LINE_MM;
+
+  if (rest.length === 0) return y;
+
+  const restStr = rest.join(' ');
+  const paraLines = buildParagraphVisualLines(doc, restStr, columnWidth, 0);
+  paraLines.forEach((pl, lineIdx) => {
+    y = ensureVerticalSpace(doc, y, PDF_BODY_LINE_MM, opts);
+    const x = xLeft + pl.xOffset;
+    const wds = pl.text.trim().split(/\s+/).filter(Boolean);
+    const isLast = lineIdx === paraLines.length - 1;
+    if (wds.length > 1 && !isLast) {
+      justifyLine(doc, wds, x, y, pl.maxW);
+    } else {
+      doc.text(pl.text, x, y);
+    }
+    y += PDF_BODY_LINE_MM;
+  });
+
+  return y;
+}
+
+/**
  * Bloco de texto estilo “card” do app: fundo claro, barra azul à esquerda, cantos arredondados.
  * Texto vazio exibe traço em itálico. Textos muito longos caem em parágrafos normais (sem card).
  */
