@@ -924,6 +924,17 @@ const InspectionChecklist = () => {
       {/* Fixed Bottom Buttons */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 p-4 pb-bottom-safe backdrop-blur-sm supports-[backdrop-filter]:bg-white/80">
         <div className="mx-auto w-full max-w-app-readable space-y-3 sm:px-2 xl:max-w-app-wide">
+          {roomsList.length > 0 && (
+            <button
+              type="button"
+              data-testid="continue-add-room-button"
+              onClick={handleOpenAddRoomModal}
+              className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 py-3 text-sm font-bold font-secondary uppercase tracking-wide text-slate-800 transition-all duration-200 hover:bg-slate-200 active:scale-[0.99] sm:min-h-0"
+            >
+              <Plus size={18} className="shrink-0" aria-hidden />
+              Continuar adicionando ambiente
+            </button>
+          )}
           <button
             type="button"
             data-testid="save-and-continue-button"
@@ -933,17 +944,6 @@ const InspectionChecklist = () => {
             Salvar e Continuar
             <ArrowRight size={20} />
           </button>
-          {roomsList.length > 0 && (
-            <button
-              type="button"
-              data-testid="continue-add-room-button"
-              onClick={handleOpenAddRoomModal}
-              className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-slate-100 py-3 text-sm font-semibold text-slate-800 transition-all duration-200 hover:bg-slate-200 active:scale-[0.99] sm:min-h-0"
-            >
-              <Plus size={18} />
-              Continuar adicionando ambiente
-            </button>
-          )}
         </div>
       </div>
     </div>

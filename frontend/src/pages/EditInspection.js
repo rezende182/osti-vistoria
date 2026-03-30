@@ -796,21 +796,6 @@ const EditInspection = () => {
                   ))}
                 </div>
               </div>
-
-              <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <p className="mb-3 text-sm text-slate-600">
-                  O objetivo e a metodologia do laudo são preenchidos numa página dedicada.
-                </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate({ pathname: `/inspection/${id}/edit`, hash: '#objetivo-metodologia' })
-                  }
-                  className="w-full rounded-lg border border-slate-300 bg-white py-3 text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-800 transition-colors hover:bg-slate-100"
-                >
-                  Abrir objetivo e metodologia
-                </button>
-              </div>
             </>
           ) : (
             <>
@@ -1066,22 +1051,6 @@ const EditInspection = () => {
                   ))}
                 </div>
               </div>
-              {formData.tipo_vistoria_fluxo === 'area_comum' && (
-                <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                  <p className="mb-3 text-sm text-slate-600">
-                    O objetivo e a metodologia do laudo são preenchidos numa página dedicada.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate({ pathname: `/inspection/${id}/edit`, hash: '#objetivo-metodologia' })
-                    }
-                    className="w-full rounded-lg border border-slate-300 bg-white py-3 text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-800 transition-colors hover:bg-slate-100"
-                  >
-                    Abrir objetivo e metodologia
-                  </button>
-                </div>
-              )}
             </>
           )}
 
