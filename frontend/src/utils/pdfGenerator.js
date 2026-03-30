@@ -80,6 +80,9 @@ const PDF_IDENT_LABEL_FILL = [245, 245, 245];
 const PDF_IDENT_TABLE_PT = 9;
 const PDF_IDENT_TABLE_CELL_PAD = 1.6;
 
+/** Rótulo sem quebra no meio da expressão (espaços finos em volta da barra). */
+const PDF_LABEL_EMPREENDIMENTO_CONSTRUTORA = 'Empreendimento\u00A0/\u00A0Construtora';
+
 function pdfIdentLabelCell(text) {
   return {
     content: text,
@@ -227,7 +230,7 @@ function buildIdentificacaoTableBody(inspection) {
     const empConsVal = pdfEmpreendimentoConstrutoraCellValue(inspection);
     if (empConsVal) {
       rows.push([
-        pdfIdentLabelCell('Empreendimento/Construtora'),
+        pdfIdentLabelCell(PDF_LABEL_EMPREENDIMENTO_CONSTRUTORA),
         {
           content: empConsVal,
           colSpan: 3,
@@ -280,7 +283,7 @@ function buildIdentificacaoTableBody(inspection) {
   const empConsGVal = pdfEmpreendimentoConstrutoraCellValue(inspection);
   if (empConsGVal) {
     rows.push([
-      pdfIdentLabelCell('Empreendimento/Construtora'),
+      pdfIdentLabelCell(PDF_LABEL_EMPREENDIMENTO_CONSTRUTORA),
       {
         content: empConsGVal,
         colSpan: 3,
@@ -535,6 +538,13 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 const PDF_NC_HEADER_FILL = [226, 232, 240];
 const PDF_NC_COL_LEFT_RATIO = 0.62;
 const PDF_NC_LINE_W = 0.2;
+/** Fotos NC: proporção 12 (largura) × 9 (altura), em cm → mm no laudo. */
+const PDF_NC_IMG_LARGURA_MM = 120;
+const PDF_NC_IMG_ALTURA_MM = 90;
+/** Espaço entre a linha do cabeçalho da tabela e o início da legenda. */
+const PDF_NC_LEGEND_GAP_BELOW_HEADER_MM = 4.5;
+/** Espaço entre o fim da legenda e o topo da imagem. */
+const PDF_NC_CAPTION_TO_IMAGE_GAP_MM = 2.5;
 
 /**
  * Bloco em tabela: cabeçalho ITEM | LOCALIZAÇÃO; corpo com foto+legenda (esq.) e Descrição/Recomendação (dir.).
@@ -555,8 +565,16 @@ function drawPdfNaoConformidadeTable(
   const cellPad = 2.8;
 
   const imgMaxW = colLeftW - 2 * cellPad;
-  const imgW = Math.min(108, Math.max(40, imgMaxW));
-  const imgH = Math.min(74, Math.max(36, imgW * 0.62));
+  let imgW = Math.min(PDF_NC_IMG_LARGURA_MM, imgMaxW);
+  let imgH = imgW * (9 / 12);
+  if (imgH > PDF_NC_IMG_ALTURA_MM) {
+    imgH = PDF_NC_IMG_ALTURA_MM;
+    imgW = imgH * (12 / 9);
+  }
+  if (imgW > imgMaxW) {
+    imgW = imgMaxW;
+    imgH = imgW * (9 / 12);
+  }
 
   const parts = buildPdfPhotoCaptionParts(photo.caption, photo.number);
   const capFull = `${parts.prefix}${parts.body || ''}`.trim();
@@ -577,7 +595,14 @@ function drawPdfNaoConformidadeTable(
   const headerPadTop = 3.5;
   const headerH = headerPadTop + locHeadLines.length * PDF_BODY_LINE_MM + 3;
 
-  const leftColH = cellPad + captionBlockH + imgH + cellPad + 1;
+  const leftColH =
+    cellPad +
+    PDF_NC_LEGEND_GAP_BELOW_HEADER_MM +
+    captionBlockH +
+    PDF_NC_CAPTION_TO_IMAGE_GAP_MM +
+    imgH +
+    cellPad +
+    1;
   const rightColH =
     cellPad +
     PDF_BODY_LINE_MM +
@@ -616,9 +641,10 @@ function drawPdfNaoConformidadeTable(
 
   const bodyY = y + headerH;
   const imgX = tableX + cellPad;
-  let yLeft = bodyY + cellPad;
+  let yLeft = bodyY + cellPad + PDF_NC_LEGEND_GAP_BELOW_HEADER_MM;
 
   yLeft = drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgW, yLeft, parts);
+  yLeft += PDF_NC_CAPTION_TO_IMAGE_GAP_MM;
 
   if (photo.url) {
     try {
@@ -752,9 +778,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const identificacaoData = buildIdentificacaoTableBody(inspection);
 
-  /** Rótulos mais estreitos para dar mais largura aos valores (ex.: empreendimento/construtora numa linha). */
-  const identLabelColW = 32;
-  const identValuePairW = Math.max(28, (contentWidth - identLabelColW * 2) / 2);
+  /** Largura do rótulo suficiente para «Empreendimento / Construtora» sem partir palavras. */
+  const identLabelColW = 48;
+  const identValuePairW = Math.max(24, (contentWidth - identLabelColW * 2) / 2);
 
   autoTable(doc, {
     startY: yPos,
@@ -960,14 +986,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         yPos,
         `${checklistChapterNum}.${roomNumber} ${room.room_name.toUpperCase()}`
       );
-
-      checkNewPage(16);
-      doc.setFont(PDF_FONT, 'bold');
-      doc.setFontSize(PDF_BODY_PT);
-      doc.setTextColor(0, 0, 0);
-      doc.text('ITEM: ELEMENTO E VERIFICAÇÕES', listX, yPos);
-      yPos += PDF_BODY_LINE_MM + PDF_LIST_ITEM_EXTRA_GAP_MM * 0.5;
-      doc.setFont(PDF_FONT, 'normal');
 
       for (const item of itensNoPdf) {
         checkNewPage(18);

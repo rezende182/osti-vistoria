@@ -548,7 +548,7 @@ const InspectionDetail = () => {
                           </span>
                           <span
                             className={`shrink-0 text-right font-sans font-semibold tabular-nums ${
-                              nc > 0 ? 'text-slate-700' : 'text-red-600'
+                              nc > 0 ? 'text-red-600' : 'text-slate-600'
                             }`}
                           >
                             {nc > 0 ? `Não Conformidades (${nc})` : '—'}
