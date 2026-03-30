@@ -704,12 +704,14 @@ const PDF_NC_IMG_LARGURA_MM = 120;
 const PDF_NC_IMG_ALTURA_MM = 90;
 /** Espaço entre o fim da imagem e a legenda abaixo da foto. */
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 3.5;
-/** Espaço extra abaixo da linha que separa a zona da foto da linha «DESCRIÇÃO». */
-const PDF_NC_FOOTER_TOP_PAD_MM = 6;
+/** Espaço entre a linha abaixo da foto e o texto da linha «DESCRIÇÃO» (mm). */
+const PDF_NC_FOOTER_TOP_PAD_MM = 2.4;
+/** Padding vertical interno da linha DESCRIÇÃO | texto — altura da linha próxima do tamanho do texto. */
+const PDF_NC_FOOTER_INNER_V_PAD_MM = 1.1;
 /** Rótulo «DESCRIÇÃO:» no registo fotográfico: Helvetica/Arial 12 pt (igual ao corpo); largura à medida do texto. */
 const PDF_NC_DESC_LABEL_PT = PDF_BODY_PT;
-/** Padding vertical mínimo da faixa cinza do rótulo (mm) — mais baixa, mais próxima do texto. */
-const PDF_NC_DESC_GRAY_V_PAD_MM = 0.9;
+/** Padding vertical da faixa cinza em torno da palavra «DESCRIÇÃO:» (mm). */
+const PDF_NC_DESC_GRAY_V_PAD_MM = 0.55;
 
 function buildEncerramentoPara1(nFolhas) {
   return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -785,14 +787,14 @@ function drawPdfNaoConformidadeTable(
   const headerLines = doc.splitTextToSize(headerLine, headerTextW);
   const headerRowH = cellPad + headerLines.length * PDF_BODY_LINE_MM + cellPad;
 
-  const innerFooterPad = 3.5;
+  const footerInnerVPad = PDF_NC_FOOTER_INNER_V_PAD_MM;
   doc.setFontSize(PDF_NC_DESC_LABEL_PT);
   const labelLineH = PDF_BODY_LINE_MM * (PDF_NC_DESC_LABEL_PT / PDF_BODY_PT);
   doc.setFontSize(PDF_BODY_PT);
   const textBlockH = Math.max(1, descLineArr.length) * PDF_BODY_LINE_MM;
   const footerContentH = Math.max(labelLineH, textBlockH);
   const footerRowH =
-    PDF_NC_FOOTER_TOP_PAD_MM + innerFooterPad + footerContentH + innerFooterPad;
+    PDF_NC_FOOTER_TOP_PAD_MM + footerInnerVPad + footerContentH + footerInnerVPad;
 
   const imageRowH =
     cellPad + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM + captionBlockH + cellPad;
@@ -851,9 +853,12 @@ function drawPdfNaoConformidadeTable(
   );
 
   const footY = imgRowY + imageRowH;
-  const yFooterInner = footY + PDF_NC_FOOTER_TOP_PAD_MM + innerFooterPad;
+  const yFooterInner = footY + PDF_NC_FOOTER_TOP_PAD_MM + footerInnerVPad;
   const descLabelGrayH = PDF_NC_DESC_GRAY_V_PAD_MM * 2 + labelLineH;
-  const descLabelGrayY = yFooterInner - PDF_NC_DESC_GRAY_V_PAD_MM;
+  const descLabelGrayY = Math.max(
+    footY + PDF_NC_FOOTER_TOP_PAD_MM,
+    yFooterInner - PDF_NC_DESC_GRAY_V_PAD_MM
+  );
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(PDF_NC_LINE_W);
   doc.line(tableX, footY, tableX + contentWidth, footY);
