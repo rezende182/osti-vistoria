@@ -9,7 +9,6 @@ import {
   drawSubsectionTitle,
   measureBodyParagraphsHeightMm,
   measureInlineLabelParagraphMm,
-  normalizePdfInlineText,
   PDF_FONT,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
@@ -49,8 +48,7 @@ function pdfHeaderTitleLineHeightMm(pt) {
 /** Garante `;` entre itens com marcador e `.` no último de cada lista (ambiente). */
 function punctuatePdfChecklistItemBlock(block, isLastInList) {
   const end = isLastInList ? '.' : ';';
-  let s = normalizePdfInlineText(block);
-  if (!s) return '-';
+  let s = String(block).replace(/\s+$/, '');
   s = s.replace(/\s*[.;]\s*$/, '');
   return s + end;
 }
@@ -145,9 +143,8 @@ function pdfIdentLabelCell(text) {
 /** Linha de identificação em largura total: rótulo | valor (colSpan 3). */
 function pdfIdentRowFull(label, value, required = true) {
   const v = value == null ? '' : String(value).trim();
-  let display = required ? v || '—' : v;
+  const display = required ? v || '—' : v;
   if (!required && !display) return null;
-  if (display && display !== '—') display = normalizePdfInlineText(display);
   return [pdfIdentLabelCell(label), { content: display, colSpan: 3 }];
 }
 
@@ -199,9 +196,9 @@ function pdfIdentRowEmpreendimentoConstrutora(empreendimento, construtora) {
   if (!e && !k) return null;
   return [
     pdfIdentLabelCell('Empreendimento'),
-    { content: e ? normalizePdfInlineText(e) : '—' },
+    { content: e || '—' },
     pdfIdentLabelCell('Construtora'),
-    { content: k ? normalizePdfInlineText(k) : '—' },
+    { content: k || '—' },
   ];
 }
 
@@ -248,9 +245,9 @@ function pdfIdentRowHorarios(horarioInicio, horarioTermino) {
   const ht = horarioTermino == null ? '' : String(horarioTermino).trim();
   return [
     pdfIdentLabelCell('Horário de início'),
-    { content: hi ? normalizePdfInlineText(hi) : '—' },
+    { content: hi || '—' },
     pdfIdentLabelCell('Horário de término'),
-    { content: ht ? normalizePdfInlineText(ht) : '—' },
+    { content: ht || '—' },
   ];
 }
 
@@ -423,7 +420,7 @@ function finalizeLaudoMetodologiaPdf(inspection, registroNaoConformidadesItemNum
     const esc = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     out = out.replace(new RegExp(esc, 'gi'), replacement);
   }
-  return normalizePdfBodyText(out);
+  return out;
 }
 
 function getJsPdfFormatFromDataUrl(dataUrl) {
@@ -560,7 +557,7 @@ const PDF_NC_CAPTION_PT = 10;
 const PDF_NC_CAPTION_LINE_MM = (PDF_NC_CAPTION_PT / PDF_BODY_PT) * PDF_BODY_LINE_MM;
 
 function parseRegistroCaptionPrefixBody(caption, photoNumber) {
-  const raw = normalizePdfInlineText(caption);
+  const raw = pdfTrim(caption);
   if (!raw) return null;
   const m = raw.match(/^(Foto|Imagem)\s*(\d+)\s*\.\s*(.*)$/i);
   let prefix;
@@ -568,7 +565,7 @@ function parseRegistroCaptionPrefixBody(caption, photoNumber) {
   if (m) {
     const num = String(parseInt(m[2], 10)).padStart(2, '0');
     prefix = `Foto ${num}.`;
-    body = normalizePdfInlineText(m[3]);
+    body = pdfTrim(m[3]);
   } else {
     const n =
       photoNumber != null && photoNumber !== '' && !Number.isNaN(Number(photoNumber))
@@ -694,8 +691,7 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   const maxW = Math.max(20, maxWidthMm);
-  const tFlat = normalizePdfInlineText(text);
-  let parts = doc.splitTextToSize(tFlat, maxW);
+  let parts = doc.splitTextToSize(String(text), maxW);
   const out = [];
   const epsilon = 0.5;
   parts.forEach((line) => {
@@ -770,7 +766,7 @@ function drawPdfNaoConformidadeTable(
   const ncBody = pdfTrim(photo.description) || '\u2014';
   const descH = measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH);
 
-  const headText = `ITEM ${String(ncIdx).padStart(2, '0')} |  LOCALIZAÇÃO: ${normalizePdfInlineText(roomNameUpper)}`.toUpperCase();
+  const headText = `ITEM ${String(ncIdx).padStart(2, '0')} |  LOCALIZAÇÃO: ${roomNameUpper}`.toUpperCase();
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   const headLines = doc.splitTextToSize(headText, contentWidth - 2 * pad);
@@ -1045,17 +1041,14 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     yPos += PDF_PARAGRAPH_GAP_MM;
     PDF_ESPECIFICACOES_NORMAS.forEach((ln) => {
       checkNewPage(10);
-      doc.text(`\u2013 ${normalizePdfInlineText(ln)}`, margin, yPos);
+      doc.text(`\u2013 ${ln}`, margin, yPos);
       yPos += PDF_BODY_LINE_MM;
     });
     yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
     if (docsList.length > 0) {
       docsList.forEach((docItem) => {
         checkNewPage(18);
-        const wrapped = doc.splitTextToSize(
-          `\u2013 ${normalizePdfInlineText(docItem)}`,
-          contentWidth
-        );
+        const wrapped = doc.splitTextToSize(`\u2013 ${docItem}`, contentWidth);
         wrapped.forEach((wln) => {
           checkNewPage(8);
           doc.text(wln, margin, yPos);

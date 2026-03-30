@@ -39,34 +39,6 @@ export const PDF_PAGE_BOTTOM_SAFE_MM = 20;
 export const PDF_PAGE_TOP_SAFE_MM = 20;
 
 /**
- * Normaliza texto de corpo para o PDF: dentro de cada parágrafo, colapsa espaços e quebras (`\n`, `\r`)
- * num único espaço; parágrafos separados por uma ou mais linhas em branco mantêm-se com `\n\n`.
- */
-export function normalizePdfBodyText(text) {
-  if (text == null) return '';
-  let s = String(text)
-    .replace(/\u00a0/g, ' ')
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .trim();
-  if (!s) return '';
-  return s
-    .split(/\n\s*\n+/)
-    .map((p) => p.replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
-    .join('\n\n');
-}
-
-/** Uma linha lógica: todo o whitespace → um espaço (células, listas curtas, descrições inline). */
-export function normalizePdfInlineText(text) {
-  if (text == null) return '';
-  return String(text)
-    .replace(/\u00a0/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
  * Garante espaço vertical; se não couber, nova página e y reiniciado.
  */
 export function ensureVerticalSpace(doc, y, spaceNeededMm, options = {}) {
@@ -145,8 +117,7 @@ function buildParagraphVisualLines(doc, block, contentWidth, indentMm) {
  * `checkNewPage` é ignorado (mantido só por compatibilidade com chamadas antigas).
  */
 export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, checkNewPage, options = {}) {
-  const prepared = normalizePdfBodyText(text);
-  if (!prepared) return yStart;
+  if (!text || !String(text).trim()) return yStart;
 
   const firstLineIndentMm = options.firstLineIndentMm ?? PDF_BODY_FIRST_LINE_INDENT_MM;
   const pageOpts = {
@@ -158,8 +129,11 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
 
-  const blocks = prepared
-    .split(/\n\n/)
+  const normalized = String(text)
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ');
+  const blocks = normalized
+    .split(/\n/)
     .map((b) => b.trim())
     .filter(Boolean);
 
@@ -194,11 +168,13 @@ export function drawBodyParagraphs(doc, text, margin, contentWidth, yStart, chec
  * (ex.: parágrafo com número de folhas no encerramento).
  */
 export function measureBodyParagraphsHeightMm(doc, text, contentWidth, options = {}) {
-  const prepared = normalizePdfBodyText(text);
-  if (!prepared) return 0;
+  if (!text || !String(text).trim()) return 0;
   const firstLineIndentMm = options.firstLineIndentMm ?? PDF_BODY_FIRST_LINE_INDENT_MM;
-  const blocks = prepared
-    .split(/\n\n/)
+  const normalized = String(text)
+    .replace(/\r\n/g, '\n')
+    .replace(/\u00a0/g, ' ');
+  const blocks = normalized
+    .split(/\n/)
     .map((b) => b.trim())
     .filter(Boolean);
 
@@ -218,7 +194,10 @@ export function measureBodyParagraphsHeightMm(doc, text, contentWidth, options =
  * justificada na largura da coluna (Helvetica 12 pt = Arial no PDF).
  */
 export function measureInlineLabelParagraphMm(doc, columnWidth, boldLabel, bodyText) {
-  const normalized = normalizePdfInlineText(bodyText);
+  const normalized = String(bodyText ?? '')
+    .replace(/\r\n/g, ' ')
+    .replace(/\n/g, ' ')
+    .trim();
   const filler = normalized || '\u2014';
 
   doc.setFontSize(PDF_BODY_PT);
@@ -252,7 +231,10 @@ export function drawInlineLabelParagraph(
     bottomMarginMm: pageOpts.bottomMarginMm ?? PDF_PAGE_BOTTOM_SAFE_MM,
     topMarginMm: pageOpts.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM,
   };
-  const normalized = normalizePdfInlineText(bodyText);
+  const normalized = String(bodyText ?? '')
+    .replace(/\r\n/g, ' ')
+    .replace(/\n/g, ' ')
+    .trim();
   const filler = normalized || '\u2014';
 
   doc.setFontSize(PDF_BODY_PT);
@@ -321,9 +303,9 @@ export function drawLaudoFieldCard(doc, margin, contentWidth, yStart, text, chec
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
 
-  const prepared = normalizePdfBodyText(filler);
-  const blocks = prepared
-    .split(/\n\n/)
+  const normalized = filler.replace(/\r\n/g, '\n').replace(/\u00a0/g, ' ');
+  const blocks = normalized
+    .split(/\n/)
     .map((b) => b.trim())
     .filter(Boolean);
 
