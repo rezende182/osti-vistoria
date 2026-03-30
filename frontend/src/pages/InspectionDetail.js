@@ -417,8 +417,13 @@ const InspectionDetail = () => {
                     <p className="mt-1 text-sm font-medium text-slate-900">
                       {tStr(inspection.horario_inicio) || '—'}
                     </p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      O horário de término é registrado na finalização do laudo.
+                  </div>
+                  <div className="border-t border-slate-100 py-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Horário de término
+                    </span>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                      {tStr(inspection.horario_termino) || '—'}
                     </p>
                   </div>
                   {inspection.documentos_recebidos?.filter((d) => tStr(d)).length > 0 ? (
@@ -508,8 +513,13 @@ const InspectionDetail = () => {
                     <p className="mt-1 text-sm font-medium text-slate-900">
                       {tStr(inspection.horario_inicio) || '—'}
                     </p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      O horário de término é registrado na finalização do laudo.
+                  </div>
+                  <div className="border-t border-slate-100 py-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Horário de término
+                    </span>
+                    <p className="mt-1 text-sm font-medium text-slate-900">
+                      {tStr(inspection.horario_termino) || '—'}
                     </p>
                   </div>
                   {condicaoImovelLabel(inspection.tipo_imovel) ? (
