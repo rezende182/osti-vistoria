@@ -427,11 +427,11 @@ function buildPdfPhotoCaptionParts(caption, photoNumber) {
 /**
  * Desenha legenda: só `Foto N.` em negrito; resto em normal; quebra à largura da imagem.
  * Alinhado à esquerda com a foto (imgX).
- * Retorna Y do topo da foto: imediatamente abaixo da última baseline (sem linha em branco extra).
+ * Retorna Y imediatamente abaixo do bloco da legenda.
  */
 function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   const lh = PDF_BODY_LINE_MM;
-  /** Espaço entre a última linha da legenda e o topo da imagem */
+  /** Margem após a última linha da legenda */
   const belowBaselineMm = 1;
   let y = yStart;
   let lastBaseline = yStart;
@@ -560,13 +560,13 @@ const PDF_NC_LINE_W = 0.2;
 /** Registro fotográfico: 12 cm (largura) × 9 cm (altura), proporção 4:3 — melhor para visualização do que 7,5 × 5,6 cm. */
 const PDF_NC_IMG_LARGURA_MM = 120;
 const PDF_NC_IMG_ALTURA_MM = 90;
-/** Espaço entre a linha do cabeçalho da tabela e o início da legenda. */
+/** Espaço entre o cabeçalho da tabela e o topo da imagem (coluna esquerda). */
 const PDF_NC_LEGEND_GAP_BELOW_HEADER_MM = 4.5;
-/** Espaço entre o fim da legenda e o topo da imagem. */
-const PDF_NC_CAPTION_TO_IMAGE_GAP_MM = 2.5;
+/** Espaço entre o fim da imagem e o início da legenda (abaixo da foto). */
+const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 2.5;
 
 /**
- * Bloco em tabela: cabeçalho ITEM | LOCALIZAÇÃO; corpo com foto+legenda (esq.) e Descrição/Recomendação (dir.).
+ * Bloco em tabela: cabeçalho ITEM | LOCALIZAÇÃO; corpo com foto e legenda por baixo (esq.) e Descrição (dir.).
  * @returns {number} posição Y após o bloco
  */
 function drawPdfNaoConformidadeTable(
@@ -618,9 +618,9 @@ function drawPdfNaoConformidadeTable(
   const leftColH =
     cellPad +
     PDF_NC_LEGEND_GAP_BELOW_HEADER_MM +
-    captionBlockH +
-    PDF_NC_CAPTION_TO_IMAGE_GAP_MM +
     imgH +
+    PDF_NC_IMAGE_TO_CAPTION_GAP_MM +
+    captionBlockH +
     cellPad +
     1;
   const rightColH =
@@ -664,9 +664,6 @@ function drawPdfNaoConformidadeTable(
   const imgX = tableX + cellPad;
   let yLeft = bodyY + cellPad + PDF_NC_LEGEND_GAP_BELOW_HEADER_MM;
 
-  yLeft = drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgW, yLeft, parts);
-  yLeft += PDF_NC_CAPTION_TO_IMAGE_GAP_MM;
-
   if (photo.url) {
     try {
       const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
@@ -682,9 +679,12 @@ function drawPdfNaoConformidadeTable(
     }
   }
 
+  yLeft += imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM;
+  yLeft = drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgW, yLeft, parts);
+
   const rightFirstBaseline = bodyY + cellPad + PDF_BODY_LINE_MM;
   doc.setFont(PDF_FONT, 'bold');
-  doc.text('Descrição/Recomendação:', tableX + colLeftW + cellPad, rightFirstBaseline);
+  doc.text('Descrição:', tableX + colLeftW + cellPad, rightFirstBaseline);
   let yDesc = rightFirstBaseline + PDF_BODY_LINE_MM + 1.5;
   doc.setFont(PDF_FONT, 'normal');
   descLineArr.forEach((ln) => {
