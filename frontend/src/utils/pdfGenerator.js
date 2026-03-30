@@ -9,6 +9,7 @@ import {
   drawSubsectionTitle,
   measureBodyParagraphsHeightMm,
   measureInlineLabelParagraphMm,
+  normalizePdfInlineText,
   PDF_FONT,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
@@ -31,7 +32,9 @@ import { resolveVerificationTextForLaudo } from '../constants/checklistElementTe
 const PDF_HEADER_LOGO_MAX_W_MM = 52;
 const PDF_HEADER_LOGO_MAX_H_MM = 16;
 const PDF_HEADER_LOGO_GAP_MM = 4;
-const PDF_HEADER_TITLE_PT = 17;
+/** 1.ª linha do cabeçalho; 2.ª (RECEBIMENTO…) em 14 pt. */
+const PDF_HEADER_TITLE_FIRST_PT = 17;
+const PDF_HEADER_TITLE_SECOND_PT = 14;
 
 /** Duas linhas de título na 1.ª página (centradas; cada uma pode partir-se à largura útil). */
 const PDF_HEADER_TITLE_LINES = [
@@ -39,20 +42,27 @@ const PDF_HEADER_TITLE_LINES = [
   'RECEBIMENTO DE IMÓVEL',
 ];
 
+function pdfHeaderTitleLineHeightMm(pt) {
+  return pt * PDF_PT_TO_MM * 1.25;
+}
+
 /** Garante `;` entre itens com marcador e `.` no último de cada lista (ambiente). */
 function punctuatePdfChecklistItemBlock(block, isLastInList) {
   const end = isLastInList ? '.' : ';';
-  let s = String(block).replace(/\s+$/, '');
+  let s = normalizePdfInlineText(block);
+  if (!s) return '-';
   s = s.replace(/\s*[.;]\s*$/, '');
   return s + end;
 }
 
+/** Cada linha visual com o pt correspondente (17 / 14) para medir e desenhar. */
 function buildPdfHeaderWrappedTitleLines(doc, maxWidthMm) {
   doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_HEADER_TITLE_PT);
   const lines = [];
-  PDF_HEADER_TITLE_LINES.forEach((titleLine) => {
-    doc.splitTextToSize(titleLine, maxWidthMm).forEach((ln) => lines.push(ln));
+  PDF_HEADER_TITLE_LINES.forEach((titleLine, titleIdx) => {
+    const pt = titleIdx === 0 ? PDF_HEADER_TITLE_FIRST_PT : PDF_HEADER_TITLE_SECOND_PT;
+    doc.setFontSize(pt);
+    doc.splitTextToSize(titleLine, maxWidthMm).forEach((ln) => lines.push({ text: ln, pt }));
   });
   return lines;
 }
@@ -135,8 +145,9 @@ function pdfIdentLabelCell(text) {
 /** Linha de identificação em largura total: rótulo | valor (colSpan 3). */
 function pdfIdentRowFull(label, value, required = true) {
   const v = value == null ? '' : String(value).trim();
-  const display = required ? v || '—' : v;
+  let display = required ? v || '—' : v;
   if (!required && !display) return null;
+  if (display && display !== '—') display = normalizePdfInlineText(display);
   return [pdfIdentLabelCell(label), { content: display, colSpan: 3 }];
 }
 
@@ -188,9 +199,9 @@ function pdfIdentRowEmpreendimentoConstrutora(empreendimento, construtora) {
   if (!e && !k) return null;
   return [
     pdfIdentLabelCell('Empreendimento'),
-    { content: e || '—' },
+    { content: e ? normalizePdfInlineText(e) : '—' },
     pdfIdentLabelCell('Construtora'),
-    { content: k || '—' },
+    { content: k ? normalizePdfInlineText(k) : '—' },
   ];
 }
 
@@ -237,9 +248,9 @@ function pdfIdentRowHorarios(horarioInicio, horarioTermino) {
   const ht = horarioTermino == null ? '' : String(horarioTermino).trim();
   return [
     pdfIdentLabelCell('Horário de início'),
-    { content: hi || '—' },
+    { content: hi ? normalizePdfInlineText(hi) : '—' },
     pdfIdentLabelCell('Horário de término'),
-    { content: ht || '—' },
+    { content: ht ? normalizePdfInlineText(ht) : '—' },
   ];
 }
 
@@ -412,7 +423,7 @@ function finalizeLaudoMetodologiaPdf(inspection, registroNaoConformidadesItemNum
     const esc = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     out = out.replace(new RegExp(esc, 'gi'), replacement);
   }
-  return out;
+  return normalizePdfBodyText(out);
 }
 
 function getJsPdfFormatFromDataUrl(dataUrl) {
@@ -549,7 +560,7 @@ const PDF_NC_CAPTION_PT = 10;
 const PDF_NC_CAPTION_LINE_MM = (PDF_NC_CAPTION_PT / PDF_BODY_PT) * PDF_BODY_LINE_MM;
 
 function parseRegistroCaptionPrefixBody(caption, photoNumber) {
-  const raw = pdfTrim(caption);
+  const raw = normalizePdfInlineText(caption);
   if (!raw) return null;
   const m = raw.match(/^(Foto|Imagem)\s*(\d+)\s*\.\s*(.*)$/i);
   let prefix;
@@ -557,7 +568,7 @@ function parseRegistroCaptionPrefixBody(caption, photoNumber) {
   if (m) {
     const num = String(parseInt(m[2], 10)).padStart(2, '0');
     prefix = `Foto ${num}.`;
-    body = pdfTrim(m[3]);
+    body = normalizePdfInlineText(m[3]);
   } else {
     const n =
       photoNumber != null && photoNumber !== '' && !Number.isNaN(Number(photoNumber))
@@ -683,7 +694,8 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   const maxW = Math.max(20, maxWidthMm);
-  let parts = doc.splitTextToSize(String(text), maxW);
+  const tFlat = normalizePdfInlineText(text);
+  let parts = doc.splitTextToSize(tFlat, maxW);
   const out = [];
   const epsilon = 0.5;
   parts.forEach((line) => {
@@ -758,7 +770,7 @@ function drawPdfNaoConformidadeTable(
   const ncBody = pdfTrim(photo.description) || '\u2014';
   const descH = measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH);
 
-  const headText = `ITEM ${String(ncIdx).padStart(2, '0')} |  LOCALIZAÇÃO: ${roomNameUpper}`.toUpperCase();
+  const headText = `ITEM ${String(ncIdx).padStart(2, '0')} |  LOCALIZAÇÃO: ${normalizePdfInlineText(roomNameUpper)}`.toUpperCase();
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   const headLines = doc.splitTextToSize(headText, contentWidth - 2 * pad);
@@ -874,7 +886,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     customLogo.startsWith('data:image/');
 
   const cx = pageWidth / 2;
-  const titleLineH = PDF_HEADER_TITLE_PT * PDF_PT_TO_MM * 1.25;
 
   if (hasCustomLogo) {
     const { width: iw, height: ih } = await getDataUrlImageDimensions(customLogo);
@@ -892,7 +903,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
     const titleLines = buildPdfHeaderWrappedTitleLines(doc, textColWidth);
 
-    const textBlockH = titleLines.length * titleLineH;
+    const textBlockH = titleLines.reduce(
+      (sum, row) => sum + pdfHeaderTitleLineHeightMm(row.pt),
+      0
+    );
     const rowH = Math.max(logoH, textBlockH);
     const logoY = yPos + (rowH - logoH) / 2;
 
@@ -903,14 +917,17 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     }
 
     const textTop = yPos + (rowH - textBlockH) / 2;
-    let ty = textTop + titleLineH * 0.75;
+    const firstLineH = titleLines.length
+      ? pdfHeaderTitleLineHeightMm(titleLines[0].pt)
+      : pdfHeaderTitleLineHeightMm(PDF_HEADER_TITLE_FIRST_PT);
+    let ty = textTop + firstLineH * 0.75;
 
     doc.setFont(PDF_FONT, 'bold');
-    doc.setFontSize(PDF_HEADER_TITLE_PT);
     doc.setTextColor(0, 0, 0);
-    titleLines.forEach((ln) => {
-      doc.text(ln, textColCenterX, ty, { align: 'center' });
-      ty += titleLineH;
+    titleLines.forEach((row) => {
+      doc.setFontSize(row.pt);
+      doc.text(row.text, textColCenterX, ty, { align: 'center' });
+      ty += pdfHeaderTitleLineHeightMm(row.pt);
     });
 
     yPos = yPos + rowH + 7;
@@ -919,10 +936,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     const titleLines = buildPdfHeaderWrappedTitleLines(doc, contentWidth);
     let ty = yPos + 6;
     doc.setFont(PDF_FONT, 'bold');
-    doc.setFontSize(PDF_HEADER_TITLE_PT);
-    titleLines.forEach((ln) => {
-      doc.text(ln, cx, ty, { align: 'center' });
-      ty += titleLineH;
+    titleLines.forEach((row) => {
+      doc.setFontSize(row.pt);
+      doc.text(row.text, cx, ty, { align: 'center' });
+      ty += pdfHeaderTitleLineHeightMm(row.pt);
     });
     yPos = ty + 7;
   }
@@ -1028,14 +1045,17 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     yPos += PDF_PARAGRAPH_GAP_MM;
     PDF_ESPECIFICACOES_NORMAS.forEach((ln) => {
       checkNewPage(10);
-      doc.text(`\u2013 ${ln}`, margin, yPos);
+      doc.text(`\u2013 ${normalizePdfInlineText(ln)}`, margin, yPos);
       yPos += PDF_BODY_LINE_MM;
     });
     yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
     if (docsList.length > 0) {
       docsList.forEach((docItem) => {
         checkNewPage(18);
-        const wrapped = doc.splitTextToSize(`\u2013 ${docItem}`, contentWidth);
+        const wrapped = doc.splitTextToSize(
+          `\u2013 ${normalizePdfInlineText(docItem)}`,
+          contentWidth
+        );
         wrapped.forEach((wln) => {
           checkNewPage(8);
           doc.text(wln, margin, yPos);
