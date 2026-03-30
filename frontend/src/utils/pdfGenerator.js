@@ -33,7 +33,29 @@ const PDF_HEADER_LOGO_MAX_H_MM = 16;
 const PDF_HEADER_LOGO_GAP_MM = 4;
 const PDF_HEADER_TITLE_PT = 17;
 
-const PDF_HEADER_TITLE_MAIN = 'LAUDO DE INSPEÇÃO TÉCNICA';
+/** Duas linhas de título na 1.ª página (centradas; cada uma pode partir-se à largura útil). */
+const PDF_HEADER_TITLE_LINES = [
+  'LAUDO DE VISTORIA TÉCNICA',
+  'RECEBIMENTO DE IMÓVEL',
+];
+
+/** Garante `;` entre itens com marcador e `.` no último de cada lista (ambiente). */
+function punctuatePdfChecklistItemBlock(block, isLastInList) {
+  const end = isLastInList ? '.' : ';';
+  let s = String(block).replace(/\s+$/, '');
+  s = s.replace(/\s*[.;]\s*$/, '');
+  return s + end;
+}
+
+function buildPdfHeaderWrappedTitleLines(doc, maxWidthMm) {
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_HEADER_TITLE_PT);
+  const lines = [];
+  PDF_HEADER_TITLE_LINES.forEach((titleLine) => {
+    doc.splitTextToSize(titleLine, maxWidthMm).forEach((ln) => lines.push(ln));
+  });
+  return lines;
+}
 
 const PDF_ESPECIFICACOES_INTRO =
   'Este laudo técnico de vistoria foi elaborado com base na verificação das condições aparentes da edificação, considerando o atendimento às boas práticas construtivas e às diretrizes das seguintes normas técnicas e documentos:';
@@ -842,7 +864,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   };
 
   // ============================================================
-  // PÁGINA 1: CABEÇALHO — com logo: logo | só "LAUDO DE INSPEÇÃO TÉCNICA" (centrado na coluna à direita)
+  // PÁGINA 1: CABEÇALHO — título em duas linhas centrado(s)
   // ============================================================
 
   const customLogo = inspection.pdf_logo_data_url;
@@ -868,9 +890,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     const textColWidth = Math.max(40, pageWidth - margin - textColLeft);
     const textColCenterX = textColLeft + textColWidth / 2;
 
-    doc.setFont(PDF_FONT, 'bold');
-    doc.setFontSize(PDF_HEADER_TITLE_PT);
-    const titleLines = doc.splitTextToSize(PDF_HEADER_TITLE_MAIN, textColWidth);
+    const titleLines = buildPdfHeaderWrappedTitleLines(doc, textColWidth);
 
     const textBlockH = titleLines.length * titleLineH;
     const rowH = Math.max(logoH, textBlockH);
@@ -895,11 +915,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
     yPos = yPos + rowH + 7;
   } else {
+    doc.setTextColor(0, 0, 0);
+    const titleLines = buildPdfHeaderWrappedTitleLines(doc, contentWidth);
+    let ty = yPos + 6;
     doc.setFont(PDF_FONT, 'bold');
     doc.setFontSize(PDF_HEADER_TITLE_PT);
-    doc.setTextColor(0, 0, 0);
-    const titleLines = doc.splitTextToSize(PDF_HEADER_TITLE_MAIN, contentWidth);
-    let ty = yPos + 6;
     titleLines.forEach((ln) => {
       doc.text(ln, cx, ty, { align: 'center' });
       ty += titleLineH;
@@ -1119,13 +1139,18 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         `${checklistChapterNum}.${roomNumber} ${room.room_name.toUpperCase()}`
       );
 
-      for (const item of itensNoPdf) {
+      for (let itemIdx = 0; itemIdx < itensNoPdf.length; itemIdx++) {
+        const item = itensNoPdf[itemIdx];
         checkNewPage(18);
 
         const mainVerify = getItemVerificationBody(item, room.room_type);
-        const block = mainVerify
+        const rawBlock = mainVerify
           ? `- ${item.name}: ${mainVerify}`
           : `- ${item.name}: \u2014`;
+        const block = punctuatePdfChecklistItemBlock(
+          rawBlock,
+          itemIdx === itensNoPdf.length - 1
+        );
         doc.setFont(PDF_FONT, 'normal');
         doc.setFontSize(PDF_BODY_PT);
         doc.setTextColor(0, 0, 0);
