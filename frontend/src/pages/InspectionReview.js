@@ -82,7 +82,7 @@ const InspectionReview = () => {
       return;
     }
     if (!dataEmissaoLaudo) {
-      toast.error('Selecione a data de emissão do laudo (aparece na assinatura do PDF).');
+      toast.error('Selecione a data de emissão do laudo.');
       return;
     }
 
@@ -315,7 +315,7 @@ const InspectionReview = () => {
 
           <div className="mb-6">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Data de emissão do laudo (assinatura no PDF)
+              Data de emissão do laudo
             </label>
             <input
               data-testid="data-emissao-laudo-input"

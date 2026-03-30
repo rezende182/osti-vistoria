@@ -342,7 +342,7 @@ const NewInspection = () => {
                     ? 'Objetivo e Metodologia'
                     : 'Identificação da Vistoria Técnica'}
                 </h1>
-                {subtipoLabel && (
+                {subtipoLabel && tipoImovelFluxo !== 'apartamento' && (
                   <p className="w-full text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-300 sm:text-base">
                     ({subtipoLabel})
                   </p>

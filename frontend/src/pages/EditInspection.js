@@ -444,6 +444,7 @@ const EditInspection = () => {
                   Identificação da Vistoria Técnica
                 </h1>
                 {formData.tipo_vistoria_fluxo &&
+                  formData.tipo_vistoria_fluxo !== 'apartamento' &&
                   SUBTIPO_FLUXO_LABEL[formData.tipo_vistoria_fluxo] && (
                     <p className="w-full text-center text-sm font-bold font-secondary uppercase tracking-wide text-slate-300 sm:text-base">
                       ({SUBTIPO_FLUXO_LABEL[formData.tipo_vistoria_fluxo]})

@@ -27,42 +27,12 @@ import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 import { METODOLOGIA_PLACEHOLDER_REG_NC } from '../constants/laudoEntregaTextos';
 import { resolveVerificationTextForLaudo } from '../constants/checklistElementTemplates';
 
-/** Cabeçalho: logo à esquerda; só o título à direita, centrado na coluna de texto */
-const PDF_HEADER_LOGO_MAX_W_MM = 52;
-const PDF_HEADER_LOGO_MAX_H_MM = 16;
-const PDF_HEADER_LOGO_GAP_MM = 4;
-/** 1.ª linha do cabeçalho; 2.ª (RECEBIMENTO…) em 14 pt. */
-const PDF_HEADER_TITLE_FIRST_PT = 17;
-const PDF_HEADER_TITLE_SECOND_PT = 14;
-
-/** Duas linhas de título na 1.ª página (centradas; cada uma pode partir-se à largura útil). */
-const PDF_HEADER_TITLE_LINES = [
-  'LAUDO DE VISTORIA TÉCNICA',
-  'RECEBIMENTO DE IMÓVEL',
-];
-
-function pdfHeaderTitleLineHeightMm(pt) {
-  return pt * PDF_PT_TO_MM * 1.25;
-}
-
 /** Garante `;` entre itens com marcador e `.` no último de cada lista (ambiente). */
 function punctuatePdfChecklistItemBlock(block, isLastInList) {
   const end = isLastInList ? '.' : ';';
   let s = String(block).replace(/\s+$/, '');
   s = s.replace(/\s*[.;]\s*$/, '');
   return s + end;
-}
-
-/** Cada linha visual com o pt correspondente (17 / 14) para medir e desenhar. */
-function buildPdfHeaderWrappedTitleLines(doc, maxWidthMm) {
-  doc.setFont(PDF_FONT, 'bold');
-  const lines = [];
-  PDF_HEADER_TITLE_LINES.forEach((titleLine, titleIdx) => {
-    const pt = titleIdx === 0 ? PDF_HEADER_TITLE_FIRST_PT : PDF_HEADER_TITLE_SECOND_PT;
-    doc.setFontSize(pt);
-    doc.splitTextToSize(titleLine, maxWidthMm).forEach((ln) => lines.push({ text: ln, pt }));
-  });
-  return lines;
 }
 
 const PDF_ESPECIFICACOES_INTRO =
@@ -172,6 +142,27 @@ function pdfCidadeUfTexto(cidade, uf) {
   if (c) return c;
   if (u) return u;
   return '';
+}
+
+/** Capa do laudo: ex. "Praia Grande/SP". */
+function pdfCidadeUfCapaSlash(cidade, uf) {
+  const c = pdfTrim(cidade);
+  const u = pdfUfSomenteSigla(uf);
+  if (c && u) return `${c}/${u}`;
+  if (c) return c;
+  if (u) return u;
+  return '';
+}
+
+/** Data da capa / assinatura em DD/MM/AAAA (ISO yyyy-mm-dd). */
+function formatPdfLaudoCoverDateDdMmYyyy(iso) {
+  const s = pdfTrim(iso);
+  if (!s) return '';
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  const parts = s.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return s;
 }
 
 function pdfEmpreendimentoConstrutoraTexto(empreendimento, construtora) {
@@ -428,6 +419,88 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   const head = dataUrl.slice(0, 48).toLowerCase();
   if (head.includes('image/png')) return 'PNG';
   return 'JPEG';
+}
+
+/** Capa: ~80–120 px de altura ≈ 21–32 mm (A4 em jsPDF). */
+const PDF_COVER_LOGO_MAX_W_MM = 95;
+const PDF_COVER_LOGO_MAX_H_MM = 32;
+const PDF_COVER_MARGIN_MM = 20;
+const PDF_COVER_TITLE_MAIN_PT = 19;
+const PDF_COVER_TITLE_SUB_PT = 13;
+const PDF_COVER_FOOTER_PT = 11;
+const PDF_COVER_FOOTER_LINE_MM = PDF_COVER_FOOTER_PT * PDF_PT_TO_MM * 1.35;
+
+/**
+ * Primeira página: capa (logo opcional, títulos, cidade e data no rodapé).
+ * Helvetica no jsPDF equivale a Arial nos laudos.
+ */
+async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
+  const cx = pageWidth / 2;
+  const textMaxW = pageWidth - PDF_COVER_MARGIN_MM * 2;
+  const logoUrl = inspection.pdf_logo_data_url;
+  const hasLogo =
+    logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/');
+
+  let y = PDF_COVER_MARGIN_MM + 6;
+
+  if (hasLogo) {
+    try {
+      const { width: iw, height: ih } = await getDataUrlImageDimensions(logoUrl);
+      const { w: lw, h: lh } = fitLogoSizeMm(
+        iw,
+        ih,
+        PDF_COVER_LOGO_MAX_W_MM,
+        PDF_COVER_LOGO_MAX_H_MM
+      );
+      doc.addImage(
+        logoUrl,
+        getJsPdfFormatFromDataUrl(logoUrl),
+        cx - lw / 2,
+        y,
+        lw,
+        lh
+      );
+      y += lh + 16;
+    } catch (e) {
+      console.log('Capa: não foi possível incluir o logo.', e);
+      y += 10;
+    }
+  } else {
+    y += 22;
+  }
+
+  doc.setTextColor(0, 0, 0);
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_COVER_TITLE_MAIN_PT);
+  const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA TÉCNICA', textMaxW);
+  const mainLineH = PDF_COVER_TITLE_MAIN_PT * PDF_PT_TO_MM * 1.22;
+  mainLines.forEach((ln) => {
+    doc.text(ln, cx, y, { align: 'center' });
+    y += mainLineH;
+  });
+
+  y += 6;
+  doc.setFontSize(PDF_COVER_TITLE_SUB_PT);
+  doc.text('RECEBIMENTO DE IMÓVEL', cx, y, { align: 'center' });
+  y += PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * 1.4 + 14;
+
+  const cidadeTxt = pdfCidadeUfCapaSlash(inspection.cidade, inspection.uf);
+  const dataTxt = formatPdfLaudoCoverDateDdMmYyyy(
+    inspection.data_final || inspection.data
+  );
+
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_COVER_FOOTER_PT);
+  const yDate = pageHeight - PDF_COVER_MARGIN_MM - 8;
+  const yCity = yDate - PDF_COVER_FOOTER_LINE_MM;
+  if (cidadeTxt && dataTxt) {
+    doc.text(cidadeTxt, cx, yCity, { align: 'center' });
+    doc.text(dataTxt, cx, yDate, { align: 'center' });
+  } else if (cidadeTxt) {
+    doc.text(cidadeTxt, cx, yDate, { align: 'center' });
+  } else if (dataTxt) {
+    doc.text(dataTxt, cx, yDate, { align: 'center' });
+  }
 }
 
 /** Rodapé esquerdo do laudo. */
@@ -871,76 +944,12 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     return false;
   };
 
-  // ============================================================
-  // PÁGINA 1: CABEÇALHO — título em duas linhas centrado(s)
-  // ============================================================
-
-  const customLogo = inspection.pdf_logo_data_url;
-  const hasCustomLogo =
-    customLogo &&
-    typeof customLogo === 'string' &&
-    customLogo.startsWith('data:image/');
-
-  const cx = pageWidth / 2;
-
-  if (hasCustomLogo) {
-    const { width: iw, height: ih } = await getDataUrlImageDimensions(customLogo);
-    const { w: logoW, h: logoH } = fitLogoSizeMm(
-      iw,
-      ih,
-      PDF_HEADER_LOGO_MAX_W_MM,
-      PDF_HEADER_LOGO_MAX_H_MM
-    );
-
-    const logoFormat = getJsPdfFormatFromDataUrl(customLogo);
-    const textColLeft = margin + logoW + PDF_HEADER_LOGO_GAP_MM;
-    const textColWidth = Math.max(40, pageWidth - margin - textColLeft);
-    const textColCenterX = textColLeft + textColWidth / 2;
-
-    const titleLines = buildPdfHeaderWrappedTitleLines(doc, textColWidth);
-
-    const textBlockH = titleLines.reduce(
-      (sum, row) => sum + pdfHeaderTitleLineHeightMm(row.pt),
-      0
-    );
-    const rowH = Math.max(logoH, textBlockH);
-    const logoY = yPos + (rowH - logoH) / 2;
-
-    try {
-      doc.addImage(customLogo, logoFormat, margin, logoY, logoW, logoH);
-    } catch (e) {
-      console.log('Erro ao adicionar logo ao PDF:', e);
-    }
-
-    const textTop = yPos + (rowH - textBlockH) / 2;
-    const firstLineH = titleLines.length
-      ? pdfHeaderTitleLineHeightMm(titleLines[0].pt)
-      : pdfHeaderTitleLineHeightMm(PDF_HEADER_TITLE_FIRST_PT);
-    let ty = textTop + firstLineH * 0.75;
-
-    doc.setFont(PDF_FONT, 'bold');
-    doc.setTextColor(0, 0, 0);
-    titleLines.forEach((row) => {
-      doc.setFontSize(row.pt);
-      doc.text(row.text, textColCenterX, ty, { align: 'center' });
-      ty += pdfHeaderTitleLineHeightMm(row.pt);
-    });
-
-    yPos = yPos + rowH + 7;
-  } else {
-    doc.setTextColor(0, 0, 0);
-    const titleLines = buildPdfHeaderWrappedTitleLines(doc, contentWidth);
-    let ty = yPos + 6;
-    doc.setFont(PDF_FONT, 'bold');
-    titleLines.forEach((row) => {
-      doc.setFontSize(row.pt);
-      doc.text(row.text, cx, ty, { align: 'center' });
-      ty += pdfHeaderTitleLineHeightMm(row.pt);
-    });
-    yPos = ty + 7;
-  }
+  await drawPdfCoverPage(doc, inspection, pageWidth, pageHeight);
+  doc.addPage();
+  doc.setTextColor(0, 0, 0);
 
   // ============================================================
+  // Corpo do laudo (após capa)
   // 1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA
   // ============================================================
   yPos = drawChapterTitle(
