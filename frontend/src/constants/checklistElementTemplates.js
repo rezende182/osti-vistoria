@@ -312,6 +312,43 @@ export function getMasterCatalogEntryByName(itemName) {
   return MASTER_ITEM_CATALOG.find((el) => normalizeChecklistItemName(el.name) === n) || null;
 }
 
+function capitalizeFirstLaudo(text) {
+  const t = (text || '').trim();
+  if (!t) return '';
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/**
+ * Texto de «Itens verificados» igual ao do app — resolve pelo item guardado ou pelo catálogo / modelo do ambiente.
+ * Usar no PDF (secção 6) para refletir o mesmo conteúdo do modal.
+ */
+export function resolveVerificationTextForLaudo(item, roomType) {
+  let verificationText =
+    typeof item?.verification_text === 'string' ? item.verification_text.trim() : '';
+
+  if (!verificationText && item?.verification_points?.length) {
+    verificationText = item.verification_points
+      .filter((vp) => vp && !vp.excluded)
+      .map((vp) => (vp.text || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  const templateEls = getElementsForRoomType(roomType || '');
+  const match = templateEls.find(
+    (e) => normalizeChecklistItemName(e.name) === normalizeChecklistItemName(item?.name)
+  );
+  const catalogMatch = getMasterCatalogEntryByName(item?.name);
+  const resolvedText = match?.verificationText || catalogMatch?.verificationText;
+  if (!verificationText && resolvedText) {
+    verificationText = resolvedText;
+  }
+  if (!verificationText) {
+    verificationText = 'Pontos de verificação do elemento';
+  }
+  return capitalizeFirstLaudo(verificationText);
+}
+
 /** Itens do catálogo global ainda não adicionados ao ambiente (comparação por nome, sem acentos). */
 export function getAvailableElementsToAdd(existingItemNames) {
   const used = new Set((existingItemNames || []).map(normalizeChecklistItemName));

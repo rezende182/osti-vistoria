@@ -21,6 +21,7 @@ import {
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 import { METODOLOGIA_PLACEHOLDER_REG_NC } from '../constants/laudoEntregaTextos';
+import { resolveVerificationTextForLaudo } from '../constants/checklistElementTemplates';
 
 /** Cabeçalho: logo à esquerda; só o título à direita, centrado na coluna de texto */
 const PDF_HEADER_LOGO_MAX_W_MM = 52;
@@ -139,16 +140,9 @@ function pdfEmpreendimentoConstrutoraCellValue(inspection) {
   return e || k || '';
 }
 
-function getItemVerificationBody(item) {
-  let mainVerify = (item.verification_text || '').trim();
-  if (!mainVerify && Array.isArray(item.verification_points) && item.verification_points.length) {
-    mainVerify = item.verification_points
-      .filter((vp) => vp && !vp.excluded)
-      .map((vp) => (vp.text || '').trim())
-      .filter(Boolean)
-      .join(', ');
-  }
-  return mainVerify;
+/** Mesmo texto do botão «Itens verificados» no app (inclui resolução pelo catálogo / tipo de ambiente). */
+function getItemVerificationBody(item, roomType) {
+  return resolveVerificationTextForLaudo(item, roomType);
 }
 
 /** Apartamento | Casa Térrea | Sobrado (uma linha no laudo). */
@@ -587,13 +581,14 @@ function drawPdfNaoConformidadeTable(
   doc.setFontSize(PDF_BODY_PT);
   const descLineArr = doc.splitTextToSize(descRaw, rightTextW);
 
-  const itemHeader = `ITEM: ${String(ncIdx).padStart(2, '0')}`;
-  const locHeader = `LOCALIZAÇÃO: ${roomNameUpper}`;
+  /** Uma linha compacta: ITEM 02 | LOCALIZAÇÃO: NOME (sem coluna larga só para «ITEM»). */
+  const headerLine = `ITEM ${String(ncIdx).padStart(2, '0')}  |  LOCALIZAÇÃO: ${roomNameUpper}`;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
-  const locHeadLines = doc.splitTextToSize(locHeader, colRightW - 2 * cellPad);
   const headerPadTop = 3.5;
-  const headerH = headerPadTop + locHeadLines.length * PDF_BODY_LINE_MM + 3;
+  const headerTextW = contentWidth - 2 * cellPad;
+  const headerLines = doc.splitTextToSize(headerLine, headerTextW);
+  const headerH = headerPadTop + headerLines.length * PDF_BODY_LINE_MM + 3;
 
   const leftColH =
     cellPad +
@@ -628,18 +623,19 @@ function drawPdfNaoConformidadeTable(
   doc.setLineWidth(PDF_NC_LINE_W);
   doc.rect(tableX, y, contentWidth, totalH, 'S');
   doc.line(tableX, y + headerH, tableX + contentWidth, y + headerH);
-  doc.line(tableX + colLeftW, y, tableX + colLeftW, y + totalH);
+  /** Divisória vertical só no corpo (foto | texto), não no cabeçalho. */
+  const bodyY = y + headerH;
+  doc.line(tableX + colLeftW, bodyY, tableX + colLeftW, y + totalH);
 
-  const firstBaseline = y + headerPadTop + PDF_BODY_LINE_MM;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
-  doc.text(itemHeader, tableX + cellPad, firstBaseline);
-  locHeadLines.forEach((ln, i) => {
-    doc.text(ln, tableX + colLeftW + cellPad, firstBaseline + i * PDF_BODY_LINE_MM);
+  let hy = y + headerPadTop + PDF_BODY_LINE_MM;
+  headerLines.forEach((ln) => {
+    doc.text(ln, tableX + cellPad, hy);
+    hy += PDF_BODY_LINE_MM;
   });
 
-  const bodyY = y + headerH;
   const imgX = tableX + cellPad;
   let yLeft = bodyY + cellPad + PDF_NC_LEGEND_GAP_BELOW_HEADER_MM;
 
@@ -990,7 +986,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       for (const item of itensNoPdf) {
         checkNewPage(18);
 
-        const mainVerify = getItemVerificationBody(item);
+        const mainVerify = getItemVerificationBody(item, room.room_type);
         const block = mainVerify ? `${item.name}: ${mainVerify}` : `${item.name}: \u2014`;
         doc.setFont(PDF_FONT, 'normal');
         doc.setFontSize(PDF_BODY_PT);
