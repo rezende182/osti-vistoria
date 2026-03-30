@@ -179,6 +179,23 @@ const InspectionDetail = () => {
     loadInspection();
   }, [loadInspection]);
 
+  /** Ao abrir a vistoria concluída, ambientes com itens começam recolhidos (expandir com o chevron). */
+  useEffect(() => {
+    if (!inspection?.rooms_checklist?.length) return;
+    const keys = new Set();
+    inspection.rooms_checklist.forEach((room, index) => {
+      const itens = (room.items || []).filter(
+        (item) =>
+          item &&
+          item.name &&
+          String(item.name).trim().toLowerCase() !== 'vidro'
+      );
+      if (itens.length === 0) return;
+      keys.add(room.room_id ? String(room.room_id) : `room-${index}`);
+    });
+    setCollapsedChecklistRooms(keys);
+  }, [inspection?.id, inspection?.rooms_checklist]);
+
   const getStatusInfo = () => {
     if (inspection?.status === 'concluida') {
       if (inspection.classificacao_final === 'aprovado') {
@@ -650,10 +667,6 @@ const InspectionDetail = () => {
                 <strong>Data:</strong>{' '}
                 {formatInspectionDate(inspection.data || inspection.data_final)}
               </p>
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <p><strong>Horário de Início:</strong> {inspection.horario_inicio || '-'}</p>
-                <p><strong>Horário de Término:</strong> {inspection.horario_termino || '-'}</p>
-              </div>
             </div>
           </div>
         )}

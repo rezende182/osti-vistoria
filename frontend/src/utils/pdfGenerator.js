@@ -1,11 +1,15 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { TEXTOS_CONCLUSAO } from '../constants/inspectionClassificacao';
+import {
+  TEXTOS_CONCLUSAO,
+  CLASSIFICACAO_FINAL_LABELS,
+} from '../constants/inspectionClassificacao';
 import {
   drawBodyParagraphs,
   drawResponsavelAssinaturaSection,
   drawChapterTitle,
   drawSubsectionTitle,
+  drawClassificationFinalPlain,
   PDF_FONT,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
@@ -386,11 +390,6 @@ function finalizeLaudoMetodologiaPdf(inspection, registroNaoConformidadesItemNum
   return out;
 }
 
-// Texto legal padrão
-const LEGAL_TEXT =
-  'A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes.\n\n' +
-  'Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.';
-
 function getJsPdfFormatFromDataUrl(dataUrl) {
   if (!dataUrl || typeof dataUrl !== 'string') return 'JPEG';
   const head = dataUrl.slice(0, 48).toLowerCase();
@@ -549,24 +548,37 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
   return out.length ? out : [String(text)];
 }
 
-/** Cabeçalho tabela NC (cinza-azulado). */
-const PDF_NC_HEADER_FILL = [226, 232, 240];
-/**
- * Coluna da foto: largura mínima para caber 12 cm × 9 cm em A4 (margens 20 mm).
- * Alternativa mais compacta seria 7,5 × 5,6 cm — pior para leitura; mantemos 12 × 9 cm.
- */
-const PDF_NC_COL_LEFT_RATIO = 0.74;
+/** Células de cabeçalho / rótulo «DESCRIÇÃO:» (cinza-azulado). */
+const PDF_NC_HEADER_FILL = [200, 218, 235];
 const PDF_NC_LINE_W = 0.2;
-/** Registro fotográfico: 12 cm (largura) × 9 cm (altura), proporção 4:3 — melhor para visualização do que 7,5 × 5,6 cm. */
+/** Foto em linha única: até 12 cm × 9 cm (proporção 4:3). */
 const PDF_NC_IMG_LARGURA_MM = 120;
 const PDF_NC_IMG_ALTURA_MM = 90;
-/** Espaço entre o cabeçalho da tabela e o topo da imagem (coluna esquerda). */
-const PDF_NC_LEGEND_GAP_BELOW_HEADER_MM = 4.5;
-/** Espaço entre o fim da imagem e o início da legenda (abaixo da foto). */
+const PDF_NC_TOP_PAD_MM = 3.5;
+/** Espaço entre o fim da imagem e a legenda abaixo da foto. */
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 2.5;
+/** Largura da coluna do rótulo «DESCRIÇÃO:» na última linha da tabela. */
+const PDF_NC_DESC_LABEL_COL_RATIO = 0.34;
+
+function buildEncerramentoPara1(nFolhas) {
+  return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
+}
+
+function measureEncerramentoPara1BlockMm(doc, contentWidth, nFolhas) {
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  const t = buildEncerramentoPara1(nFolhas);
+  const lines = doc.splitTextToSize(t, contentWidth);
+  return lines.length * PDF_BODY_LINE_MM + PDF_PARAGRAPH_GAP_MM;
+}
+
+const PDF_ENCERRAMENTO_CORPO_RESTO =
+  'Todas as informações contidas neste documento são verdadeiras. Este é um trabalho isento e ético, atendendo às determinações da Resolução nº 205 do Conselho Federal de Engenharia, Arquitetura e Agronomia, de 30/09/71, que adota o Código de Ética Profissional.\n\n' +
+  'O responsável técnico pela elaboração deste laudo de vistoria se coloca à disposição para quaisquer esclarecimentos adicionais que se fizerem necessários.';
 
 /**
- * Bloco em tabela: cabeçalho ITEM | LOCALIZAÇÃO; corpo com foto e legenda por baixo (esq.) e Descrição (dir.).
+ * Registro fotográfico (anexo): linha 1 — ITEM | LOCALIZAÇÃO; linha 2 — foto em largura total + legenda abaixo;
+ * linha 3 — DESCRIÇÃO: (celula cinza) | texto.
  * @returns {number} posição Y após o bloco
  */
 function drawPdfNaoConformidadeTable(
@@ -579,11 +591,12 @@ function drawPdfNaoConformidadeTable(
   photo
 ) {
   const pageHeight = doc.internal.pageSize.getHeight();
-  const colLeftW = contentWidth * PDF_NC_COL_LEFT_RATIO;
-  const colRightW = contentWidth - colLeftW;
   const cellPad = 2.8;
+  const colHalf = contentWidth / 2;
+  const descLabelW = contentWidth * PDF_NC_DESC_LABEL_COL_RATIO;
+  const descTextW = contentWidth - descLabelW;
 
-  const imgMaxW = colLeftW - 2 * cellPad;
+  const imgMaxW = contentWidth - 2 * cellPad;
   let imgW = Math.min(PDF_NC_IMG_LARGURA_MM, imgMaxW);
   let imgH = imgW * (9 / 12);
   if (imgH > PDF_NC_IMG_ALTURA_MM) {
@@ -601,37 +614,19 @@ function drawPdfNaoConformidadeTable(
   const captionBlockH = Math.max(1, capLinesArr.length) * PDF_BODY_LINE_MM + 2;
 
   const descRaw = pdfTrim(photo.description) || '\u2014';
-  const rightTextW = Math.max(18, colRightW - 2 * cellPad);
+  const descInnerW = Math.max(16, descTextW - 2 * cellPad);
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
-  const descLineArr = doc.splitTextToSize(descRaw, rightTextW);
+  const descLineArr = doc.splitTextToSize(descRaw, descInnerW);
 
-  /** Uma linha compacta: ITEM 02 | LOCALIZAÇÃO: NOME (sem coluna larga só para «ITEM»). */
-  const headerLine = `ITEM ${String(ncIdx).padStart(2, '0')}  |  LOCALIZAÇÃO: ${roomNameUpper}`;
-  doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_BODY_PT);
-  const headerPadTop = 3.5;
-  const headerTextW = contentWidth - 2 * cellPad;
-  const headerLines = doc.splitTextToSize(headerLine, headerTextW);
-  const headerH = headerPadTop + headerLines.length * PDF_BODY_LINE_MM + 3;
+  const headerRowH = cellPad + PDF_BODY_LINE_MM + cellPad;
+  const imageRowH =
+    cellPad + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM + captionBlockH + cellPad;
+  const footerLabelH = cellPad + PDF_BODY_LINE_MM + cellPad;
+  const footerTextH = cellPad + Math.max(1, descLineArr.length) * PDF_BODY_LINE_MM + cellPad;
+  const footerRowH = Math.max(footerLabelH, footerTextH);
 
-  const leftColH =
-    cellPad +
-    PDF_NC_LEGEND_GAP_BELOW_HEADER_MM +
-    imgH +
-    PDF_NC_IMAGE_TO_CAPTION_GAP_MM +
-    captionBlockH +
-    cellPad +
-    1;
-  const rightColH =
-    cellPad +
-    PDF_BODY_LINE_MM +
-    1.5 +
-    Math.max(0, descLineArr.length) * PDF_BODY_LINE_MM +
-    cellPad;
-  const bodyH = Math.max(leftColH, rightColH);
-
-  const totalH = headerH + bodyH;
+  const totalH = headerRowH + imageRowH + footerRowH;
 
   let y = yStart;
   if (y + totalH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
@@ -642,53 +637,68 @@ function drawPdfNaoConformidadeTable(
   const tableX = margin;
 
   doc.setFillColor(PDF_NC_HEADER_FILL[0], PDF_NC_HEADER_FILL[1], PDF_NC_HEADER_FILL[2]);
-  doc.rect(tableX, y, contentWidth, headerH, 'F');
+  doc.rect(tableX, y, colHalf, headerRowH, 'F');
+  doc.rect(tableX + colHalf, y, colHalf, headerRowH, 'F');
 
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(PDF_NC_LINE_W);
   doc.rect(tableX, y, contentWidth, totalH, 'S');
-  doc.line(tableX, y + headerH, tableX + contentWidth, y + headerH);
-  /** Divisória vertical só no corpo (foto | texto), não no cabeçalho. */
-  const bodyY = y + headerH;
-  doc.line(tableX + colLeftW, bodyY, tableX + colLeftW, y + totalH);
+  doc.line(tableX + colHalf, y, tableX + colHalf, y + headerRowH);
+  doc.line(tableX, y + headerRowH, tableX + contentWidth, y + headerRowH);
 
+  const headerMidY = y + cellPad + PDF_BODY_LINE_MM * 0.85;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
-  let hy = y + headerPadTop + PDF_BODY_LINE_MM;
-  headerLines.forEach((ln) => {
-    doc.text(ln, tableX + cellPad, hy);
-    hy += PDF_BODY_LINE_MM;
-  });
+  doc.text(`ITEM: ${String(ncIdx).padStart(2, '0')}`, tableX + cellPad, headerMidY);
+  doc.text(`LOCALIZAÇÃO: ${roomNameUpper}`, tableX + colHalf + cellPad, headerMidY);
+
+  const imgRowY = y + headerRowH;
+  doc.line(tableX, imgRowY + imageRowH, tableX + contentWidth, imgRowY + imageRowH);
 
   const imgX = tableX + cellPad;
-  let yLeft = bodyY + cellPad + PDF_NC_LEGEND_GAP_BELOW_HEADER_MM;
+  let yImg = imgRowY + cellPad;
 
   if (photo.url) {
     try {
       const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
-      doc.addImage(photo.url, imgFmt, imgX, yLeft, imgW, imgH);
+      doc.addImage(photo.url, imgFmt, imgX, yImg, imgW, imgH);
     } catch (e) {
       console.error('Erro ao adicionar imagem (NC):', e);
       doc.setFont(PDF_FONT, 'italic');
       doc.setFontSize(PDF_BODY_PT);
-      doc.text('[Imagem não disponível]', imgX + imgW / 2, yLeft + imgH / 2, {
+      doc.text('[Imagem não disponível]', imgX + imgW / 2, yImg + imgH / 2, {
         align: 'center',
       });
       doc.setFont(PDF_FONT, 'normal');
     }
   }
 
-  yLeft += imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM;
-  yLeft = drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgW, yLeft, parts);
+  drawPdfPhotoCaptionBoldPrefix(
+    doc,
+    imgX,
+    imgW,
+    yImg + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
+    parts
+  );
 
-  const rightFirstBaseline = bodyY + cellPad + PDF_BODY_LINE_MM;
+  const footY = imgRowY + imageRowH;
+  doc.setFillColor(PDF_NC_HEADER_FILL[0], PDF_NC_HEADER_FILL[1], PDF_NC_HEADER_FILL[2]);
+  doc.rect(tableX, footY, descLabelW, footerRowH, 'F');
+  doc.setDrawColor(0, 0, 0);
+  doc.line(tableX + descLabelW, footY, tableX + descLabelW, footY + footerRowH);
+
+  const descLabelBaseline =
+    footY + (footerRowH - PDF_BODY_LINE_MM) / 2 + PDF_BODY_LINE_MM * 0.72;
   doc.setFont(PDF_FONT, 'bold');
-  doc.text('Descrição:', tableX + colLeftW + cellPad, rightFirstBaseline);
-  let yDesc = rightFirstBaseline + PDF_BODY_LINE_MM + 1.5;
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+  doc.text('DESCRIÇÃO:', tableX + cellPad, descLabelBaseline);
+
+  let yDesc = footY + cellPad + PDF_BODY_LINE_MM;
   doc.setFont(PDF_FONT, 'normal');
   descLineArr.forEach((ln) => {
-    doc.text(ln, tableX + colLeftW + cellPad, yDesc);
+    doc.text(ln, tableX + descLabelW + cellPad, yDesc);
     yDesc += PDF_BODY_LINE_MM;
   });
 
@@ -861,8 +871,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const checklistChapterNum = entregaLaudoExt ? 6 : 4;
   const ncChapterNum = entregaLaudoExt ? 7 : 5;
   const conclusaoChapterNum = entregaLaudoExt ? 8 : 6;
-  const assinaturaChapterNum = entregaLaudoExt ? 9 : 7;
-  const legalChapterNum = entregaLaudoExt ? 10 : 8;
+  const encerramentoChapterNum = entregaLaudoExt ? 9 : 7;
+  const assinaturaChapterNum = entregaLaudoExt ? 10 : 8;
 
   if (entregaLaudoExt) {
     const metaText = finalizeLaudoMetodologiaPdf(inspection, ncChapterNum);
@@ -1092,6 +1102,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const cf = inspection.classificacao_final;
   const conclusaoTrim = (inspection.conclusao || '').trim();
+  const outroSoConclusao = !!inspection.outro_somente_conclusao;
 
   const textoConclusao =
     cf === 'outro'
@@ -1099,8 +1110,29 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       : inspection.conclusao ||
         (cf ? TEXTOS_CONCLUSAO[cf] : null);
 
+  yPos += PDF_PARAGRAPH_GAP_MM;
+
+  if (cf && !outroSoConclusao) {
+    if (cf === 'outro') {
+      yPos = drawClassificationFinalPlain(
+        doc,
+        margin,
+        contentWidth,
+        yPos,
+        'OUTRAS CONFORMIDADES'
+      );
+    } else if (CLASSIFICACAO_FINAL_LABELS[cf]) {
+      yPos = drawClassificationFinalPlain(
+        doc,
+        margin,
+        contentWidth,
+        yPos,
+        CLASSIFICACAO_FINAL_LABELS[cf]
+      );
+    }
+  }
+
   if (textoConclusao) {
-    yPos += PDF_PARAGRAPH_GAP_MM;
     yPos = drawBodyParagraphs(
       doc,
       textoConclusao,
@@ -1114,7 +1146,34 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += PDF_PARAGRAPH_GAP_MM;
 
   // ============================================================
-  // 6. RESPONSÁVEL TÉCNICO / ASSINATURA
+  // ENCERRAMENTO (texto legal de encerramento; 1.º parágrafo com n.º de folhas após assinatura)
+  // ============================================================
+  checkNewPage(40);
+  yPos = drawChapterTitle(
+    doc,
+    margin,
+    contentWidth,
+    yPos,
+    `${encerramentoChapterNum}. ENCERRAMENTO`,
+    { minFollowingMm: 48 }
+  );
+  const encStartPage = doc.internal.getNumberOfPages();
+  yPos += PDF_PARAGRAPH_GAP_MM;
+  const encBodyTopY = yPos;
+  const reservedEncPara1H = measureEncerramentoPara1BlockMm(doc, contentWidth, 9999);
+  yPos = encBodyTopY + reservedEncPara1H;
+  yPos = drawBodyParagraphs(
+    doc,
+    PDF_ENCERRAMENTO_CORPO_RESTO,
+    margin,
+    contentWidth,
+    yPos,
+    checkNewPage
+  );
+  yPos += PDF_PARAGRAPH_GAP_MM;
+
+  // ============================================================
+  // RESPONSÁVEL TÉCNICO / ASSINATURA
   // ============================================================
   checkNewPage(36);
   yPos = drawChapterTitle(
@@ -1150,27 +1209,21 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     }
   );
 
-  // ============================================================
-  // 7. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS
-  // ============================================================
-  checkNewPage(28);
-  yPos = drawChapterTitle(
+  const totalPagesLaudo = doc.internal.getNumberOfPages();
+  doc.setPage(encStartPage);
+  doc.setFillColor(255, 255, 255);
+  doc.rect(margin, encBodyTopY, contentWidth, reservedEncPara1H, 'F');
+  doc.setDrawColor(0, 0, 0);
+  doc.setTextColor(0, 0, 0);
+  drawBodyParagraphs(
     doc,
+    buildEncerramentoPara1(totalPagesLaudo),
     margin,
     contentWidth,
-    yPos,
-    `${legalChapterNum}. CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS`,
-    { minFollowingMm: 42 }
-  );
-
-  yPos = drawBodyParagraphs(
-    doc,
-    LEGAL_TEXT,
-    margin,
-    contentWidth,
-    yPos,
+    encBodyTopY,
     checkNewPage
   );
+  doc.setPage(totalPagesLaudo);
 
   // ============================================================
   // RODAPÉ em todas as páginas

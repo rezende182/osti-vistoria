@@ -367,13 +367,13 @@ export function buildItemsFromRoomType(roomType, roomIdPrefix) {
 
 /** Ordem na modal «Adicionar ambiente». */
 export const ROOM_TYPE_ORDER = [
-  'area_externa_comum',
   'sala_estar_jantar',
+  'quarto_suite',
+  'banheiro_social_lavabo',
   'cozinha',
   'area_servico_lavanderia',
-  'banheiro_social_lavabo',
-  'quarto_suite',
   'varanda_sacada',
+  'area_externa_comum',
   'area_gourmet',
   'garagem',
   'cobertura_telhado',

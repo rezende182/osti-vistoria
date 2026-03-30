@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import TimePickerField from '../components/TimePickerField';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth';
@@ -20,13 +19,16 @@ import {
 } from '../constants/inspectionClassificacao';
 import BrandLogo from '@/components/BrandLogo';
 
-const LEGAL_TEXT =
-  'A vistoria foi realizada nas condições disponíveis no momento da inspeção, podendo limitações como ausência de energia, água, gás, iluminação ou acesso restringir a execução de testes.\n\n' +
-  'Eventuais falhas não identificadas e manifestadas posteriormente caracterizam-se como vícios não aparentes à época da vistoria, devendo ser tratadas conforme garantias aplicáveis.';
+const PLACEHOLDER_OUTRAS =
+  'Insira a conclusão com base nos critérios observados.';
 
 const CLASSIFICACAO_OPTIONS = [
   { value: 'aprovado', label: CLASSIFICACAO_FINAL_LABELS.aprovado, color: 'green' },
-  { value: 'aprovado_com_ressalvas', label: CLASSIFICACAO_FINAL_LABELS.aprovado_com_ressalvas, color: 'yellow' },
+  {
+    value: 'aprovado_com_ressalvas',
+    label: CLASSIFICACAO_FINAL_LABELS.aprovado_com_ressalvas,
+    color: 'yellow',
+  },
   { value: 'reprovado', label: CLASSIFICACAO_FINAL_LABELS.reprovado, color: 'red' },
   { value: 'outro', label: CLASSIFICACAO_FINAL_LABELS.outro, color: 'slate' },
 ];
@@ -43,9 +45,7 @@ const InspectionReview = () => {
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
   const [dataEmissaoLaudo, setDataEmissaoLaudo] = useState('');
-  const [horarioTermino, setHorarioTermino] = useState('');
   const [outroSomenteConclusao, setOutroSomenteConclusao] = useState(false);
-  const [classificacaoEscolhaRotulo, setClassificacaoEscolhaRotulo] = useState('');
 
   const loadInspection = useCallback(async () => {
     try {
@@ -66,9 +66,7 @@ const InspectionReview = () => {
       setDataEmissaoLaudo(
         data.data_final || new Date().toISOString().slice(0, 10)
       );
-      setHorarioTermino(data.horario_termino || '');
       setOutroSomenteConclusao(!!data.outro_somente_conclusao);
-      setClassificacaoEscolhaRotulo(data.classificacao_escolha_rotulo || '');
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
       toast.error('Erro ao carregar vistoria');
@@ -86,16 +84,6 @@ const InspectionReview = () => {
       toast.error('Selecione a classificação final do imóvel');
       return;
     }
-    if (
-      classificacao === 'outro' &&
-      !outroSomenteConclusao &&
-      !String(classificacaoEscolhaRotulo).trim()
-    ) {
-      toast.error(
-        'Em Outros, preencha a classificação personalizada ou selecione “não quero nenhuma definição”.'
-      );
-      return;
-    }
     if (!dataEmissaoLaudo) {
       toast.error('Selecione a data de emissão do laudo (aparece na assinatura do PDF).');
       return;
@@ -110,13 +98,9 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
         data_final: dataEmissaoLaudo,
-        horario_termino: horarioTermino,
-        outro_somente_conclusao:
-          classificacao === 'outro' ? outroSomenteConclusao : false,
-        classificacao_escolha_rotulo:
-          classificacao === 'outro' && !outroSomenteConclusao
-            ? classificacaoEscolhaRotulo
-            : '',
+        horario_termino: inspection?.horario_termino || '',
+        outro_somente_conclusao: classificacao === 'outro' ? outroSomenteConclusao : false,
+        classificacao_escolha_rotulo: '',
       };
       if (!uid) {
         toast.error('Sessão inválida. Inicie sessão novamente.');
@@ -157,7 +141,6 @@ const InspectionReview = () => {
     }
   };
 
-  // Salvar dados parciais ao voltar ao checklist
   const handleBackToChecklist = async () => {
     try {
       await initDB().catch(() => {});
@@ -168,13 +151,9 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal || '',
         crea_final: creaFinal || '',
         data_final: dataEmissaoLaudo || null,
-        horario_termino: horarioTermino || '',
-        outro_somente_conclusao:
-          classificacao === 'outro' ? outroSomenteConclusao : false,
-        classificacao_escolha_rotulo:
-          classificacao === 'outro' && !outroSomenteConclusao
-            ? classificacaoEscolhaRotulo
-            : '',
+        horario_termino: inspection?.horario_termino || '',
+        outro_somente_conclusao: classificacao === 'outro' ? outroSomenteConclusao : false,
+        classificacao_escolha_rotulo: '',
       };
       if (!uid) {
         navigate(`/inspection/${id}/checklist`);
@@ -258,11 +237,11 @@ const InspectionReview = () => {
                     setClassificacao(option.value);
                     if (option.value === 'outro') {
                       setOutroSomenteConclusao(false);
-                      setClassificacaoEscolhaRotulo('');
-                      if (conclusaoPareceAutomatica(conclusao)) setConclusao('');
+                      if (conclusaoPareceAutomatica(conclusao) || !String(conclusao).trim()) {
+                        setConclusao(PLACEHOLDER_OUTRAS);
+                      }
                     } else {
                       setOutroSomenteConclusao(false);
-                      setClassificacaoEscolhaRotulo('');
                       if (conclusaoPareceAutomatica(conclusao)) {
                         setConclusao(TEXTOS_CONCLUSAO[option.value]);
                       }
@@ -290,64 +269,6 @@ const InspectionReview = () => {
             </div>
           </div>
 
-          {classificacao === 'outro' && (
-            <div className="mb-4">
-              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                OUTROS
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  data-testid="outro-modo-personalizada"
-                  onClick={() => {
-                    setOutroSomenteConclusao(false);
-                  }}
-                  className={`rounded-lg px-3 py-3 text-left text-sm font-semibold leading-snug transition-all border-2 ${
-                    !outroSomenteConclusao
-                      ? 'border-blue-600 bg-blue-50 text-slate-900'
-                      : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Utilize quando a análise do imóvel não se enquadrar nas classificações pré-definidas.
-                </button>
-                <button
-                  type="button"
-                  data-testid="outro-modo-so-conclusao"
-                  onClick={() => {
-                    setOutroSomenteConclusao(true);
-                    setClassificacaoEscolhaRotulo('');
-                  }}
-                  className={`rounded-lg px-3 py-3 text-left text-sm font-semibold leading-snug transition-all border-2 ${
-                    outroSomenteConclusao
-                      ? 'border-blue-600 bg-blue-50 text-slate-900'
-                      : 'border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Não quero nenhuma definição para a classificação do imóvel
-                  <span className="mt-1 block text-xs font-normal text-slate-600">
-                    No laudo não aparece classificação; apenas a conclusão.
-                  </span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {classificacao === 'outro' && !outroSomenteConclusao && (
-            <div className="mb-4">
-              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                CLASSIFICAÇÃO FINAL PERSONALIZADA:
-              </label>
-              <textarea
-                data-testid="classificacao-escolha-rotulo"
-                value={classificacaoEscolhaRotulo}
-                onChange={(e) => setClassificacaoEscolhaRotulo(e.target.value)}
-                placeholder="Ex. Aprovado com Ressalvas"
-                className="w-full p-4 border-2 border-slate-400 bg-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-900 font-semibold"
-                rows={3}
-              />
-            </div>
-          )}
-
           {/* Conclusão */}
           <div
             className={`mb-6 rounded-lg ${
@@ -357,10 +278,8 @@ const InspectionReview = () => {
             }`}
           >
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              {classificacao === 'outro'
-                ? outroSomenteConclusao
-                  ? 'Conclusão'
-                  : 'Conclusão / observações'
+              {classificacao === 'outro' && outroSomenteConclusao
+                ? 'Conclusão'
                 : 'Conclusão / Observações Gerais'}
             </label>
             {classificacao === 'outro' && !outroSomenteConclusao && (
@@ -381,7 +300,7 @@ const InspectionReview = () => {
                 classificacao === 'outro'
                   ? outroSomenteConclusao
                     ? 'Informe a conclusão técnica da vistoria.'
-                    : 'Observações e conclusão complementar (opcional).'
+                    : PLACEHOLDER_OUTRAS
                   : 'Digite suas observações finais sobre a vistoria...'
               }
               className={`w-full p-4 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
@@ -401,13 +320,21 @@ const InspectionReview = () => {
             </button>
           </div>
 
-          {/* Considerações finais e aspectos legais */}
-          <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <p className="text-xs font-bold tracking-wider text-slate-500 mb-2">
-              CONSIDERAÇÕES FINAIS E ASPECTOS LEGAIS
-            </p>
-            <p className="text-xs text-slate-600 italic leading-relaxed">{LEGAL_TEXT}</p>
-          </div>
+          {classificacao === 'outro' && (
+            <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-slate-300"
+                  checked={outroSomenteConclusao}
+                  onChange={(e) => setOutroSomenteConclusao(e.target.checked)}
+                />
+                <span className="text-sm text-slate-700">
+                  Não exibir classificação no laudo — apenas o texto da conclusão abaixo.
+                </span>
+              </label>
+            </div>
+          )}
 
           {/* Responsável */}
           <div className="mb-4">
@@ -450,32 +377,6 @@ const InspectionReview = () => {
             />
           </div>
 
-          {/* Horários */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                Horário de Início
-              </label>
-              <input
-                type="text"
-                value={inspection?.horario_inicio || '-'}
-                disabled
-                className="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-600"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-                Horário de Término
-              </label>
-              <TimePickerField
-                data-testid="horario-termino-input"
-                value={horarioTermino}
-                onChange={setHorarioTermino}
-                className="w-full border border-slate-300 rounded-lg"
-              />
-            </div>
-          </div>
-
           {/* Buttons */}
           <div className="space-y-3">
             <button
@@ -488,7 +389,6 @@ const InspectionReview = () => {
           </div>
         </div>
       </div>
-
     </div>
   );
 };

@@ -2,33 +2,40 @@
  * Textos automáticos de conclusão (valores de API: aprovado | aprovado_com_ressalvas | reprovado).
  */
 export const TEXTOS_CONCLUSAO = {
-  aprovado: `O imóvel vistoriado encontra-se em condições técnicas compatíveis com o padrão de entrega previsto, não tendo sido identificadas patologias, vícios construtivos aparentes ou não conformidades relevantes que comprometam seu uso, segurança ou desempenho.
+  aprovado: `Conclui-se que o imóvel vistoriado, na data da inspeção, não apresenta não conformidades aparentes, observando-se condições adequadas de uso, habitabilidade, segurança e desempenho, em consonância com as boas práticas construtivas e com os critérios técnicos aplicáveis.
 
-Os sistemas construtivos, instalações e acabamentos avaliados apresentaram funcionamento adequado no momento da inspeção, não sendo constatadas irregularidades que inviabilizem sua utilização.
+A presente avaliação foi realizada por meio de inspeção predominantemente visual, sem a execução de ensaios destrutivos, testes específicos ou análises laboratoriais, restringindo-se às condições aparentes no momento da vistoria.
+Destaca-se que a inexistência de manifestações patológicas aparentes não implica na garantia da ausência de vícios construtivos ocultos, os quais poderão se manifestar ao longo do tempo, em função do uso, das condições de exposição e/ou de características inerentes aos sistemas construtivos empregados.
+Permanecem resguardadas, portanto, as responsabilidades legais dos agentes envolvidos na cadeia construtiva, nos termos da legislação vigente, especialmente no que se refere à qualidade, desempenho e durabilidade da edificação.`,
 
-Dessa forma, conclui-se que o imóvel se encontra em conformidade técnica para recebimento.`,
+  aprovado_com_ressalvas: `Conclui-se que o imóvel vistoriado, na data da inspeção, apresenta não conformidades aparentes, as quais podem comprometer, ainda que parcialmente, as condições de uso, habitabilidade, segurança e desempenho da edificação, não estando plenamente em conformidade com as boas práticas construtivas e critérios técnicos aplicáveis.
+A presente avaliação foi realizada por meio de inspeção predominantemente visual, sem a execução de ensaios destrutivos, testes específicos ou análises laboratoriais, restringindo-se às condições aparentes no momento da vistoria.
+As não conformidades identificadas demandam a adoção de medidas corretivas, visando à adequação dos sistemas construtivos e à garantia do desempenho esperado ao longo da vida útil da edificação.
+Ressalta-se que a inexistência de outras manifestações patológicas aparentes não implica na garantia da ausência de vícios construtivos ocultos, os quais poderão se manifestar posteriormente. Permanecem resguardadas, portanto, as responsabilidades legais dos agentes envolvidos, nos termos da legislação vigente.`,
 
-  aprovado_com_ressalvas: `Foram identificadas não conformidades de natureza executiva, as quais, embora não comprometam a habitabilidade imediata do imóvel, configuram desvios em relação aos padrões construtivos e de acabamento esperados. Recomenda-se a devida regularização por parte da construtora, em conformidade com os prazos de garantia e normativas técnicas vigentes.`,
-
-  reprovado: `O imóvel apresenta não conformidades de caráter relevante, configurando desvios significativos em relação aos padrões construtivos, requisitos de desempenho e condições de segurança e habitabilidade.
-
-Tais inconformidades comprometem o uso adequado da unidade, podendo implicar riscos ao usuário e/ou prejuízos à sua funcionalidade. Diante do exposto, não se recomenda a aceitação do imóvel na presente condição, devendo a construtora proceder com a devida regularização das anomalias identificadas, em conformidade com as exigências técnicas, normativas vigentes e obrigações contratuais.`,
+  reprovado: `Conclui-se que o imóvel vistoriado, na data da inspeção, apresenta não conformidades de caráter crítico, com potencial de comprometer de forma significativa a segurança, a habitabilidade e o desempenho global da edificação, não atendendo aos critérios técnicos mínimos e às boas práticas construtivas.
+A presente avaliação foi realizada por meio de inspeção predominantemente visual, sem a execução de ensaios destrutivos, testes específicos ou análises laboratoriais, restringindo-se às condições aparentes no momento da vistoria.
+As anomalias identificadas requerem a adoção imediata de medidas corretivas, sob pena de agravamento das patologias existentes, redução da vida útil dos sistemas construtivos e possíveis riscos aos usuários.
+Destaca-se que a análise não contempla a identificação de eventuais vícios ocultos, os quais poderão se manifestar ao longo do tempo. Permanecem resguardadas, portanto, as responsabilidades legais dos agentes envolvidos na cadeia construtiva, conforme legislação vigente.`,
 };
 
 /** Rótulos exibidos na UI e no PDF */
 export const CLASSIFICACAO_FINAL_LABELS = {
-  aprovado: 'APTO AO RECEBIMENTO',
-  aprovado_com_ressalvas: 'RECEBIMENTO CONDICIONADO',
-  reprovado: 'REPROVADO',
-  outro: 'OUTROS',
+  aprovado:
+    'IMÓVEL CONFORME - Imóvel em condições adequadas, sem não conformidades.',
+  aprovado_com_ressalvas:
+    'IMÓVEL COM NÃO CONFORMIDADES - Imóvel com não conformidades, necessitando correções.',
+  reprovado:
+    'IMÓVEL NÃO CONFORME (CRÍTICO) - Imóvel com não conformidades graves, exigindo intervenção imediata.',
+  outro: 'Outras conformidades',
 };
 
 /** Versões curtas para cartões e detalhe (abas do dashboard usam rótulos próprios) */
 export const CLASSIFICACAO_BADGE_SHORT = {
-  aprovado: 'APTO',
-  aprovado_com_ressalvas: 'CONDICIONADO',
-  reprovado: 'REPROVADO',
-  outro: 'OUTROS',
+  aprovado: 'CONFORME',
+  aprovado_com_ressalvas: 'C/ NÃO CONF.',
+  reprovado: 'NÃO CONFORME',
+  outro: 'OUTRAS',
 };
 
 /** Textos automáticos legados (para detectar se a conclusão ainda é “padrão” e pode ser substituída) */
@@ -38,6 +45,7 @@ const LEGACY_TEXTOS_SNIPPETS = [
   'o imóvel é considerado REPROVADO',
   'Foram identificadas não conformidades de natureza executiva',
   'O imóvel apresenta não conformidades de caráter relevante',
+  'Conclui-se que o imóvel vistoriado, na data da inspeção, não apresenta não conformidades aparentes',
 ];
 
 export function conclusaoPareceAutomatica(conclusao) {
