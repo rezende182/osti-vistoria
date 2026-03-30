@@ -531,23 +531,51 @@ function buildPdfRegistroFotoBody(caption, photoNumber) {
   return { n, body };
 }
 
-function measureRegistroCaptionHeightMm(doc, imgW, n, bodyTrim) {
+/** Altura de linha da legenda do registo fotográfico (Arial/Helvetica 11 pt). */
+const PDF_NC_CAPTION_PT = 11;
+const PDF_NC_CAPTION_LINE_MM = (PDF_NC_CAPTION_PT / PDF_BODY_PT) * PDF_BODY_LINE_MM;
+
+function wrapPdfRegistroCaptionLines(doc, text, maxWidthMm) {
   doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_BODY_PT);
+  doc.setFontSize(PDF_NC_CAPTION_PT);
+  const maxW = Math.max(20, maxWidthMm);
+  let parts = doc.splitTextToSize(String(text), maxW);
+  const out = [];
+  const epsilon = 0.5;
+  parts.forEach((line) => {
+    let rest = line;
+    while (rest.length > 0) {
+      if (doc.getTextWidth(rest) <= maxW + epsilon) {
+        out.push(rest);
+        break;
+      }
+      let cut = rest.length;
+      while (cut > 1 && doc.getTextWidth(rest.slice(0, cut)) > maxW + epsilon) {
+        cut -= 1;
+      }
+      if (cut < 1) cut = 1;
+      out.push(rest.slice(0, cut));
+      rest = rest.slice(cut);
+    }
+  });
+  return out.length ? out : [String(text)];
+}
+
+function measureRegistroCaptionHeightMm(doc, imgW, n, bodyTrim) {
   const pseudo = `IMAGEM ${n} - ${bodyTrim || ''}`;
-  const lines = wrapPdfCaptionToImageWidth(doc, pseudo, imgW);
-  return Math.max(1, lines.length) * PDF_BODY_LINE_MM + 2;
+  const lines = wrapPdfRegistroCaptionLines(doc, pseudo, imgW);
+  return Math.max(1, lines.length) * PDF_NC_CAPTION_LINE_MM + 2;
 }
 
 /**
- * Legenda: **IMAGEM N** (negrito) — **-** (normal) — texto (normal), alinhada à esquerda à largura da foto.
+ * Legenda sob a foto: Helvetica/Arial 11 pt — **IMAGEM N** (negrito) + ** - ** + texto.
  */
 function drawPdfRegistroImagemCaption(doc, imgX, imgW, yStart, n, bodyTrim) {
-  const lh = PDF_BODY_LINE_MM;
+  const lh = PDF_NC_CAPTION_LINE_MM;
   const belowBaselineMm = 1;
   const boldPrefix = `IMAGEM ${n}`;
   const sep = ' - ';
-  doc.setFontSize(PDF_BODY_PT);
+  doc.setFontSize(PDF_NC_CAPTION_PT);
   doc.setTextColor(0, 0, 0);
 
   let y = yStart;
@@ -561,6 +589,8 @@ function drawPdfRegistroImagemCaption(doc, imgX, imgW, yStart, n, bodyTrim) {
   if (!bodyTrim) {
     doc.setFont(PDF_FONT, 'bold');
     doc.text(boldPrefix, imgX, y);
+    doc.setFontSize(PDF_BODY_PT);
+    doc.setFont(PDF_FONT, 'normal');
     return y + lh * 0.35 + belowBaselineMm;
   }
 
@@ -573,12 +603,13 @@ function drawPdfRegistroImagemCaption(doc, imgX, imgW, yStart, n, bodyTrim) {
     lastBaseline = y;
     y += lh;
     doc.setFont(PDF_FONT, 'normal');
-    const restLines = wrapPdfCaptionToImageWidth(doc, bodyTrim, imgW);
+    const restLines = wrapPdfRegistroCaptionLines(doc, bodyTrim, imgW);
     restLines.forEach((ln) => {
       doc.text(ln, imgX, y);
       lastBaseline = y;
       y += lh;
     });
+    doc.setFontSize(PDF_BODY_PT);
     return lastBaseline + belowBaselineMm;
   }
 
@@ -601,12 +632,13 @@ function drawPdfRegistroImagemCaption(doc, imgX, imgW, yStart, n, bodyTrim) {
       lastBaseline = y;
       y += lh;
       doc.setFont(PDF_FONT, 'normal');
-      const restLines = wrapPdfCaptionToImageWidth(doc, bodyTrim, imgW);
+      const restLines = wrapPdfRegistroCaptionLines(doc, bodyTrim, imgW);
       restLines.forEach((ln) => {
         doc.text(ln, imgX, y);
         lastBaseline = y;
         y += lh;
       });
+      doc.setFontSize(PDF_BODY_PT);
       return lastBaseline + belowBaselineMm;
     }
     firstChunk = w0;
@@ -623,7 +655,7 @@ function drawPdfRegistroImagemCaption(doc, imgX, imgW, yStart, n, bodyTrim) {
 
   const restText = words.slice(wi).join(' ').trim();
   if (restText) {
-    const restLines = wrapPdfCaptionToImageWidth(doc, restText, imgW);
+    const restLines = wrapPdfRegistroCaptionLines(doc, restText, imgW);
     restLines.forEach((ln) => {
       doc.text(ln, imgX, y);
       lastBaseline = y;
@@ -631,6 +663,7 @@ function drawPdfRegistroImagemCaption(doc, imgX, imgW, yStart, n, bodyTrim) {
     });
   }
 
+  doc.setFontSize(PDF_BODY_PT);
   return lastBaseline + belowBaselineMm;
 }
 
@@ -671,12 +704,10 @@ const PDF_NC_IMG_LARGURA_MM = 120;
 const PDF_NC_IMG_ALTURA_MM = 90;
 /** Espaço entre o fim da imagem e a legenda abaixo da foto. */
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 3.5;
-/** Largura da coluna do rótulo «DESCRIÇÃO:» na última linha da tabela (resto para o texto). */
-const PDF_NC_DESC_LABEL_COL_RATIO = 0.28;
 /** Espaço extra abaixo da linha que separa a zona da foto da linha «DESCRIÇÃO». */
 const PDF_NC_FOOTER_TOP_PAD_MM = 6;
-/** Tamanho do rótulo «DESCRIÇÃO:» (pt). */
-const PDF_NC_DESC_LABEL_PT = 10;
+/** Tamanho do rótulo «DESCRIÇÃO:» (pt) — coluna ajustada à largura da palavra. */
+const PDF_NC_DESC_LABEL_PT = 8;
 
 function buildEncerramentoPara1(nFolhas) {
   return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -711,7 +742,14 @@ function drawPdfNaoConformidadeTable(
   const pageHeight = doc.internal.pageSize.getHeight();
   const tableX = margin;
   const cellPad = 2.8;
-  const descLabelW = contentWidth * PDF_NC_DESC_LABEL_COL_RATIO;
+
+  const descLabelText = 'DESCRIÇÃO:';
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_NC_DESC_LABEL_PT);
+  const descLabelW = doc.getTextWidth(descLabelText) + 2 * cellPad + 1.5;
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+
   const descTextW = contentWidth - descLabelW;
 
   const innerRowW = contentWidth - 2 * cellPad;
@@ -731,9 +769,9 @@ function drawPdfNaoConformidadeTable(
   const { n: capN, body: capBody } = buildPdfRegistroFotoBody(photo.caption, photo.number);
   const captionBlockH = measureRegistroCaptionHeightMm(doc, imgW, capN, capBody);
 
-  /** Texto do app em «Descrição da não conformidade» (por foto). */
+  /** Coluna ao lado: «Descrição da não conformidade» guardada na foto no app. */
   const descRaw = pdfTrim(photo.description) || '\u2014';
-  const descInnerW = Math.max(18, descTextW - 2 * cellPad);
+  const descInnerW = Math.max(24, descTextW - 2 * cellPad);
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   const descLineArr = doc.splitTextToSize(descRaw, descInnerW);
@@ -825,7 +863,7 @@ function drawPdfNaoConformidadeTable(
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_NC_DESC_LABEL_PT);
   doc.setTextColor(0, 0, 0);
-  doc.text('DESCRIÇÃO:', tableX + cellPad, descLabelBaseline);
+  doc.text(descLabelText, tableX + cellPad, descLabelBaseline);
 
   let yDesc = yFooterInner + PDF_BODY_LINE_MM * 0.85;
   doc.setFont(PDF_FONT, 'normal');
