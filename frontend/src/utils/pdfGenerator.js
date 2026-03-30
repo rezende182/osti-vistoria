@@ -31,6 +31,18 @@ const PDF_HEADER_TITLE_PT = 17;
 
 const PDF_HEADER_TITLE_MAIN = 'LAUDO DE INSPEÇÃO TÉCNICA';
 
+const PDF_ESPECIFICACOES_INTRO =
+  'Este laudo técnico de vistoria foi elaborado com base na verificação das condições aparentes da edificação, considerando o atendimento às boas práticas construtivas e às diretrizes das seguintes normas técnicas e documentos:';
+
+const PDF_ESPECIFICACOES_NORMAS = [
+  'ABNT NBR 13752:1996 – Perícias de engenharia na construção civil',
+  'ABNT NBR 16747 – Inspeção predial',
+  'ABNT NBR 15575 – Desempenho de edificações habitacionais',
+];
+
+const PDF_ESPECIFICACOES_SEM_DOCS =
+  'Não foi disponibilizado qualquer documento técnico por parte da construtora até a data da vistoria.';
+
 /** Dimensões naturais da imagem (browser) para calcular largura proporcional sem distorção */
 function getDataUrlImageDimensions(dataUrl) {
   return new Promise((resolve) => {
@@ -80,9 +92,6 @@ const PDF_IDENT_LABEL_FILL = [245, 245, 245];
 /** Tabela 1 mais compacta para caber melhor na primeira página. */
 const PDF_IDENT_TABLE_PT = 9;
 const PDF_IDENT_TABLE_CELL_PAD = 1.6;
-
-/** Rótulo sem quebra no meio da expressão (espaços finos em volta da barra). */
-const PDF_LABEL_EMPREENDIMENTO_CONSTRUTORA = 'Empreendimento\u00A0/\u00A0Construtora';
 
 function pdfIdentLabelCell(text) {
   return {
@@ -138,6 +147,19 @@ function pdfEmpreendimentoConstrutoraCellValue(inspection) {
   const k = pdfTrim(inspection.construtora);
   if (e && k) return `${e}/${k}`;
   return e || k || '';
+}
+
+/** Mesma linha que horários: Empreendimento | valor · Construtora | valor */
+function pdfIdentRowEmpreendimentoConstrutora(empreendimento, construtora) {
+  const e = pdfTrim(empreendimento);
+  const k = pdfTrim(construtora);
+  if (!e && !k) return null;
+  return [
+    pdfIdentLabelCell('Empreendimento'),
+    { content: e || '—' },
+    pdfIdentLabelCell('Construtora'),
+    { content: k || '—' },
+  ];
 }
 
 /** Mesmo texto do botão «Itens verificados» no app (inclui resolução pelo catálogo / tipo de ambiente). */
@@ -221,17 +243,11 @@ function buildIdentificacaoTableBody(inspection) {
     }
     const cidUf = pdfCidadeUfTexto(inspection.cidade, inspection.uf);
     rows.push(pdfIdentRowFull('Cidade', cidUf || '—', true));
-    const empConsVal = pdfEmpreendimentoConstrutoraCellValue(inspection);
-    if (empConsVal) {
-      rows.push([
-        pdfIdentLabelCell(PDF_LABEL_EMPREENDIMENTO_CONSTRUTORA),
-        {
-          content: empConsVal,
-          colSpan: 3,
-          styles: { overflow: 'linebreak' },
-        },
-      ]);
-    }
+    const empRow = pdfIdentRowEmpreendimentoConstrutora(
+      inspection.empreendimento,
+      inspection.construtora
+    );
+    if (empRow) rows.push(empRow);
     const tipo = inspection.tipo_imovel;
     const tipoStr =
       tipo === 'novo'
@@ -274,17 +290,11 @@ function buildIdentificacaoTableBody(inspection) {
     if (apt) rows.push(apt);
   }
 
-  const empConsGVal = pdfEmpreendimentoConstrutoraCellValue(inspection);
-  if (empConsGVal) {
-    rows.push([
-      pdfIdentLabelCell(PDF_LABEL_EMPREENDIMENTO_CONSTRUTORA),
-      {
-        content: empConsGVal,
-        colSpan: 3,
-        styles: { overflow: 'linebreak' },
-      },
-    ]);
-  }
+  const empRowG = pdfIdentRowEmpreendimentoConstrutora(
+    inspection.empreendimento,
+    inspection.construtora
+  );
+  if (empRowG) rows.push(empRowG);
 
   const tipoLinhaG = pdfTipoImovelUnificado(inspection);
   const tipoRowG = pdfIdentRowFull('Tipo do Imóvel', tipoLinhaG, false);
@@ -530,7 +540,7 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /** Cabeçalho tabela NC (cinza-azulado). */
 const PDF_NC_HEADER_FILL = [226, 232, 240];
-const PDF_NC_COL_LEFT_RATIO = 0.62;
+const PDF_NC_COL_LEFT_RATIO = 0.52;
 const PDF_NC_LINE_W = 0.2;
 /** Fotos NC: proporção 12 (largura) × 9 (altura), em cm → mm no laudo. */
 const PDF_NC_IMG_LARGURA_MM = 120;
@@ -604,7 +614,7 @@ function drawPdfNaoConformidadeTable(
     1.5 +
     Math.max(0, descLineArr.length) * PDF_BODY_LINE_MM +
     cellPad;
-  const bodyH = Math.max(leftColH, rightColH, 38);
+  const bodyH = Math.max(leftColH, rightColH);
 
   const totalH = headerH + bodyH;
 
@@ -810,52 +820,15 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   yPos = doc.lastAutoTable.finalY + 10;
 
-  // ============================================================
-  // 2. DOCUMENTOS RECEBIDOS E ANALISADOS (fluxo sem laudo estendido: só se houver itens)
-  // ============================================================
   const docsList = Array.isArray(inspection.documentos_recebidos)
     ? inspection.documentos_recebidos.filter((d) => pdfTrim(d))
     : [];
-  const entregaLaudoExtOnP1 = isEntregaImovelLaudoExtended(inspection);
-  if (!entregaLaudoExtOnP1 && docsList.length > 0) {
-    yPos = drawChapterTitle(
-      doc,
-      margin,
-      contentWidth,
-      yPos,
-      '2. DOCUMENTOS RECEBIDOS E ANALISADOS',
-      { minFollowingMm: 28 }
-    );
-
-    doc.setFont(PDF_FONT, 'normal');
-    doc.setFontSize(PDF_BODY_PT);
-
-    docsList.forEach((docItem, index) => {
-      doc.text(`${index + 1}. ${docItem}`, listX, yPos);
-      yPos += PDF_BODY_LINE_MM;
-      if (index < docsList.length - 1) {
-        yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
-      }
-    });
-  }
-
-  // Primeira página: só cabeçalho + secções 1 e 2. O restante começa na página seguinte.
-  doc.addPage();
-  yPos = margin;
-
   const entregaLaudoExt = isEntregaImovelLaudoExtended(inspection);
-  const checklistChapterNum = entregaLaudoExt ? 6 : 4;
-  const ncChapterNum = entregaLaudoExt ? 7 : 5;
-  const conclusaoChapterNum = entregaLaudoExt ? 8 : 6;
-  const assinaturaChapterNum = entregaLaudoExt ? 9 : 7;
-  const legalChapterNum = entregaLaudoExt ? 10 : 8;
 
   if (entregaLaudoExt) {
-    const metaText = finalizeLaudoMetodologiaPdf(inspection, ncChapterNum);
     const objT = pdfTrim(inspection.laudo_objetivo);
-
     yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '3. OBJETIVO', {
-      minFollowingMm: 36,
+      minFollowingMm: 28,
     });
     yPos = drawBodyParagraphs(
       doc,
@@ -865,31 +838,58 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       yPos,
       checkNewPage
     );
+  }
 
-    checkNewPage(36);
-    yPos = drawChapterTitle(
-      doc,
-      margin,
-      contentWidth,
-      yPos,
-      '4. DOCUMENTOS RECEBIDOS E ANALISADOS',
-      { minFollowingMm: 28 }
-    );
+  doc.addPage();
+  yPos = margin;
+
+  const checklistChapterNum = entregaLaudoExt ? 6 : 4;
+  const ncChapterNum = entregaLaudoExt ? 7 : 5;
+  const conclusaoChapterNum = entregaLaudoExt ? 8 : 6;
+  const assinaturaChapterNum = entregaLaudoExt ? 9 : 7;
+  const legalChapterNum = entregaLaudoExt ? 10 : 8;
+
+  if (entregaLaudoExt) {
+    const metaText = finalizeLaudoMetodologiaPdf(inspection, ncChapterNum);
+
+    yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '4. ESPECIFICAÇÕES TÉCNICAS', {
+      minFollowingMm: 32,
+    });
+    yPos = drawSubsectionTitle(doc, margin, contentWidth, yPos, '4.1 Referências', {
+      minFollowingMm: 28,
+    });
     doc.setFont(PDF_FONT, 'normal');
     doc.setFontSize(PDF_BODY_PT);
     doc.setTextColor(0, 0, 0);
+    yPos = drawBodyParagraphs(
+      doc,
+      PDF_ESPECIFICACOES_INTRO,
+      margin,
+      contentWidth,
+      yPos,
+      checkNewPage
+    );
+    yPos += PDF_PARAGRAPH_GAP_MM;
+    PDF_ESPECIFICACOES_NORMAS.forEach((ln) => {
+      checkNewPage(10);
+      doc.text(`\u2013 ${ln}`, margin, yPos);
+      yPos += PDF_BODY_LINE_MM;
+    });
+    yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
     if (docsList.length > 0) {
-      docsList.forEach((docItem, index) => {
-        doc.text(`${index + 1}. ${docItem}`, listX, yPos);
-        yPos += PDF_BODY_LINE_MM;
-        if (index < docsList.length - 1) {
-          yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
-        }
+      docsList.forEach((docItem) => {
+        checkNewPage(18);
+        const wrapped = doc.splitTextToSize(`\u2013 ${docItem}`, contentWidth);
+        wrapped.forEach((wln) => {
+          checkNewPage(8);
+          doc.text(wln, margin, yPos);
+          yPos += PDF_BODY_LINE_MM;
+        });
       });
     } else {
       yPos = drawBodyParagraphs(
         doc,
-        'Nenhum documento foi disponibilizado pela construtora nesta vistoria.',
+        PDF_ESPECIFICACOES_SEM_DOCS,
         margin,
         contentWidth,
         yPos,
@@ -987,7 +987,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         checkNewPage(18);
 
         const mainVerify = getItemVerificationBody(item, room.room_type);
-        const block = mainVerify ? `${item.name}: ${mainVerify}` : `${item.name}: \u2014`;
+        const block = mainVerify
+          ? `- ${item.name}: ${mainVerify}`
+          : `- ${item.name}: \u2014`;
         doc.setFont(PDF_FONT, 'normal');
         doc.setFontSize(PDF_BODY_PT);
         doc.setTextColor(0, 0, 0);
