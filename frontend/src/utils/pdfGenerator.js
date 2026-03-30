@@ -43,6 +43,9 @@ const PDF_ESPECIFICACOES_NORMAS = [
 const PDF_ESPECIFICACOES_SEM_DOCS =
   'Não foi disponibilizado qualquer documento técnico por parte da construtora até a data da vistoria.';
 
+const PDF_REGISTRO_FOTOGRAFICO_INTRO =
+  'Descrição dos problemas evidenciados durante a vistoria, com respectivos registros fotográficos do estado em que o imóvel se encontra e seus vícios aparentes:';
+
 /** Dimensões naturais da imagem (browser) para calcular largura proporcional sem distorção */
 function getDataUrlImageDimensions(dataUrl) {
   return new Promise((resolve) => {
@@ -370,9 +373,17 @@ function isEntregaImovelLaudoExtended(inspection) {
 function finalizeLaudoMetodologiaPdf(inspection, registroNaoConformidadesItemNum) {
   const raw = pdfTrim(inspection.laudo_metodologia);
   if (!raw) return '';
-  const esc = METODOLOGIA_PLACEHOLDER_REG_NC.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(esc, 'gi');
-  return raw.replace(re, `item ${registroNaoConformidadesItemNum}`);
+  const replacement = `item ${registroNaoConformidadesItemNum}`;
+  const placeholders = [
+    METODOLOGIA_PLACEHOLDER_REG_NC,
+    '[REGISTRO DE NÃO CONFORMIDADES]',
+  ];
+  let out = raw;
+  for (const ph of placeholders) {
+    const esc = ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(esc, 'gi'), replacement);
+  }
+  return out;
 }
 
 // Texto legal padrão
@@ -540,7 +551,7 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /** Cabeçalho tabela NC (cinza-azulado). */
 const PDF_NC_HEADER_FILL = [226, 232, 240];
-const PDF_NC_COL_LEFT_RATIO = 0.52;
+const PDF_NC_COL_LEFT_RATIO = 0.62;
 const PDF_NC_LINE_W = 0.2;
 /** Fotos NC: proporção 12 (largura) × 9 (altura), em cm → mm no laudo. */
 const PDF_NC_IMG_LARGURA_MM = 120;
@@ -1014,7 +1025,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   // ============================================================
-  // N. NÃO CONFORMIDADES (fotos e descrições)
+  // N. REGISTRO FOTOGRÁFICO
   // ============================================================
   checkNewPage(40);
   yPos = drawChapterTitle(
@@ -1022,15 +1033,24 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    `${ncChapterNum}. NÃO CONFORMIDADES`,
+    `${ncChapterNum}. REGISTRO FOTOGRÁFICO`,
     { minFollowingMm: 52 }
   );
+  yPos = drawBodyParagraphs(
+    doc,
+    PDF_REGISTRO_FOTOGRAFICO_INTRO,
+    margin,
+    contentWidth,
+    yPos,
+    checkNewPage
+  );
+  yPos += PDF_PARAGRAPH_GAP_MM;
 
   if (ncPhotoEntries.length === 0) {
     doc.setFont(PDF_FONT, 'italic');
     doc.setFontSize(PDF_BODY_PT);
     doc.setTextColor(0, 0, 0);
-    doc.text('Nenhuma não conformidade registrada fotograficamente.', listX, yPos);
+    doc.text('Não há registros fotográficos nesta secção.', listX, yPos);
     yPos += PDF_BODY_LINE_MM;
   } else {
     let ncIdx = 0;
