@@ -19,9 +19,6 @@ import {
 } from '../constants/inspectionClassificacao';
 import BrandLogo from '@/components/BrandLogo';
 
-const PLACEHOLDER_OUTRAS =
-  'Insira a conclusão com base nos critérios observados.';
-
 const CLASSIFICACAO_OPTIONS = [
   { value: 'aprovado', label: CLASSIFICACAO_FINAL_LABELS.aprovado, color: 'green' },
   {
@@ -32,6 +29,8 @@ const CLASSIFICACAO_OPTIONS = [
   { value: 'reprovado', label: CLASSIFICACAO_FINAL_LABELS.reprovado, color: 'red' },
   { value: 'outro', label: CLASSIFICACAO_FINAL_LABELS.outro, color: 'slate' },
 ];
+
+const CONCLUSAO_PLACEHOLDER = 'Digite suas observações finais sobre a vistoria...';
 
 const InspectionReview = () => {
   const { id } = useParams();
@@ -45,7 +44,6 @@ const InspectionReview = () => {
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
   const [dataEmissaoLaudo, setDataEmissaoLaudo] = useState('');
-  const [outroSomenteConclusao, setOutroSomenteConclusao] = useState(false);
 
   const loadInspection = useCallback(async () => {
     try {
@@ -66,7 +64,6 @@ const InspectionReview = () => {
       setDataEmissaoLaudo(
         data.data_final || new Date().toISOString().slice(0, 10)
       );
-      setOutroSomenteConclusao(!!data.outro_somente_conclusao);
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
       toast.error('Erro ao carregar vistoria');
@@ -99,7 +96,7 @@ const InspectionReview = () => {
         crea_final: creaFinal,
         data_final: dataEmissaoLaudo,
         horario_termino: inspection?.horario_termino || '',
-        outro_somente_conclusao: classificacao === 'outro' ? outroSomenteConclusao : false,
+        outro_somente_conclusao: classificacao === 'outro',
         classificacao_escolha_rotulo: '',
       };
       if (!uid) {
@@ -152,7 +149,7 @@ const InspectionReview = () => {
         crea_final: creaFinal || '',
         data_final: dataEmissaoLaudo || null,
         horario_termino: inspection?.horario_termino || '',
-        outro_somente_conclusao: classificacao === 'outro' ? outroSomenteConclusao : false,
+        outro_somente_conclusao: classificacao === 'outro',
         classificacao_escolha_rotulo: '',
       };
       if (!uid) {
@@ -236,15 +233,11 @@ const InspectionReview = () => {
                   onClick={() => {
                     setClassificacao(option.value);
                     if (option.value === 'outro') {
-                      setOutroSomenteConclusao(false);
-                      if (conclusaoPareceAutomatica(conclusao) || !String(conclusao).trim()) {
-                        setConclusao(PLACEHOLDER_OUTRAS);
-                      }
-                    } else {
-                      setOutroSomenteConclusao(false);
                       if (conclusaoPareceAutomatica(conclusao)) {
-                        setConclusao(TEXTOS_CONCLUSAO[option.value]);
+                        setConclusao('');
                       }
+                    } else if (conclusaoPareceAutomatica(conclusao)) {
+                      setConclusao(TEXTOS_CONCLUSAO[option.value]);
                     }
                   }}
                   className={`w-full py-3 px-3 rounded-lg text-left text-sm leading-snug font-semibold transition-all duration-200 ${
@@ -270,45 +263,17 @@ const InspectionReview = () => {
           </div>
 
           {/* Conclusão */}
-          <div
-            className={`mb-6 rounded-lg ${
-              classificacao === 'outro'
-                ? 'border-2 border-dashed border-slate-400 bg-slate-100 p-3'
-                : ''
-            }`}
-          >
+          <div className="mb-6 rounded-lg">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              {classificacao === 'outro' && outroSomenteConclusao
-                ? 'Conclusão'
-                : 'Conclusão / Observações Gerais'}
+              Conclusão / Observações Gerais
             </label>
-            {classificacao === 'outro' && !outroSomenteConclusao && (
-              <p className="text-xs text-slate-600 mb-2 leading-relaxed">
-                Texto adicional que aparece abaixo da classificação no laudo (opcional).
-              </p>
-            )}
-            {classificacao === 'outro' && outroSomenteConclusao && (
-              <p className="text-xs text-slate-600 mb-2 leading-relaxed">
-                O texto abaixo é a única parte da secção 4 no laudo (sem classificação).
-              </p>
-            )}
             <textarea
               data-testid="conclusao-textarea"
               value={conclusao}
               onChange={(e) => setConclusao(e.target.value)}
-              placeholder={
-                classificacao === 'outro'
-                  ? outroSomenteConclusao
-                    ? 'Informe a conclusão técnica da vistoria.'
-                    : PLACEHOLDER_OUTRAS
-                  : 'Digite suas observações finais sobre a vistoria...'
-              }
-              className={`w-full p-4 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                classificacao === 'outro'
-                  ? 'border-2 border-dashed border-slate-400 bg-white'
-                  : 'border border-slate-300'
-              }`}
-              rows={classificacao === 'outro' ? 7 : 5}
+              placeholder={CONCLUSAO_PLACEHOLDER}
+              className="w-full p-4 rounded-lg resize-none border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={5}
             />
             <button
               type="button"
@@ -319,22 +284,6 @@ const InspectionReview = () => {
               Limpar texto da conclusão
             </button>
           </div>
-
-          {classificacao === 'outro' && (
-            <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-slate-300"
-                  checked={outroSomenteConclusao}
-                  onChange={(e) => setOutroSomenteConclusao(e.target.checked)}
-                />
-                <span className="text-sm text-slate-700">
-                  Não exibir classificação no laudo — apenas o texto da conclusão abaixo.
-                </span>
-              </label>
-            </div>
-          )}
 
           {/* Responsável */}
           <div className="mb-4">
@@ -364,7 +313,7 @@ const InspectionReview = () => {
             />
           </div>
 
-          <div className="mb-4">
+          <div className="mb-6">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
               Data de emissão do laudo (assinatura no PDF)
             </label>

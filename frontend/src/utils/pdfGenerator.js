@@ -1,15 +1,11 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import {
-  TEXTOS_CONCLUSAO,
-  CLASSIFICACAO_FINAL_LABELS,
-} from '../constants/inspectionClassificacao';
+import { TEXTOS_CONCLUSAO } from '../constants/inspectionClassificacao';
 import {
   drawBodyParagraphs,
   drawResponsavelAssinaturaSection,
   drawChapterTitle,
   drawSubsectionTitle,
-  drawClassificationFinalPlain,
   PDF_FONT,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
@@ -49,6 +45,9 @@ const PDF_ESPECIFICACOES_SEM_DOCS =
 
 const PDF_REGISTRO_FOTOGRAFICO_INTRO =
   'Descrição dos problemas evidenciados durante a vistoria, com respectivos registros fotográficos do estado em que o imóvel se encontra e seus vícios aparentes:';
+
+const PDF_REGISTRO_SEM_FOTOS_TEXTO =
+  'Registra-se que não foi realizado registro fotográfico, uma vez que não foram constatadas não conformidades aparentes no imóvel no momento da vistoria, não havendo, portanto, elementos que justificassem tal procedimento.';
 
 /** Dimensões naturais da imagem (browser) para calcular largura proporcional sem distorção */
 function getDataUrlImageDimensions(dataUrl) {
@@ -519,6 +518,23 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   return lastBaseline + belowBaselineMm;
 }
 
+/** Legenda centrada horizontalmente sob a foto (mesma largura útil da imagem). */
+function drawPdfPhotoCaptionCenteredBelow(doc, imgX, imgW, yStart, parts) {
+  const capFull = `${parts.prefix}${parts.body || ''}`.trim();
+  const belowBaselineMm = 1;
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+  const lines = wrapPdfCaptionToImageWidth(doc, capFull, imgW);
+  const cx = imgX + imgW / 2;
+  let y = yStart;
+  lines.forEach((ln) => {
+    doc.text(ln.trim(), cx, y, { align: 'center', maxWidth: imgW });
+    y += PDF_BODY_LINE_MM;
+  });
+  return y + belowBaselineMm;
+}
+
 /**
  * Quebra legenda à largura da imagem (mm); força partição em tokens muito longos.
  */
@@ -554,11 +570,10 @@ const PDF_NC_LINE_W = 0.2;
 /** Foto em linha única: até 12 cm × 9 cm (proporção 4:3). */
 const PDF_NC_IMG_LARGURA_MM = 120;
 const PDF_NC_IMG_ALTURA_MM = 90;
-const PDF_NC_TOP_PAD_MM = 3.5;
 /** Espaço entre o fim da imagem e a legenda abaixo da foto. */
-const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 2.5;
-/** Largura da coluna do rótulo «DESCRIÇÃO:» na última linha da tabela. */
-const PDF_NC_DESC_LABEL_COL_RATIO = 0.34;
+const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 3.5;
+/** Largura da coluna do rótulo «DESCRIÇÃO:» na última linha da tabela (resto para o texto). */
+const PDF_NC_DESC_LABEL_COL_RATIO = 0.28;
 
 function buildEncerramentoPara1(nFolhas) {
   return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -591,28 +606,32 @@ function drawPdfNaoConformidadeTable(
   photo
 ) {
   const pageHeight = doc.internal.pageSize.getHeight();
+  const tableX = margin;
   const cellPad = 2.8;
   const colHalf = contentWidth / 2;
   const descLabelW = contentWidth * PDF_NC_DESC_LABEL_COL_RATIO;
   const descTextW = contentWidth - descLabelW;
 
-  const imgMaxW = contentWidth - 2 * cellPad;
-  let imgW = Math.min(PDF_NC_IMG_LARGURA_MM, imgMaxW);
+  const innerRowW = contentWidth - 2 * cellPad;
+  let imgW = Math.min(PDF_NC_IMG_LARGURA_MM, innerRowW);
   let imgH = imgW * (9 / 12);
   if (imgH > PDF_NC_IMG_ALTURA_MM) {
     imgH = PDF_NC_IMG_ALTURA_MM;
     imgW = imgH * (12 / 9);
   }
-  if (imgW > imgMaxW) {
-    imgW = imgMaxW;
+  if (imgW > innerRowW) {
+    imgW = innerRowW;
     imgH = imgW * (9 / 12);
   }
+
+  const imgX = tableX + (contentWidth - imgW) / 2;
 
   const parts = buildPdfPhotoCaptionParts(photo.caption, photo.number);
   const capFull = `${parts.prefix}${parts.body || ''}`.trim();
   const capLinesArr = wrapPdfCaptionToImageWidth(doc, capFull, imgW);
   const captionBlockH = Math.max(1, capLinesArr.length) * PDF_BODY_LINE_MM + 2;
 
+  /** Texto do app em «Descrição da não conformidade» (por foto). */
   const descRaw = pdfTrim(photo.description) || '\u2014';
   const descInnerW = Math.max(16, descTextW - 2 * cellPad);
   doc.setFont(PDF_FONT, 'normal');
@@ -634,8 +653,6 @@ function drawPdfNaoConformidadeTable(
     y = margin;
   }
 
-  const tableX = margin;
-
   doc.setFillColor(PDF_NC_HEADER_FILL[0], PDF_NC_HEADER_FILL[1], PDF_NC_HEADER_FILL[2]);
   doc.rect(tableX, y, colHalf, headerRowH, 'F');
   doc.rect(tableX + colHalf, y, colHalf, headerRowH, 'F');
@@ -656,8 +673,7 @@ function drawPdfNaoConformidadeTable(
   const imgRowY = y + headerRowH;
   doc.line(tableX, imgRowY + imageRowH, tableX + contentWidth, imgRowY + imageRowH);
 
-  const imgX = tableX + cellPad;
-  let yImg = imgRowY + cellPad;
+  const yImg = imgRowY + cellPad;
 
   if (photo.url) {
     try {
@@ -674,7 +690,7 @@ function drawPdfNaoConformidadeTable(
     }
   }
 
-  drawPdfPhotoCaptionBoldPrefix(
+  drawPdfPhotoCaptionCenteredBelow(
     doc,
     imgX,
     imgW,
@@ -872,7 +888,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const ncChapterNum = entregaLaudoExt ? 7 : 5;
   const conclusaoChapterNum = entregaLaudoExt ? 8 : 6;
   const encerramentoChapterNum = entregaLaudoExt ? 9 : 7;
-  const assinaturaChapterNum = entregaLaudoExt ? 10 : 8;
 
   if (entregaLaudoExt) {
     const metaText = finalizeLaudoMetodologiaPdf(inspection, ncChapterNum);
@@ -1061,11 +1076,15 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += PDF_PARAGRAPH_GAP_MM;
 
   if (ncPhotoEntries.length === 0) {
-    doc.setFont(PDF_FONT, 'italic');
-    doc.setFontSize(PDF_BODY_PT);
-    doc.setTextColor(0, 0, 0);
-    doc.text('Não há registros fotográficos nesta secção.', listX, yPos);
-    yPos += PDF_BODY_LINE_MM;
+    yPos = drawBodyParagraphs(
+      doc,
+      PDF_REGISTRO_SEM_FOTOS_TEXTO,
+      margin,
+      contentWidth,
+      yPos,
+      checkNewPage
+    );
+    yPos += PDF_PARAGRAPH_GAP_MM;
   } else {
     let ncIdx = 0;
     for (const { room, photo } of ncPhotoEntries) {
@@ -1102,7 +1121,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const cf = inspection.classificacao_final;
   const conclusaoTrim = (inspection.conclusao || '').trim();
-  const outroSoConclusao = !!inspection.outro_somente_conclusao;
 
   const textoConclusao =
     cf === 'outro'
@@ -1111,26 +1129,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         (cf ? TEXTOS_CONCLUSAO[cf] : null);
 
   yPos += PDF_PARAGRAPH_GAP_MM;
-
-  if (cf && !outroSoConclusao) {
-    if (cf === 'outro') {
-      yPos = drawClassificationFinalPlain(
-        doc,
-        margin,
-        contentWidth,
-        yPos,
-        'OUTRAS CONFORMIDADES'
-      );
-    } else if (CLASSIFICACAO_FINAL_LABELS[cf]) {
-      yPos = drawClassificationFinalPlain(
-        doc,
-        margin,
-        contentWidth,
-        yPos,
-        CLASSIFICACAO_FINAL_LABELS[cf]
-      );
-    }
-  }
 
   if (textoConclusao) {
     yPos = drawBodyParagraphs(
@@ -1173,17 +1171,10 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += PDF_PARAGRAPH_GAP_MM;
 
   // ============================================================
-  // RESPONSÁVEL TÉCNICO / ASSINATURA
+  // Responsável técnico / assinatura (sem título de capítulo)
   // ============================================================
   checkNewPage(36);
-  yPos = drawChapterTitle(
-    doc,
-    margin,
-    contentWidth,
-    yPos,
-    `${assinaturaChapterNum}. RESPONSÁVEL TÉCNICO / ASSINATURA`,
-    { minFollowingMm: PDF_CHAPTER_KEEP_WITH_SIGNATURE_BLOCK_MM }
-  );
+  yPos += PDF_PARAGRAPH_GAP_MM * 1.5;
 
   const responsavel = inspection.responsavel_final || inspection.responsavel_tecnico || '-';
   const crea = inspection.crea_final || inspection.crea || '-';
