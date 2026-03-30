@@ -205,7 +205,7 @@ const InspectionReview = () => {
             <div className="flex min-w-0 items-center gap-4">
               <BrandLogo className="h-14 w-auto max-w-[11rem] shrink-0 object-contain object-left py-0.5 sm:h-[4.75rem] sm:max-w-[13rem]" />
               <h1 className="text-balance text-xl font-bold font-secondary uppercase tracking-tight sm:text-2xl">
-                Finalização da Vistoria
+                Conclusão / Observações gerais
               </h1>
             </div>
             <LogoutHeaderButton />
@@ -262,18 +262,18 @@ const InspectionReview = () => {
             </div>
           </div>
 
-          {/* Conclusão */}
+          {/* Corpo do parecer (conclusão) */}
           <div className="mb-6 rounded-lg">
-            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Conclusão / Observações Gerais
+            <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+              Texto do parecer
             </label>
             <textarea
               data-testid="conclusao-textarea"
               value={conclusao}
               onChange={(e) => setConclusao(e.target.value)}
               placeholder={CONCLUSAO_PLACEHOLDER}
-              className="w-full p-4 rounded-lg resize-none border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={5}
+              className="w-full resize-none rounded-lg border border-slate-300 p-4 text-justify leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={14}
             />
             <button
               type="button"

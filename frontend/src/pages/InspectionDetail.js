@@ -466,7 +466,7 @@ const InspectionDetail = () => {
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                           Objetivo
                         </span>
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
+                        <p className="mt-2 whitespace-pre-wrap text-justify text-sm leading-relaxed text-slate-800">
                           {inspection.laudo_objetivo}
                         </p>
                       </div>
@@ -476,7 +476,7 @@ const InspectionDetail = () => {
                         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                           Metodologia
                         </span>
-                        <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800">
+                        <p className="mt-2 whitespace-pre-wrap text-justify text-sm leading-relaxed text-slate-800">
                           {inspection.laudo_metodologia}
                         </p>
                       </div>
@@ -641,16 +641,17 @@ const InspectionDetail = () => {
           </div>
         )}
 
-        {/* Finalização */}
+        {/* Conclusão / observações gerais */}
         {inspection.status === 'concluida' && (
           <div className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6 mb-4">
-            <h2 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">Finalização</h2>
-            
+            <h2 className="mb-4 font-secondary text-xl font-bold uppercase text-slate-900">
+              Conclusão / Observações gerais
+            </h2>
+
             {inspection.conclusao && (
-              <div className="mb-4">
-                <span className="text-xs font-bold tracking-wider uppercase text-slate-500">Conclusão</span>
-                <p className="text-slate-700 mt-1">{inspection.conclusao}</p>
-              </div>
+              <p className="mb-4 whitespace-pre-wrap text-justify text-sm leading-relaxed text-slate-800">
+                {inspection.conclusao}
+              </p>
             )}
 
             {inspection.assinatura && (
