@@ -518,21 +518,120 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   return lastBaseline + belowBaselineMm;
 }
 
-/** Legenda centrada horizontalmente sob a foto (mesma largura útil da imagem). */
-function drawPdfPhotoCaptionCenteredBelow(doc, imgX, imgW, yStart, parts) {
-  const capFull = `${parts.prefix}${parts.body || ''}`.trim();
-  const belowBaselineMm = 1;
+/**
+ * Corpo da legenda no registo fotográfico (texto da legenda no app, sem duplicar «Foto/Imagem N»).
+ */
+function buildPdfRegistroFotoBody(caption, photoNumber) {
+  const n =
+    photoNumber != null && photoNumber !== '' && !Number.isNaN(Number(photoNumber))
+      ? String(photoNumber)
+      : '?';
+  let body = String(caption || '').trim();
+  body = body.replace(/^(Foto|Imagem)\s*\d+\s*[.:]?\s*/i, '').trim();
+  return { n, body };
+}
+
+function measureRegistroCaptionHeightMm(doc, imgW, n, bodyTrim) {
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
+  const pseudo = `IMAGEM ${n} - ${bodyTrim || ''}`;
+  const lines = wrapPdfCaptionToImageWidth(doc, pseudo, imgW);
+  return Math.max(1, lines.length) * PDF_BODY_LINE_MM + 2;
+}
+
+/**
+ * Legenda: **IMAGEM N** (negrito) — **-** (normal) — texto (normal), alinhada à esquerda à largura da foto.
+ */
+function drawPdfRegistroImagemCaption(doc, imgX, imgW, yStart, n, bodyTrim) {
+  const lh = PDF_BODY_LINE_MM;
+  const belowBaselineMm = 1;
+  const boldPrefix = `IMAGEM ${n}`;
+  const sep = ' - ';
+  doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
-  const lines = wrapPdfCaptionToImageWidth(doc, capFull, imgW);
-  const cx = imgX + imgW / 2;
+
   let y = yStart;
-  lines.forEach((ln) => {
-    doc.text(ln.trim(), cx, y, { align: 'center', maxWidth: imgW });
-    y += PDF_BODY_LINE_MM;
-  });
-  return y + belowBaselineMm;
+  let lastBaseline = yStart;
+
+  doc.setFont(PDF_FONT, 'bold');
+  const prefixW = doc.getTextWidth(boldPrefix);
+  doc.setFont(PDF_FONT, 'normal');
+  const sepW = doc.getTextWidth(sep);
+
+  if (!bodyTrim) {
+    doc.setFont(PDF_FONT, 'bold');
+    doc.text(boldPrefix, imgX, y);
+    return y + lh * 0.35 + belowBaselineMm;
+  }
+
+  const words = bodyTrim.split(/\s+/).filter(Boolean);
+  let availFirst = imgW - prefixW - sepW;
+
+  if (availFirst < 8) {
+    doc.setFont(PDF_FONT, 'bold');
+    doc.text(boldPrefix, imgX, y);
+    lastBaseline = y;
+    y += lh;
+    doc.setFont(PDF_FONT, 'normal');
+    const restLines = wrapPdfCaptionToImageWidth(doc, bodyTrim, imgW);
+    restLines.forEach((ln) => {
+      doc.text(ln, imgX, y);
+      lastBaseline = y;
+      y += lh;
+    });
+    return lastBaseline + belowBaselineMm;
+  }
+
+  let firstChunk = '';
+  let wi = 0;
+  for (; wi < words.length; wi++) {
+    const test = firstChunk ? `${firstChunk} ${words[wi]}` : words[wi];
+    if (doc.getTextWidth(test) <= availFirst + 0.5) {
+      firstChunk = test;
+    } else {
+      break;
+    }
+  }
+
+  if (!firstChunk) {
+    const w0 = words[0];
+    if (w0 && doc.getTextWidth(w0) > availFirst) {
+      doc.setFont(PDF_FONT, 'bold');
+      doc.text(boldPrefix, imgX, y);
+      lastBaseline = y;
+      y += lh;
+      doc.setFont(PDF_FONT, 'normal');
+      const restLines = wrapPdfCaptionToImageWidth(doc, bodyTrim, imgW);
+      restLines.forEach((ln) => {
+        doc.text(ln, imgX, y);
+        lastBaseline = y;
+        y += lh;
+      });
+      return lastBaseline + belowBaselineMm;
+    }
+    firstChunk = w0;
+    wi = 1;
+  }
+
+  doc.setFont(PDF_FONT, 'bold');
+  doc.text(boldPrefix, imgX, y);
+  doc.setFont(PDF_FONT, 'normal');
+  doc.text(sep, imgX + prefixW, y);
+  doc.text(firstChunk, imgX + prefixW + sepW, y);
+  lastBaseline = y;
+  y += lh;
+
+  const restText = words.slice(wi).join(' ').trim();
+  if (restText) {
+    const restLines = wrapPdfCaptionToImageWidth(doc, restText, imgW);
+    restLines.forEach((ln) => {
+      doc.text(ln, imgX, y);
+      lastBaseline = y;
+      y += lh;
+    });
+  }
+
+  return lastBaseline + belowBaselineMm;
 }
 
 /**
@@ -574,6 +673,10 @@ const PDF_NC_IMG_ALTURA_MM = 90;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 3.5;
 /** Largura da coluna do rótulo «DESCRIÇÃO:» na última linha da tabela (resto para o texto). */
 const PDF_NC_DESC_LABEL_COL_RATIO = 0.28;
+/** Espaço extra abaixo da linha que separa a zona da foto da linha «DESCRIÇÃO». */
+const PDF_NC_FOOTER_TOP_PAD_MM = 6;
+/** Tamanho do rótulo «DESCRIÇÃO:» (pt). */
+const PDF_NC_DESC_LABEL_PT = 10;
 
 function buildEncerramentoPara1(nFolhas) {
   return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -608,7 +711,6 @@ function drawPdfNaoConformidadeTable(
   const pageHeight = doc.internal.pageSize.getHeight();
   const tableX = margin;
   const cellPad = 2.8;
-  const colHalf = contentWidth / 2;
   const descLabelW = contentWidth * PDF_NC_DESC_LABEL_COL_RATIO;
   const descTextW = contentWidth - descLabelW;
 
@@ -626,25 +728,34 @@ function drawPdfNaoConformidadeTable(
 
   const imgX = tableX + (contentWidth - imgW) / 2;
 
-  const parts = buildPdfPhotoCaptionParts(photo.caption, photo.number);
-  const capFull = `${parts.prefix}${parts.body || ''}`.trim();
-  const capLinesArr = wrapPdfCaptionToImageWidth(doc, capFull, imgW);
-  const captionBlockH = Math.max(1, capLinesArr.length) * PDF_BODY_LINE_MM + 2;
+  const { n: capN, body: capBody } = buildPdfRegistroFotoBody(photo.caption, photo.number);
+  const captionBlockH = measureRegistroCaptionHeightMm(doc, imgW, capN, capBody);
 
   /** Texto do app em «Descrição da não conformidade» (por foto). */
   const descRaw = pdfTrim(photo.description) || '\u2014';
-  const descInnerW = Math.max(16, descTextW - 2 * cellPad);
+  const descInnerW = Math.max(18, descTextW - 2 * cellPad);
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   const descLineArr = doc.splitTextToSize(descRaw, descInnerW);
 
-  const headerRowH = cellPad + PDF_BODY_LINE_MM + cellPad;
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_BODY_PT);
+  const headerLine = `ITEM ${String(ncIdx).padStart(2, '0')} |  LOCALIZAÇÃO: ${roomNameUpper}`;
+  const headerTextW = contentWidth - 2 * cellPad;
+  const headerLines = doc.splitTextToSize(headerLine, headerTextW);
+  const headerRowH = cellPad + headerLines.length * PDF_BODY_LINE_MM + cellPad;
+
+  const innerFooterPad = 3.5;
+  doc.setFontSize(PDF_NC_DESC_LABEL_PT);
+  const labelLineH = PDF_BODY_LINE_MM * (PDF_NC_DESC_LABEL_PT / PDF_BODY_PT);
+  doc.setFontSize(PDF_BODY_PT);
+  const textBlockH = Math.max(1, descLineArr.length) * PDF_BODY_LINE_MM;
+  const footerContentH = Math.max(labelLineH, textBlockH);
+  const footerRowH =
+    PDF_NC_FOOTER_TOP_PAD_MM + innerFooterPad + footerContentH + innerFooterPad;
+
   const imageRowH =
     cellPad + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM + captionBlockH + cellPad;
-  const footerLabelH = cellPad + PDF_BODY_LINE_MM + cellPad;
-  const footerTextH = cellPad + Math.max(1, descLineArr.length) * PDF_BODY_LINE_MM + cellPad;
-  const footerRowH = Math.max(footerLabelH, footerTextH);
-
   const totalH = headerRowH + imageRowH + footerRowH;
 
   let y = yStart;
@@ -654,21 +765,21 @@ function drawPdfNaoConformidadeTable(
   }
 
   doc.setFillColor(PDF_NC_HEADER_FILL[0], PDF_NC_HEADER_FILL[1], PDF_NC_HEADER_FILL[2]);
-  doc.rect(tableX, y, colHalf, headerRowH, 'F');
-  doc.rect(tableX + colHalf, y, colHalf, headerRowH, 'F');
+  doc.rect(tableX, y, contentWidth, headerRowH, 'F');
 
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(PDF_NC_LINE_W);
   doc.rect(tableX, y, contentWidth, totalH, 'S');
-  doc.line(tableX + colHalf, y, tableX + colHalf, y + headerRowH);
   doc.line(tableX, y + headerRowH, tableX + contentWidth, y + headerRowH);
 
-  const headerMidY = y + cellPad + PDF_BODY_LINE_MM * 0.85;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
-  doc.text(`ITEM: ${String(ncIdx).padStart(2, '0')}`, tableX + cellPad, headerMidY);
-  doc.text(`LOCALIZAÇÃO: ${roomNameUpper}`, tableX + colHalf + cellPad, headerMidY);
+  let hy = y + cellPad + PDF_BODY_LINE_MM * 0.85;
+  headerLines.forEach((ln) => {
+    doc.text(ln, tableX + cellPad, hy);
+    hy += PDF_BODY_LINE_MM;
+  });
 
   const imgRowY = y + headerRowH;
   doc.line(tableX, imgRowY + imageRowH, tableX + contentWidth, imgRowY + imageRowH);
@@ -690,29 +801,35 @@ function drawPdfNaoConformidadeTable(
     }
   }
 
-  drawPdfPhotoCaptionCenteredBelow(
+  drawPdfRegistroImagemCaption(
     doc,
     imgX,
     imgW,
     yImg + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
-    parts
+    capN,
+    capBody
   );
 
   const footY = imgRowY + imageRowH;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(PDF_NC_LINE_W);
+  doc.line(tableX, footY, tableX + contentWidth, footY);
+
   doc.setFillColor(PDF_NC_HEADER_FILL[0], PDF_NC_HEADER_FILL[1], PDF_NC_HEADER_FILL[2]);
   doc.rect(tableX, footY, descLabelW, footerRowH, 'F');
   doc.setDrawColor(0, 0, 0);
   doc.line(tableX + descLabelW, footY, tableX + descLabelW, footY + footerRowH);
 
-  const descLabelBaseline =
-    footY + (footerRowH - PDF_BODY_LINE_MM) / 2 + PDF_BODY_LINE_MM * 0.72;
+  const yFooterInner = footY + PDF_NC_FOOTER_TOP_PAD_MM + innerFooterPad;
+  const descLabelBaseline = yFooterInner + labelLineH * 0.85;
   doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_BODY_PT);
+  doc.setFontSize(PDF_NC_DESC_LABEL_PT);
   doc.setTextColor(0, 0, 0);
   doc.text('DESCRIÇÃO:', tableX + cellPad, descLabelBaseline);
 
-  let yDesc = footY + cellPad + PDF_BODY_LINE_MM;
+  let yDesc = yFooterInner + PDF_BODY_LINE_MM * 0.85;
   doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
   descLineArr.forEach((ln) => {
     doc.text(ln, tableX + descLabelW + cellPad, yDesc);
     yDesc += PDF_BODY_LINE_MM;
