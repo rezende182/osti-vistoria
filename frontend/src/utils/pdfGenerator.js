@@ -518,60 +518,48 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   return lastBaseline + belowBaselineMm;
 }
 
-/**
- * Corpo da legenda no registo fotográfico (texto da legenda no app, sem duplicar «Foto/Imagem N»).
- */
-function buildPdfRegistroFotoBody(caption, photoNumber) {
-  const n =
-    photoNumber != null && photoNumber !== '' && !Number.isNaN(Number(photoNumber))
-      ? String(photoNumber)
-      : '?';
-  let body = String(caption || '').trim();
-  body = body.replace(/^(Foto|Imagem)\s*\d+\s*[.:]?\s*/i, '').trim();
-  return { n, body };
-}
-
 /** Legenda sob a foto no registo fotográfico: mesmo corpo 12 pt (Helvetica ≈ Arial). */
 const PDF_NC_CAPTION_PT = PDF_BODY_PT;
 const PDF_NC_CAPTION_LINE_MM = PDF_BODY_LINE_MM;
 
-function measureRegistroCaptionHeightAnexo(doc, contentWidth, pad, n, bodyTrim) {
-  const raw = `IMAGEM ${n}. ${(bodyTrim || '').trim()}`.trim();
-  const display = raw.toUpperCase();
-  doc.setFont(PDF_FONT, 'bold');
+/** Altura da legenda = mesmo texto que no app (`photo.caption`), 12 pt. */
+function measureRegistroCaptionHeightFromApp(doc, contentWidth, pad, captionText) {
+  const t = pdfTrim(captionText);
+  if (!t) return 0;
+  doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_NC_CAPTION_PT);
   const maxW = Math.max(24, contentWidth - 2 * pad);
-  const lines = doc.splitTextToSize(display, maxW);
-  doc.setFont(PDF_FONT, 'normal');
+  const lines = doc.splitTextToSize(t, maxW);
   doc.setFontSize(PDF_BODY_PT);
   return Math.max(1, lines.length) * PDF_NC_CAPTION_LINE_MM + 0.5;
 }
 
-/** Legenda centrada sob a foto, negrito e maiúsculas (anexo). */
-function drawPdfRegistroFotoCaptionAnexo(doc, tableX, contentWidth, pad, yStart, n, bodyTrim) {
-  const raw = `IMAGEM ${n}. ${(bodyTrim || '').trim()}`.trim();
-  const display = raw.toUpperCase();
-  doc.setFont(PDF_FONT, 'bold');
+/** Legenda sob a foto: texto idêntico ao campo «Legenda» no app; centrada. */
+function drawPdfRegistroFotoCaptionFromApp(doc, tableX, contentWidth, pad, yStart, captionText) {
+  const t = pdfTrim(captionText);
+  if (!t) return yStart;
+  doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_NC_CAPTION_PT);
   doc.setTextColor(0, 0, 0);
   const maxW = Math.max(24, contentWidth - 2 * pad);
-  const lines = doc.splitTextToSize(display, maxW);
+  const lines = doc.splitTextToSize(t, maxW);
   const cx = tableX + contentWidth / 2;
   let y = yStart + PDF_NC_CAPTION_LINE_MM * 0.85;
   lines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
     y += PDF_NC_CAPTION_LINE_MM;
   });
-  doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   return y;
 }
+
+const PDF_NC_DESC_NC_LABEL = 'Descrição da não conformidade: ';
 
 function measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH) {
   const maxW = contentWidth - 2 * pad;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
-  const lw = doc.getTextWidth('Descrição: ');
+  const lw = doc.getTextWidth(PDF_NC_DESC_NC_LABEL);
   doc.setFont(PDF_FONT, 'normal');
   const lines = doc.splitTextToSize(ncBody, Math.max(8, maxW - lw));
   doc.setFontSize(PDF_BODY_PT);
@@ -583,13 +571,12 @@ function drawPdfDescricaoBlock(doc, tableX, yTop, contentWidth, pad, ncBody, lin
   const maxW = contentWidth - 2 * pad;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
-  const label = 'Descrição: ';
-  const lw = doc.getTextWidth(label);
+  const lw = doc.getTextWidth(PDF_NC_DESC_NC_LABEL);
   doc.setFont(PDF_FONT, 'normal');
   const lines = doc.splitTextToSize(ncBody, Math.max(8, maxW - lw));
   let y = yTop + pad + lineH * 0.85;
   doc.setFont(PDF_FONT, 'bold');
-  doc.text(label.trimEnd(), x, y);
+  doc.text(PDF_NC_DESC_NC_LABEL.trimEnd(), x, y);
   doc.setFont(PDF_FONT, 'normal');
   if (lines.length) {
     doc.text(lines[0], x + lw, y);
@@ -633,6 +620,8 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (anexo: faixa azul escuro | foto+legenda | Descrição) ---------- */
 const PDF_NC_HEADER_DARK = [18, 45, 108];
+/** Fundo azul claro do bloco «Descrição da não conformidade» (como no anexo). */
+const PDF_NC_DESC_AREA_FILL = [200, 218, 235];
 const PDF_NC_LINE_W = 0.2;
 const PDF_NC_IMG_W_MM = 120;
 const PDF_NC_IMG_H_MM = 90;
@@ -655,9 +644,8 @@ const PDF_ENCERRAMENTO_CORPO_RESTO =
   'O responsável técnico pela elaboração deste laudo de vistoria se coloca à disposição para quaisquer esclarecimentos adicionais que se fizerem necessários.';
 
 /**
- * Registo fotográfico (anexo): faixa superior azul escuro e texto branco;
- * zona central com foto 12×9 cm centrada e legenda centrada (negrito, maiúsculas);
- * linha horizontal; bloco «Descrição:» + texto da NC em largura total, altura ajustada ao conteúdo.
+ * Registo fotográfico: legenda = campo «Legenda» do app (`photo.caption`);
+ * texto azul claro = «Descrição da não conformidade» (`photo.description`).
  */
 function drawPdfNaoConformidadeTable(
   doc,
@@ -677,8 +665,8 @@ function drawPdfNaoConformidadeTable(
   const picH = picW * (PDF_NC_IMG_H_MM / PDF_NC_IMG_W_MM);
   const picX = tableX + (contentWidth - picW) / 2;
 
-  const { n: capN, body: capBody } = buildPdfRegistroFotoBody(photo.caption, photo.number);
-  const capH = measureRegistroCaptionHeightAnexo(doc, contentWidth, pad, capN, capBody);
+  const captionFromApp = pdfTrim(photo.caption);
+  const capH = measureRegistroCaptionHeightFromApp(doc, contentWidth, pad, captionFromApp);
 
   const ncBody = pdfTrim(photo.description) || '\u2014';
   const descH = measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH);
@@ -689,7 +677,11 @@ function drawPdfNaoConformidadeTable(
   const headLines = doc.splitTextToSize(headText, contentWidth - 2 * pad);
   const headH = pad + headLines.length * lineH + pad;
 
-  const photoH = pad + picH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM + capH + pad;
+  const photoH =
+    pad +
+    picH +
+    (capH > 0 ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM + capH : 0) +
+    pad;
   const totalH = headH + photoH + descH;
 
   let y = yStart;
@@ -709,6 +701,13 @@ function drawPdfNaoConformidadeTable(
   doc.rect(tableX, y, contentWidth, totalH, 'S');
   doc.line(tableX, yAfterHead, tableX + contentWidth, yAfterHead);
   doc.line(tableX, yAfterPhoto, tableX + contentWidth, yAfterPhoto);
+
+  doc.setFillColor(
+    PDF_NC_DESC_AREA_FILL[0],
+    PDF_NC_DESC_AREA_FILL[1],
+    PDF_NC_DESC_AREA_FILL[2]
+  );
+  doc.rect(tableX, yAfterPhoto, contentWidth, descH, 'F');
 
   doc.setTextColor(255, 255, 255);
   let hy = y + pad + lineH * 0.85;
@@ -734,15 +733,16 @@ function drawPdfNaoConformidadeTable(
     }
   }
 
-  drawPdfRegistroFotoCaptionAnexo(
-    doc,
-    tableX,
-    contentWidth,
-    pad,
-    yPic + picH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
-    capN,
-    capBody
-  );
+  if (captionFromApp) {
+    drawPdfRegistroFotoCaptionFromApp(
+      doc,
+      tableX,
+      contentWidth,
+      pad,
+      yPic + picH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
+      captionFromApp
+    );
+  }
 
   drawPdfDescricaoBlock(doc, tableX, yAfterPhoto, contentWidth, pad, ncBody, lineH);
 
