@@ -1,6 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Home, Download, CheckCircle2, AlertCircle, Clock, Edit, FileText, XCircle, Share2, MessageCircle, Mail, Eye, X, Layers } from 'lucide-react';
+import {
+  Home,
+  Download,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Edit,
+  FileText,
+  XCircle,
+  Share2,
+  MessageCircle,
+  Mail,
+  Eye,
+  X,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 import NavigationModal from '../components/NavigationModal';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
@@ -127,6 +144,17 @@ const InspectionDetail = () => {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [pdfDataUrl, setPdfDataUrl] = useState(null);
+  /** IDs dos ambientes com a lista de itens recolhida (chevron na secção de verificações). */
+  const [collapsedChecklistRooms, setCollapsedChecklistRooms] = useState(() => new Set());
+
+  const toggleChecklistRoom = (roomKey) => {
+    setCollapsedChecklistRooms((prev) => {
+      const next = new Set(prev);
+      if (next.has(roomKey)) next.delete(roomKey);
+      else next.add(roomKey);
+      return next;
+    });
+  };
 
   const loadInspection = useCallback(async () => {
     try {
@@ -530,33 +558,56 @@ const InspectionDetail = () => {
 
               if (itensLista.length === 0) return null;
 
+              const roomKey = room.room_id ? String(room.room_id) : `room-${index}`;
+              const isCollapsed = collapsedChecklistRooms.has(roomKey);
+
               return (
-                <div key={index} className="mb-4 pb-4 border-b border-slate-200 last:border-0">
-                  <h3 className="font-bold text-slate-900 mb-3 font-secondary uppercase tracking-tight">
-                    {room.room_name}
-                  </h3>
-                  <div className="space-y-2 font-mono text-[13px] leading-snug">
-                    {itensLista.map((item, itemIndex) => {
-                      const nc = (item.photos || []).length;
-                      return (
-                        <div
-                          key={itemIndex}
-                          className="flex items-baseline justify-between gap-4 border-b border-dashed border-slate-100 pb-2 last:border-0"
-                        >
-                          <span className="min-w-0 flex-1 whitespace-normal font-sans text-slate-800">
-                            {item.name}
-                          </span>
-                          <span
-                            className={`shrink-0 text-right font-sans font-semibold tabular-nums ${
-                              nc > 0 ? 'text-red-600' : 'text-slate-600'
-                            }`}
+                <div key={roomKey} className="mb-4 pb-4 border-b border-slate-200 last:border-0">
+                  <button
+                    type="button"
+                    onClick={() => toggleChecklistRoom(roomKey)}
+                    className="mb-3 flex w-full min-h-touch items-center gap-2 rounded-lg text-left outline-none transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500 sm:min-h-0 sm:py-0.5"
+                    aria-expanded={!isCollapsed}
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight
+                        className="h-5 w-5 shrink-0 text-slate-500"
+                        aria-hidden
+                      />
+                    ) : (
+                      <ChevronDown
+                        className="h-5 w-5 shrink-0 text-slate-500"
+                        aria-hidden
+                      />
+                    )}
+                    <span className="font-bold text-slate-900 font-secondary uppercase tracking-tight">
+                      {room.room_name}
+                    </span>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="space-y-2 pl-1 font-mono text-[13px] leading-snug sm:pl-7">
+                      {itensLista.map((item, itemIndex) => {
+                        const nc = (item.photos || []).length;
+                        return (
+                          <div
+                            key={itemIndex}
+                            className="flex items-baseline justify-between gap-4 border-b border-dashed border-slate-100 pb-2 last:border-0"
                           >
-                            {nc > 0 ? `Não Conformidades (${nc})` : '—'}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                            <span className="min-w-0 flex-1 whitespace-normal font-sans text-slate-800">
+                              {item.name}
+                            </span>
+                            <span
+                              className={`shrink-0 text-right font-sans font-semibold tabular-nums ${
+                                nc > 0 ? 'text-red-600' : 'text-slate-600'
+                              }`}
+                            >
+                              {nc > 0 ? `Não Conformidades (${nc})` : '—'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })}

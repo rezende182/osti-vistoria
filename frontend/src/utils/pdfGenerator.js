@@ -551,9 +551,13 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /** Cabeçalho tabela NC (cinza-azulado). */
 const PDF_NC_HEADER_FILL = [226, 232, 240];
-const PDF_NC_COL_LEFT_RATIO = 0.62;
+/**
+ * Coluna da foto: largura mínima para caber 12 cm × 9 cm em A4 (margens 20 mm).
+ * Alternativa mais compacta seria 7,5 × 5,6 cm — pior para leitura; mantemos 12 × 9 cm.
+ */
+const PDF_NC_COL_LEFT_RATIO = 0.74;
 const PDF_NC_LINE_W = 0.2;
-/** Fotos NC: proporção 12 (largura) × 9 (altura), em cm → mm no laudo. */
+/** Registro fotográfico: 12 cm (largura) × 9 cm (altura), proporção 4:3 — melhor para visualização do que 7,5 × 5,6 cm. */
 const PDF_NC_IMG_LARGURA_MM = 120;
 const PDF_NC_IMG_ALTURA_MM = 90;
 /** Espaço entre a linha do cabeçalho da tabela e o início da legenda. */
