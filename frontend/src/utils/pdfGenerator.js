@@ -706,8 +706,8 @@ const PDF_NC_IMG_ALTURA_MM = 90;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 3.5;
 /** Espaço extra abaixo da linha que separa a zona da foto da linha «DESCRIÇÃO». */
 const PDF_NC_FOOTER_TOP_PAD_MM = 6;
-/** Tamanho do rótulo «DESCRIÇÃO:» (pt) — coluna ajustada à largura da palavra. */
-const PDF_NC_DESC_LABEL_PT = 8;
+/** Rótulo «DESCRIÇÃO:» no registo fotográfico: Helvetica/Arial 12 pt (igual ao corpo); largura à medida do texto. */
+const PDF_NC_DESC_LABEL_PT = PDF_BODY_PT;
 
 function buildEncerramentoPara1(nFolhas) {
   return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -727,7 +727,7 @@ const PDF_ENCERRAMENTO_CORPO_RESTO =
 
 /**
  * Registro fotográfico (anexo): linha 1 — ITEM | LOCALIZAÇÃO; linha 2 — foto em largura total + legenda abaixo;
- * linha 3 — DESCRIÇÃO: (celula cinza) | texto.
+ * linha 3 — DESCRIÇÃO: (faixa cinza só na altura do rótulo) | texto da descrição da NC no app (`photo.description`).
  * @returns {number} posição Y após o bloco
  */
 function drawPdfNaoConformidadeTable(
@@ -791,6 +791,8 @@ function drawPdfNaoConformidadeTable(
   const footerContentH = Math.max(labelLineH, textBlockH);
   const footerRowH =
     PDF_NC_FOOTER_TOP_PAD_MM + innerFooterPad + footerContentH + innerFooterPad;
+  /** Altura da faixa cinza do rótulo (uma linha a 12 pt + padding interno). */
+  const descLabelGrayH = innerFooterPad + labelLineH + innerFooterPad;
 
   const imageRowH =
     cellPad + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM + captionBlockH + cellPad;
@@ -849,12 +851,13 @@ function drawPdfNaoConformidadeTable(
   );
 
   const footY = imgRowY + imageRowH;
+  const descLabelGrayY = footY + PDF_NC_FOOTER_TOP_PAD_MM;
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(PDF_NC_LINE_W);
   doc.line(tableX, footY, tableX + contentWidth, footY);
 
   doc.setFillColor(PDF_NC_HEADER_FILL[0], PDF_NC_HEADER_FILL[1], PDF_NC_HEADER_FILL[2]);
-  doc.rect(tableX, footY, descLabelW, footerRowH, 'F');
+  doc.rect(tableX, descLabelGrayY, descLabelW, descLabelGrayH, 'F');
   doc.setDrawColor(0, 0, 0);
   doc.line(tableX + descLabelW, footY, tableX + descLabelW, footY + footerRowH);
 
