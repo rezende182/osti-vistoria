@@ -531,9 +531,9 @@ function buildPdfRegistroFotoBody(caption, photoNumber) {
   return { n, body };
 }
 
-/** Altura de linha da legenda do registo fotográfico (Arial/Helvetica 11 pt). */
-const PDF_NC_CAPTION_PT = 11;
-const PDF_NC_CAPTION_LINE_MM = (PDF_NC_CAPTION_PT / PDF_BODY_PT) * PDF_BODY_LINE_MM;
+/** Legenda sob a foto no registo fotográfico: mesmo corpo 12 pt (Helvetica ≈ Arial). */
+const PDF_NC_CAPTION_PT = PDF_BODY_PT;
+const PDF_NC_CAPTION_LINE_MM = PDF_BODY_LINE_MM;
 
 function wrapPdfRegistroCaptionLines(doc, text, maxWidthMm) {
   doc.setFont(PDF_FONT, 'normal');
@@ -564,11 +564,11 @@ function wrapPdfRegistroCaptionLines(doc, text, maxWidthMm) {
 function measureRegistroCaptionHeightMm(doc, imgW, n, bodyTrim) {
   const pseudo = `IMAGEM ${n}. ${bodyTrim || ''}`;
   const lines = wrapPdfRegistroCaptionLines(doc, pseudo, imgW);
-  return Math.max(1, lines.length) * PDF_NC_CAPTION_LINE_MM + 2;
+  return Math.max(1, lines.length) * PDF_NC_CAPTION_LINE_MM + 0.6;
 }
 
 /**
- * Legenda sob a foto: Helvetica/Arial 11 pt — **IMAGEM N.** (negrito) + texto (como no registo fotográfico).
+ * Legenda sob a foto: **IMAGEM N.** (negrito) + texto, 12 pt (como no anexo do registo fotográfico).
  */
 function drawPdfRegistroImagemCaption(doc, imgX, imgW, yStart, n, bodyTrim) {
   const lh = PDF_NC_CAPTION_LINE_MM;
@@ -696,26 +696,20 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
   return out.length ? out : [String(text)];
 }
 
-/** Células de cabeçalho ITEM | LOCALIZAÇÃO (azul-claro). */
+/* ---------- Registo fotográfico (layout do anexo: cabeçalho azul | foto+legenda | Descrição) ---------- */
 const PDF_NC_HEADER_FILL = [200, 218, 235];
 const PDF_NC_LINE_W = 0.2;
-/** Registo fotográfico: dimensões fixas 12 cm × 9 cm (largura × altura). */
-const PDF_NC_IMG_LARGURA_MM = 120;
-const PDF_NC_IMG_ALTURA_MM = 90;
-/** Espaço entre o fim da imagem e a legenda abaixo da foto. */
-const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 3.5;
-/** Proporção alvo da coluna esquerda (foto); a direita fica para «Descrição». */
-const PDF_NC_BODY_LEFT_COL_RATIO = 0.635;
-/** Largura mínima da coluna da descrição (mm). */
-const PDF_NC_RIGHT_COL_MIN_MM = 52;
-/** Rótulo na coluna direita do registo fotográfico (12 pt). */
-const PDF_NC_DESC_LABEL_TEXT = 'Descrição:';
-/** Padding vertical da faixa cinza do rótulo «Descrição:» (mm). */
-const PDF_NC_DESC_STRIP_V_PAD_MM = 1;
-/** Fundo da faixa «Descrição:» (cinza claro; cabeçalho ITEM mantém azul). */
+/** Foto: 12 cm (largura) × 9 cm (altura). */
+const PDF_NC_IMG_W_MM = 120;
+const PDF_NC_IMG_H_MM = 90;
+const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 2.8;
+/** Coluna esquerda ~62–64 % (anexo); garante espaço para a foto 12 cm. */
+const PDF_NC_LEFT_COL_RATIO = 0.64;
+const PDF_NC_RIGHT_COL_MIN_MM = 50;
+const PDF_NC_DESC_LABEL = 'Descrição:';
+/** Altura da linha do rótulo «Descrição:» colada ao texto (mm acima/abaixo da linha base). */
+const PDF_NC_DESC_STRIP_V_PAD_MM = 0.32;
 const PDF_NC_DESC_STRIP_FILL = [222, 226, 230];
-/** Tamanho do rótulo «Descrição:» (pt). */
-const PDF_NC_DESC_LABEL_PT = PDF_BODY_PT;
 
 function buildEncerramentoPara1(nFolhas) {
   return `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -734,9 +728,10 @@ const PDF_ENCERRAMENTO_CORPO_RESTO =
   'O responsável técnico pela elaboração deste laudo de vistoria se coloca à disposição para quaisquer esclarecimentos adicionais que se fizerem necessários.';
 
 /**
- * Registo fotográfico: cabeçalho ITEM | LOCALIZAÇÃO; corpo em duas colunas —
- * esquerda: foto (12×9 cm quando cabe) + legenda; direita: faixa «Descrição:» (cinza) e texto da NC (`photo.description`).
- * @returns {number} posição Y após o bloco
+ * Registo fotográfico (layout do anexo):
+ * — Linha 1: faixa azul, «ITEM nn | LOCALIZAÇÃO: …» em negrito.
+ * — Corpo: coluna esquerda com foto 12 cm × 9 cm (se couber) e legenda «IMAGEM nn. …»; coluna direita com faixa cinza
+ *   em toda a largura só na altura de «Descrição:» (Arial/Helvetica 12 pt, altura mínima) e área branca com o texto da NC.
  */
 function drawPdfNaoConformidadeTable(
   doc,
@@ -749,48 +744,40 @@ function drawPdfNaoConformidadeTable(
 ) {
   const pageHeight = doc.internal.pageSize.getHeight();
   const tableX = margin;
-  const cellPad = 2.8;
+  const pad = 2.5;
+  const lineH = PDF_BODY_LINE_MM;
 
-  let leftColW = Math.max(
-    contentWidth * PDF_NC_BODY_LEFT_COL_RATIO,
-    PDF_NC_IMG_LARGURA_MM + 2 * cellPad
-  );
-  leftColW = Math.min(leftColW, contentWidth - PDF_NC_RIGHT_COL_MIN_MM);
-  const rightColW = contentWidth - leftColW;
-  const splitX = tableX + leftColW;
+  let leftW = Math.max(contentWidth * PDF_NC_LEFT_COL_RATIO, PDF_NC_IMG_W_MM + 2 * pad);
+  leftW = Math.min(leftW, contentWidth - PDF_NC_RIGHT_COL_MIN_MM);
+  const rightW = contentWidth - leftW;
+  const splitX = tableX + leftW;
 
-  const leftInnerW = Math.max(8, leftColW - 2 * cellPad);
-  let imgW = Math.min(PDF_NC_IMG_LARGURA_MM, leftInnerW);
-  let imgH = imgW * (PDF_NC_IMG_ALTURA_MM / PDF_NC_IMG_LARGURA_MM);
-  const imgX = tableX + cellPad;
+  const leftUsable = Math.max(1, leftW - 2 * pad);
+  const picW = Math.min(PDF_NC_IMG_W_MM, leftUsable);
+  const picH = picW * (PDF_NC_IMG_H_MM / PDF_NC_IMG_W_MM);
+  const picX = tableX + pad;
 
   const { n: capN, body: capBody } = buildPdfRegistroFotoBody(photo.caption, photo.number);
-  const captionBlockH = measureRegistroCaptionHeightMm(doc, imgW, capN, capBody);
+  const capBlockH = measureRegistroCaptionHeightMm(doc, picW, capN, capBody);
 
-  const descRaw = pdfTrim(photo.description) || '\u2014';
-  const descInnerW = Math.max(20, rightColW - 2 * cellPad);
+  const ncBody = pdfTrim(photo.description) || '\u2014';
+  const descW = Math.max(18, rightW - 2 * pad);
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
-  const descLineArr = doc.splitTextToSize(descRaw, descInnerW);
+  const descLines = doc.splitTextToSize(ncBody, descW);
 
+  const headText = `ITEM ${String(ncIdx).padStart(2, '0')} |  LOCALIZAÇÃO: ${roomNameUpper}`;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
-  const headerLine = `ITEM ${String(ncIdx).padStart(2, '0')} |  LOCALIZAÇÃO: ${roomNameUpper}`;
-  const headerTextW = contentWidth - 2 * cellPad;
-  const headerLines = doc.splitTextToSize(headerLine, headerTextW);
-  const headerRowH = cellPad + headerLines.length * PDF_BODY_LINE_MM + cellPad;
+  const headLines = doc.splitTextToSize(headText, contentWidth - 2 * pad);
+  const headH = pad + headLines.length * lineH + pad;
 
-  doc.setFontSize(PDF_NC_DESC_LABEL_PT);
-  const labelLineH = PDF_BODY_LINE_MM * (PDF_NC_DESC_LABEL_PT / PDF_BODY_PT);
-  doc.setFontSize(PDF_BODY_PT);
-  const labelStripH = PDF_NC_DESC_STRIP_V_PAD_MM * 2 + labelLineH;
-  const textBlockH = Math.max(1, descLineArr.length) * PDF_BODY_LINE_MM;
-  const rightColContentH = labelStripH + cellPad + textBlockH + cellPad;
-  const leftColContentH =
-    cellPad + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM + captionBlockH + cellPad;
-  const bodyRowH = Math.max(leftColContentH, rightColContentH);
-
-  const totalH = headerRowH + bodyRowH;
+  const stripH = PDF_NC_DESC_STRIP_V_PAD_MM * 2 + lineH;
+  const descH = Math.max(1, descLines.length) * lineH;
+  const rightH = stripH + pad + descH + pad;
+  const leftH = pad + picH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM + capBlockH + pad;
+  const bodyH = Math.max(leftH, rightH);
+  const totalH = headH + bodyH;
 
   let y = yStart;
   if (y + totalH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
@@ -798,55 +785,40 @@ function drawPdfNaoConformidadeTable(
     y = margin;
   }
 
-  const bodyY = y + headerRowH;
+  const bodyY = y + headH;
 
   doc.setFillColor(PDF_NC_HEADER_FILL[0], PDF_NC_HEADER_FILL[1], PDF_NC_HEADER_FILL[2]);
-  doc.rect(tableX, y, contentWidth, headerRowH, 'F');
+  doc.rect(tableX, y, contentWidth, headH, 'F');
 
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(PDF_NC_LINE_W);
   doc.rect(tableX, y, contentWidth, totalH, 'S');
-  doc.line(tableX, y + headerRowH, tableX + contentWidth, y + headerRowH);
-  doc.line(splitX, bodyY, splitX, bodyY + bodyRowH);
+  doc.line(tableX, bodyY, tableX + contentWidth, bodyY);
+  doc.line(splitX, bodyY, splitX, bodyY + bodyH);
 
   doc.setFillColor(PDF_NC_DESC_STRIP_FILL[0], PDF_NC_DESC_STRIP_FILL[1], PDF_NC_DESC_STRIP_FILL[2]);
-  doc.rect(splitX, bodyY, rightColW, labelStripH, 'F');
+  doc.rect(splitX, bodyY, rightW, stripH, 'F');
+
   doc.setDrawColor(0, 0, 0);
-  doc.line(splitX, bodyY + labelStripH, tableX + contentWidth, bodyY + labelStripH);
+  doc.line(splitX, bodyY + stripH, tableX + contentWidth, bodyY + stripH);
 
-  doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
-  let hy = y + cellPad + PDF_BODY_LINE_MM * 0.85;
-  headerLines.forEach((ln) => {
-    doc.text(ln, tableX + cellPad, hy);
-    hy += PDF_BODY_LINE_MM;
+  let hy = y + pad + lineH * 0.85;
+  headLines.forEach((ln) => {
+    doc.text(ln, tableX + pad, hy);
+    hy += lineH;
   });
 
-  const stripBaseline = bodyY + PDF_NC_DESC_STRIP_V_PAD_MM + labelLineH * 0.85;
-  doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_NC_DESC_LABEL_PT);
-  doc.text(PDF_NC_DESC_LABEL_TEXT, splitX + cellPad, stripBaseline);
-
-  let yDesc = bodyY + labelStripH + cellPad + PDF_BODY_LINE_MM * 0.85;
-  doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_BODY_PT);
-  descLineArr.forEach((ln) => {
-    doc.text(ln, splitX + cellPad, yDesc);
-    yDesc += PDF_BODY_LINE_MM;
-  });
-
-  const yImg = bodyY + cellPad;
-
+  const yPic = bodyY + pad;
   if (photo.url) {
     try {
       const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
-      doc.addImage(photo.url, imgFmt, imgX, yImg, imgW, imgH);
+      doc.addImage(photo.url, imgFmt, picX, yPic, picW, picH);
     } catch (e) {
       console.error('Erro ao adicionar imagem (NC):', e);
       doc.setFont(PDF_FONT, 'italic');
       doc.setFontSize(PDF_BODY_PT);
-      doc.text('[Imagem não disponível]', imgX + imgW / 2, yImg + imgH / 2, {
+      doc.text('[Imagem não disponível]', picX + picW / 2, yPic + picH / 2, {
         align: 'center',
       });
       doc.setFont(PDF_FONT, 'normal');
@@ -855,12 +827,24 @@ function drawPdfNaoConformidadeTable(
 
   drawPdfRegistroImagemCaption(
     doc,
-    imgX,
-    imgW,
-    yImg + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
+    picX,
+    picW,
+    yPic + picH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
     capN,
     capBody
   );
+
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_BODY_PT);
+  doc.text(PDF_NC_DESC_LABEL, splitX + pad, bodyY + PDF_NC_DESC_STRIP_V_PAD_MM + lineH * 0.85);
+
+  let yDesc = bodyY + stripH + pad + lineH * 0.85;
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  descLines.forEach((ln) => {
+    doc.text(ln, splitX + pad, yDesc);
+    yDesc += lineH;
+  });
 
   return y + totalH + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
 }
