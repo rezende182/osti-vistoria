@@ -144,11 +144,11 @@ function pdfCidadeUfTexto(cidade, uf) {
   return '';
 }
 
-/** Capa do laudo: ex. "Praia Grande/SP". */
-function pdfCidadeUfCapaSlash(cidade, uf) {
-  const c = pdfTrim(cidade);
-  const u = pdfUfSomenteSigla(uf);
-  if (c && u) return `${c}/${u}`;
+/** Capa do laudo: ex. "PRAIA GRANDE - SP". */
+function pdfCidadeUfCapaHyphenUpper(cidade, uf) {
+  const c = pdfTrim(cidade).toUpperCase();
+  const u = pdfUfSomenteSigla(uf).toUpperCase();
+  if (c && u) return `${c} - ${u}`;
   if (c) return c;
   if (u) return u;
   return '';
@@ -421,17 +421,40 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   return 'JPEG';
 }
 
-/** Capa: ~80–120 px de altura ≈ 21–32 mm (A4 em jsPDF). */
-const PDF_COVER_LOGO_MAX_W_MM = 95;
-const PDF_COVER_LOGO_MAX_H_MM = 32;
+/** Marca d’água: ocupa quase a página inteira (proporção mantida). */
+const PDF_COVER_WATERMARK_MAX_W_FRAC = 0.94;
+const PDF_COVER_WATERMARK_MAX_H_FRAC = 0.9;
+const PDF_COVER_WATERMARK_OPACITY = 0.11;
+
 const PDF_COVER_MARGIN_MM = 20;
-const PDF_COVER_TITLE_MAIN_PT = 19;
-const PDF_COVER_TITLE_SUB_PT = 13;
-const PDF_COVER_FOOTER_PT = 11;
-const PDF_COVER_FOOTER_LINE_MM = PDF_COVER_FOOTER_PT * PDF_PT_TO_MM * 1.35;
+const PDF_COVER_TITLE_MAIN_PT = 20;
+const PDF_COVER_TITLE_SUB_PT = 14;
+/** Espaço entre título principal e subtítulo (mm) — próximos visualmente. */
+const PDF_COVER_TITLE_MAIN_SUB_GAP_MM = 2.8;
+const PDF_COVER_FOOTER_PT = 14;
+const PDF_COVER_FOOTER_LINE_MM = PDF_COVER_FOOTER_PT * PDF_PT_TO_MM * 1.45;
+
+async function drawPdfCoverWatermark(doc, logoUrl, pageWidth, pageHeight) {
+  const { width: iw, height: ih } = await getDataUrlImageDimensions(logoUrl);
+  const maxW = pageWidth * PDF_COVER_WATERMARK_MAX_W_FRAC;
+  const maxH = pageHeight * PDF_COVER_WATERMARK_MAX_H_FRAC;
+  const { w, h } = fitLogoSizeMm(iw, ih, maxW, maxH);
+  const x = (pageWidth - w) / 2;
+  const y = (pageHeight - h) / 2;
+  const fmt = getJsPdfFormatFromDataUrl(logoUrl);
+  doc.saveGraphicsState();
+  try {
+    doc.setGState(new doc.GState({ opacity: PDF_COVER_WATERMARK_OPACITY }));
+    doc.addImage(logoUrl, fmt, x, y, w, h);
+  } catch (e) {
+    console.log('Capa: não foi possível desenhar a marca d’água do logo.', e);
+  } finally {
+    doc.restoreGraphicsState();
+  }
+}
 
 /**
- * Primeira página: capa (logo opcional, títulos, cidade e data no rodapé).
+ * Primeira página: capa (marca d’água opcional, títulos ao centro, rodapé).
  * Helvetica no jsPDF equivale a Arial nos laudos.
  */
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
@@ -441,57 +464,42 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const hasLogo =
     logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/');
 
-  let y = PDF_COVER_MARGIN_MM + 6;
-
   if (hasLogo) {
     try {
-      const { width: iw, height: ih } = await getDataUrlImageDimensions(logoUrl);
-      const { w: lw, h: lh } = fitLogoSizeMm(
-        iw,
-        ih,
-        PDF_COVER_LOGO_MAX_W_MM,
-        PDF_COVER_LOGO_MAX_H_MM
-      );
-      doc.addImage(
-        logoUrl,
-        getJsPdfFormatFromDataUrl(logoUrl),
-        cx - lw / 2,
-        y,
-        lw,
-        lh
-      );
-      y += lh + 16;
+      await drawPdfCoverWatermark(doc, logoUrl, pageWidth, pageHeight);
     } catch (e) {
-      console.log('Capa: não foi possível incluir o logo.', e);
-      y += 10;
+      console.log('Capa: marca d’água omitida.', e);
     }
-  } else {
-    y += 22;
   }
 
   doc.setTextColor(0, 0, 0);
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_COVER_TITLE_MAIN_PT);
   const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA TÉCNICA', textMaxW);
-  const mainLineH = PDF_COVER_TITLE_MAIN_PT * PDF_PT_TO_MM * 1.22;
+  const mainLineH = PDF_COVER_TITLE_MAIN_PT * PDF_PT_TO_MM * 1.18;
+  const subLineH = PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * 1.12;
+  const mainBlockH = mainLines.length * mainLineH;
+  const totalTitleH = mainBlockH + PDF_COVER_TITLE_MAIN_SUB_GAP_MM + subLineH;
+  const midY = pageHeight / 2;
+  let y = midY - totalTitleH / 2 + mainLineH * 0.72;
+
   mainLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
     y += mainLineH;
   });
 
-  y += 6;
+  y += PDF_COVER_TITLE_MAIN_SUB_GAP_MM;
   doc.setFontSize(PDF_COVER_TITLE_SUB_PT);
   doc.text('RECEBIMENTO DE IMÓVEL', cx, y, { align: 'center' });
-  y += PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * 1.4 + 14;
 
-  const cidadeTxt = pdfCidadeUfCapaSlash(inspection.cidade, inspection.uf);
+  const cidadeTxt = pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf);
   const dataTxt = formatPdfLaudoCoverDateDdMmYyyy(
     inspection.data_final || inspection.data
   );
 
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_COVER_FOOTER_PT);
-  const yDate = pageHeight - PDF_COVER_MARGIN_MM - 8;
+  const yDate = pageHeight - PDF_COVER_MARGIN_MM - 10;
   const yCity = yDate - PDF_COVER_FOOTER_LINE_MM;
   if (cidadeTxt && dataTxt) {
     doc.text(cidadeTxt, cx, yCity, { align: 'center' });
