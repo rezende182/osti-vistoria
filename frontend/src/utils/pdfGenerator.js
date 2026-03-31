@@ -46,9 +46,11 @@ const PDF_LAUDO_FOOTER_LINE_GRAY = [170, 170, 170];
 const PDF_LAUDO_FOOTER_PT = 8;
 const PDF_LAUDO_FOOTER_LOGO_MAX_H_MM = 12;
 const PDF_LAUDO_FOOTER_LOGO_MAX_W_MM = 34;
-const PDF_LAUDO_FOOTER_CENTER_TITLE = 'OSTI ENGENHARIA – VISTORIAS E PERÍCIAS';
-const PDF_LAUDO_FOOTER_CENTER_CONTACT = 'contato@osti.com.br | (13) 99999-9999';
-const PDF_LAUDO_FOOTER_CENTER_CITY = 'Praia Grande/SP';
+const PDF_LAUDO_FOOTER_CENTER_TITLE = 'OSTI ENGENHARIA – Engenharia Diagnóstica';
+const PDF_LAUDO_FOOTER_CENTER_CONTACT =
+  'contato@engenhariaosti.com.br  | (13) 98138-5425';
+const PDF_LAUDO_FOOTER_CENTER_CITY =
+  'Rua Primeiro de Janeiro, 674 Sala 1, Nova Mirim - Praia Grande – SP';
 
 /** Garante `;` entre itens com marcador e `.` no último de cada lista (ambiente). */
 function punctuatePdfChecklistItemBlock(block, isLastInList) {
@@ -257,15 +259,15 @@ function pdfIdentRowEmpreendimentoConstrutora(empreendimento, construtora) {
   ];
 }
 
-/** Horário de início e de término na mesma linha (duas colunas rótulo/valor). */
+/** Horário do início e do término na mesma linha (duas colunas rótulo/valor). */
 function pdfIdentRowHorarios(horarioInicio, horarioTermino) {
   const hi = horarioInicio == null ? '' : String(horarioInicio).trim();
   const ht = horarioTermino == null ? '' : String(horarioTermino).trim();
   return [
-    pdfIdentLabelCell('Horário\u00A0de\u00A0início'),
+    pdfIdentLabelCell('Horário\u00A0do\u00A0início'),
     { content: hi || '—' },
     /** NBSP mantém cada rótulo numa linha; coluna direita com largura compatível. */
-    pdfIdentLabelCell('Horário\u00A0de\u00A0término'),
+    pdfIdentLabelCell('Horário\u00A0do\u00A0término'),
     { content: ht || '—' },
   ];
 }
@@ -561,6 +563,35 @@ function finalizeLaudoMetodologiaPdf(inspection, registroNaoConformidadesItemNum
     out = out.replace(new RegExp(esc, 'gi'), replacement);
   }
   return out;
+}
+
+/** Texto da secção 3.1 Referências (documentos do app, quando houver). */
+function buildPdfEspecificacoesReferenciasText(inspection) {
+  const intro =
+    'O presente laudo foi elaborado com base em inspeção visual das condições aparentes da edificação, considerando as boas práticas construtivas e as diretrizes das normas técnicas aplicáveis.';
+  const normsBlock = [
+    'Foram adotadas como referência as seguintes normas:',
+    '– ABNT NBR 13752:1996 – Perícias de engenharia na construção civil;',
+    '– ABNT NBR 16747 – Inspeção predial;',
+    '– ABNT NBR 15575 – Desempenho de edificações habitacionais;',
+    '– ABNT NBR 5674 – Manutenção de edificações;',
+  ].join('\n');
+
+  const docs = (inspection.documentos_recebidos || [])
+    .map((d) => pdfTrim(d))
+    .filter(Boolean);
+
+  if (docs.length > 0) {
+    const docList = [
+      'Foram analisados os seguintes documentos técnicos fornecidos:',
+      ...docs.map((d) => `– ${d};`),
+    ].join('\n');
+    return [intro, normsBlock, docList].join('\n\n');
+  }
+
+  const noDocs =
+    'Não foram disponibilizados documentos técnicos da edificação, restringindo-se a análise às condições aparentes observadas no momento da vistoria.';
+  return [intro, normsBlock, noDocs].join('\n\n');
 }
 
 function getJsPdfFormatFromDataUrl(dataUrl) {
@@ -1166,17 +1197,17 @@ const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
  * Caixa única para todas as fotos do registo (largura × altura).
  * Dimensão pensada para laudo técnico: boa leitura, ~2 itens por página A4 com
  * descrição típica de 3–4 linhas; textos muito longos podem quebrar para a página seguinte.
- * A imagem é desenhada com proporção preservada (centrada na caixa). Largura +0,5 cm vs. versão anterior.
+ * A imagem é desenhada com proporção preservada (centrada na caixa). Largura +0,5 mm vs. versão anterior.
  */
-const PDF_NC_IMG_W_MM = 125;
+const PDF_NC_IMG_W_MM = 125.5;
 const PDF_NC_IMG_H_MM = 58;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
 /** Par no registo: colunas + largura de imagem ajustadas para ~largura útil A4 (2 col + gap ≈ área de texto). */
-const PDF_REG_PAIR_COL_W_MM = 84;
+const PDF_REG_PAIR_COL_W_MM = 84.5;
 const PDF_REG_PAIR_GAP_MM = 2;
-const PDF_REG_PAIR_IMG_W_MM = 84;
+const PDF_REG_PAIR_IMG_W_MM = 84.5;
 const PDF_REG_PAIR_ROW_GAP_MM = 4;
 
 function registroPairLayoutScaled(contentWidth) {
@@ -1486,11 +1517,12 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const entregaLaudoExt = isEntregaImovelLaudoExtended(inspection);
   const objChapterNum = 2;
-  const metodologiaChapterNum = 3;
-  const checklistChapterNum = entregaLaudoExt ? 4 : 3;
-  const ncChapterNum = entregaLaudoExt ? 5 : 4;
-  const conclusaoChapterNum = entregaLaudoExt ? 6 : 5;
-  const encerramentoChapterNum = entregaLaudoExt ? 7 : 6;
+  const especificacoesChapterNum = 3;
+  const metodologiaChapterNum = entregaLaudoExt ? 4 : 3;
+  const checklistChapterNum = entregaLaudoExt ? 5 : 3;
+  const ncChapterNum = entregaLaudoExt ? 6 : 4;
+  const conclusaoChapterNum = entregaLaudoExt ? 7 : 5;
+  const encerramentoChapterNum = entregaLaudoExt ? 8 : 6;
 
   // ============================================================
   // Corpo do laudo (após capa)
@@ -1499,7 +1531,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const identificacaoData = buildIdentificacaoTableBody(inspection);
   /** Rótulos coluna esquerda (mais longos); coluna direita mais estreita junto ao fim do texto. */
   const identLabelColLeftW = 48;
-  /** Largura mínima para «Horário de término:» em uma linha (12 pt negrito). */
+  /** Largura mínima para «Horário do término:» em uma linha (12 pt negrito). */
   const identLabelColRightW = 46;
   const identValueColW = Math.max(
     24,
@@ -1609,6 +1641,37 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   if (entregaLaudoExt) {
+    const espBody = buildPdfEspecificacoesReferenciasText(inspection);
+
+    checkNewPage(40);
+    yPos = drawChapterTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      pdfChapterTitleUpperCase(
+        `${especificacoesChapterNum}. ESPECIFICAÇÕES TÉCNICAS`
+      ),
+      { minFollowingMm: 36 }
+    );
+    yPos = drawSubsectionTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      pdfAbntHeadingTitleCase(`${especificacoesChapterNum}.1 Referências`),
+      { minFollowingMm: 28 }
+    );
+    yPos = drawBodyParagraphs(
+      doc,
+      espBody,
+      margin,
+      contentWidth,
+      yPos,
+      checkNewPage,
+      laudoBodyParagraphsOpts
+    );
+
     const metaText = finalizeLaudoMetodologiaPdf(inspection, ncChapterNum);
 
     checkNewPage(40);

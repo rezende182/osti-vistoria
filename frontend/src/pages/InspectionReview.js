@@ -318,7 +318,7 @@ const InspectionReview = () => {
 
           <div className="mb-6">
             <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
-              Horário de término
+              Horário do término
             </label>
             <TimePickerField
               data-testid="horario-termino-review-input"

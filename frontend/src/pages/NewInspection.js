@@ -729,7 +729,13 @@ const NewInspection = () => {
                       key={opcao}
                       type="button"
                       data-testid={`energia-${opcao}`}
-                      onClick={() => setFormData({ ...formData, energia_disponivel: opcao })}
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          energia_disponivel:
+                            formData.energia_disponivel === opcao ? '' : opcao,
+                        })
+                      }
                       className={`flex-1 rounded-lg py-2 px-4 font-semibold transition-all duration-200 ${
                         formData.energia_disponivel === opcao
                           ? 'bg-slate-900 text-white'
@@ -760,7 +766,7 @@ const NewInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Horário de início *
+                  Horário do início *
                 </label>
                 <TimePickerField
                   data-testid="input-horario-inicio"
@@ -1040,7 +1046,13 @@ const NewInspection = () => {
                       key={opcao}
                       type="button"
                       data-testid={`energia-${opcao}`}
-                      onClick={() => setFormData({ ...formData, energia_disponivel: opcao })}
+                      onClick={() =>
+                        setFormData({
+                          ...formData,
+                          energia_disponivel:
+                            formData.energia_disponivel === opcao ? '' : opcao,
+                        })
+                      }
                       className={`flex-1 rounded-lg py-2 px-4 font-semibold transition-all duration-200 ${
                         formData.energia_disponivel === opcao
                           ? 'bg-slate-900 text-white'
@@ -1070,7 +1082,7 @@ const NewInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Horário de início *
+                  Horário do início *
                 </label>
                 <TimePickerField
                   data-testid="input-horario-inicio"

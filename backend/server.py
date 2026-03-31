@@ -106,7 +106,7 @@ class InspectionCreateIn(BaseModel):
     horario_inicio: str = ""
     horario_termino: str = ""
     tipo_imovel: Literal["novo", "usado", "reformado"] = "novo"
-    energia_disponivel: Literal["sim", "nao"] = "sim"
+    energia_disponivel: Optional[Literal["sim", "nao"]] = None
     imovel_tipologia: Literal["terreo", "sobrado"] = "terreo"
     imovel_area: str = ""
     imovel_numero_pavimentos: str = ""
@@ -139,6 +139,13 @@ class InspectionCreateIn(BaseModel):
         max_length=32,
         description="CNPJ da empresa (rodapé do PDF; opcional)",
     )
+
+    @field_validator("energia_disponivel", mode="before")
+    @classmethod
+    def _energia_create_empty(cls, v):
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
 
     @field_validator("pdf_logo_data_url", mode="before")
     @classmethod
@@ -245,7 +252,7 @@ class Inspection(BaseModel):
     horario_inicio: str = ""
     horario_termino: str = ""
     tipo_imovel: Literal["novo", "usado", "reformado"]
-    energia_disponivel: Literal["sim", "nao"]
+    energia_disponivel: Optional[Literal["sim", "nao"]] = None
     imovel_tipologia: Literal["terreo", "sobrado"] = "terreo"
     imovel_area: str = ""
     imovel_numero_pavimentos: str = ""
@@ -280,6 +287,13 @@ class Inspection(BaseModel):
     laudo_relato_adendo_retrabalho: str = ""
     laudo_relato_adendo_impedimento: str = ""
     laudo_metodologia: str = ""
+
+    @field_validator("energia_disponivel", mode="before")
+    @classmethod
+    def _energia_inspection_empty(cls, v):
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
 
 
 class UserRegisterBody(BaseModel):
@@ -347,6 +361,13 @@ class IdentificationUpdate(BaseModel):
     laudo_relato_adendo_retrabalho: Optional[str] = None
     laudo_relato_adendo_impedimento: Optional[str] = None
     laudo_metodologia: Optional[str] = None
+
+    @field_validator("energia_disponivel", mode="before")
+    @classmethod
+    def _energia_ident_empty(cls, v):
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return v
 
     @field_validator("pdf_logo_data_url", mode="before")
     @classmethod

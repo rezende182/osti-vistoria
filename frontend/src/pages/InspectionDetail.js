@@ -460,7 +460,7 @@ const InspectionDetail = () => {
                   ) : null}
                   <div className="border-t border-slate-100 py-3 first:border-t-0 first:pt-0">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Horário de início
+                      Horário do início
                     </span>
                     <p className="mt-1 text-sm font-medium text-slate-900">
                       {tStr(inspection.horario_inicio) || '—'}
@@ -468,7 +468,7 @@ const InspectionDetail = () => {
                   </div>
                   <div className="border-t border-slate-100 py-3">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Horário de término
+                      Horário do término
                     </span>
                     <p className="mt-1 text-sm font-medium text-slate-900">
                       {tStr(inspection.horario_termino) || '—'}
@@ -582,7 +582,7 @@ const InspectionDetail = () => {
                   <IdRow label="Data">{formatInspectionDate(inspection.data)}</IdRow>
                   <div className="border-t border-slate-100 py-3 first:border-t-0 first:pt-0">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Horário de início
+                      Horário do início
                     </span>
                     <p className="mt-1 text-sm font-medium text-slate-900">
                       {tStr(inspection.horario_inicio) || '—'}
@@ -590,7 +590,7 @@ const InspectionDetail = () => {
                   </div>
                   <div className="border-t border-slate-100 py-3">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Horário de término
+                      Horário do término
                     </span>
                     <p className="mt-1 text-sm font-medium text-slate-900">
                       {tStr(inspection.horario_termino) || '—'}
