@@ -10,6 +10,9 @@ export const PDF_PT_TO_MM = 25.4 / 72;
 export const PDF_LINE_HEIGHT_FACTOR = 1.5;
 export const PDF_BODY_LINE_MM = PDF_BODY_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
 
+/** Entrelinha dos títulos do laudo (principal, subtítulo, elementos). */
+export const PDF_TITLE_LINE_HEIGHT_FACTOR = 1.15;
+
 /** Margens laterais (2 cm). */
 export const PDF_PAGE_MARGIN_SIDE_MM = 20;
 /** Zona superior / cabeçalho (2,7 cm). */
@@ -20,15 +23,22 @@ export const PDF_PAGE_MARGIN_BOTTOM_MM = 15;
 /** Margem lateral — alias para compatibilidade com `PDF_PAGE_MARGIN_MM`. */
 export const PDF_PAGE_MARGIN_MM = PDF_PAGE_MARGIN_SIDE_MM;
 
-/** Títulos de capítulo (1., 2., …): negrito 14 pt; antes 12 pt / depois 6 pt */
+/** Título principal (capítulos 1., 2., …): negrito 14 pt; margin-top 12 pt / margin-bottom 6 pt; line-height 1,15 */
 export const PDF_CHAPTER_TITLE_PT = 14;
 export const PDF_CHAPTER_TITLE_BEFORE_MM = 12 * PDF_PT_TO_MM;
 export const PDF_CHAPTER_TITLE_AFTER_MM = 6 * PDF_PT_TO_MM;
-export const PDF_CHAPTER_LINE_MM = (PDF_CHAPTER_TITLE_PT / PDF_BODY_PT) * PDF_BODY_LINE_MM;
+export const PDF_CHAPTER_LINE_MM =
+  PDF_CHAPTER_TITLE_PT * PDF_PT_TO_MM * PDF_TITLE_LINE_HEIGHT_FACTOR;
 
-/** Subtítulos (ex.: 4.1 SALA): negrito 12 pt; antes 8 pt / depois 4 pt */
-export const PDF_SUBSECTION_BEFORE_MM = 8 * PDF_PT_TO_MM;
+/** Subtítulo (ex.: 4.1 Referências): negrito 12 pt; margin-top 10 pt / margin-bottom 4 pt; line-height 1,15 */
+export const PDF_SUBSECTION_BEFORE_MM = 10 * PDF_PT_TO_MM;
 export const PDF_SUBSECTION_AFTER_MM = 4 * PDF_PT_TO_MM;
+export const PDF_SUBSECTION_LINE_MM =
+  PDF_BODY_PT * PDF_PT_TO_MM * PDF_TITLE_LINE_HEIGHT_FACTOR;
+
+/** Nível «elementos» (ex.: título de ambiente no checklist): margin-top 6 pt / margin-bottom 2 pt; line-height 1,15 */
+export const PDF_ELEMENT_TITLE_BEFORE_MM = 6 * PDF_PT_TO_MM;
+export const PDF_ELEMENT_TITLE_AFTER_MM = 2 * PDF_PT_TO_MM;
 
 /** Reserva mínima sob o título para não deixar título órfão no fim da página */
 export const PDF_CHAPTER_KEEP_WITH_NEXT_MM = 36;
@@ -405,7 +415,7 @@ const defaultPageOpts = () => ({
 });
 
 /**
- * Título de capítulo numerado: negrito 14 pt; espaço antes 12 pt e depois 6 pt (com quebra de página se necessário).
+ * Título principal: negrito 14 pt; margin-top 12 pt / margin-bottom 6 pt; line-height 1,15 (quebra de página se necessário).
  * `options.minFollowingMm` — se não couber título + este espaço para o conteúdo seguinte, quebra antes do título.
  */
 export function drawChapterTitle(doc, margin, contentWidth, yStart, title, options = {}) {
@@ -446,7 +456,7 @@ export function drawChapterTitle(doc, margin, contentWidth, yStart, title, optio
 }
 
 /**
- * Subtítulo de secção (ex.: nome do ambiente): negrito 12 pt; antes 8 pt / depois 4 pt.
+ * Subtítulo de secção (ex.: 4.1 Referências): negrito 12 pt; margin-top 10 pt / margin-bottom 4 pt; line-height 1,15.
  * `options.minFollowingMm` — mantém subtítulo junto ao início do conteúdo seguinte.
  */
 export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, options = {}) {
@@ -463,7 +473,7 @@ export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, op
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
   const lines = doc.splitTextToSize(String(title), contentWidth);
-  const lineH = PDF_BODY_LINE_MM;
+  const lineH = PDF_SUBSECTION_LINE_MM;
   const totalNeeded =
     PDF_SUBSECTION_BEFORE_MM + lines.length * lineH + PDF_SUBSECTION_AFTER_MM;
 
@@ -483,6 +493,46 @@ export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, op
     y += lineH;
   });
   y += PDF_SUBSECTION_AFTER_MM;
+  return y;
+}
+
+/**
+ * Título de nível «elemento» (ex.: ambiente no checklist): negrito 12 pt; margin-top 6 pt / margin-bottom 2 pt; line-height 1,15.
+ */
+export function drawElementTitle(doc, margin, contentWidth, yStart, title, options = {}) {
+  const {
+    minFollowingMm = PDF_SUBSECTION_KEEP_WITH_NEXT_MM,
+    ...pageOptsRest
+  } = options;
+  const po = { ...defaultPageOpts(), ...pageOptsRest };
+  const bottomSafe = po.bottomMarginMm;
+  const topReset = po.topMarginMm;
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_BODY_PT);
+  doc.setTextColor(0, 0, 0);
+  const lines = doc.splitTextToSize(String(title), contentWidth);
+  const lineH = PDF_SUBSECTION_LINE_MM;
+  const totalNeeded =
+    PDF_ELEMENT_TITLE_BEFORE_MM + lines.length * lineH + PDF_ELEMENT_TITLE_AFTER_MM;
+
+  let y = yStart;
+  if (y + totalNeeded + minFollowingMm > pageHeight - bottomSafe) {
+    doc.addPage();
+    y = topReset;
+  }
+  y += PDF_ELEMENT_TITLE_BEFORE_MM;
+
+  lines.forEach((ln) => {
+    if (y + lineH > pageHeight - bottomSafe) {
+      doc.addPage();
+      y = topReset;
+    }
+    doc.text(ln, margin, y);
+    y += lineH;
+  });
+  y += PDF_ELEMENT_TITLE_AFTER_MM;
   return y;
 }
 

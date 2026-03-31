@@ -7,6 +7,7 @@ import {
   drawResponsavelAssinaturaSection,
   drawChapterTitle,
   drawSubsectionTitle,
+  drawElementTitle,
   measureBodyParagraphsHeightMm,
   measureInlineLabelParagraphMm,
   PDF_FONT,
@@ -1587,7 +1588,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
       checkNewPage(26);
 
-      yPos = drawSubsectionTitle(
+      yPos = drawElementTitle(
         doc,
         margin,
         contentWidth,
