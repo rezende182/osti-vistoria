@@ -1137,13 +1137,35 @@ function pdfRegistroDisplayValue(s) {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
+/**
+ * Problemática no PDF: sem travessões entre trechos; frases com «. » e maiúscula no início de cada uma.
+ * Aceita texto antigo ainda com « — » ou «-» entre repetições.
+ */
+function formatPdfProblematicaParagraph(s) {
+  let t = String(s ?? '').trim();
+  if (!t) return '\u2014';
+  t = t.replace(/\s*[—–]\s*/g, '. ');
+  t = t.replace(/\.\s*\./g, '.');
+  const parts = t
+    .split(/\.\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return '\u2014';
+  return parts
+    .map((p) => {
+      const lower = p.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join('. ');
+}
+
 /** «Localização:» e «Problemática:» em sequência, sem espaço extra entre os dois blocos. */
 function measureLocProbCombinedMm(doc, contentWidth, pad, localizacaoText, ncBody, lineH) {
   const innerW = Math.max(20, contentWidth - 2 * pad);
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
   const loc = pdfRegistroDisplayValue(localizacaoText);
-  const prob = pdfRegistroDisplayValue(ncBody);
+  const prob = formatPdfProblematicaParagraph(ncBody);
   const hLoc = measureInlineLabelParagraphMm(
     doc,
     innerW,
@@ -1168,7 +1190,7 @@ function drawPdfLocProbCombined(
   const innerW = Math.max(20, contentWidth - 2 * pad);
   const y0 = yTop + pad + lineH * 0.85;
   const loc = pdfRegistroDisplayValue(localizacaoText);
-  const prob = pdfRegistroDisplayValue(ncBody);
+  const prob = formatPdfProblematicaParagraph(ncBody);
   let y = drawInlineLabelParagraph(
     doc,
     innerX,
@@ -1241,12 +1263,37 @@ function registroPairLayoutScaled(contentWidth) {
   return { colW, gap, imgW, imgH, scale };
 }
 
-/** Junta as descrições das fotos do mesmo item num único texto (segmentos separados por « — »). */
+/** Normaliza texto para deduplicar descrições repetidas (mesma NC em várias fotos). */
+function normalizeProbDescriptionKey(s) {
+  return String(s ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+/** Junta as descrições das fotos do mesmo item: «. » entre frases; repetições iguais em sequência são omitidas. */
 function mergePhotoDescriptionsSegmented(photos) {
-  const parts = (photos || []).map((p) => pdfTrim(p?.description)).filter(Boolean);
-  if (parts.length === 0) return '\u2014';
-  if (parts.length === 1) return parts[0];
-  return parts.join(' — ');
+  const raw = (photos || []).map((p) => pdfTrim(p?.description)).filter(Boolean);
+  if (raw.length === 0) return '\u2014';
+
+  const deduped = [];
+  for (const t of raw) {
+    const k = normalizeProbDescriptionKey(t);
+    const prevK =
+      deduped.length > 0 ? normalizeProbDescriptionKey(deduped[deduped.length - 1]) : null;
+    if (k && k !== prevK) deduped.push(t.trim());
+  }
+
+  if (deduped.length === 0) return '\u2014';
+  if (deduped.length === 1) return deduped[0];
+
+  return deduped
+    .map((seg) => {
+      const s = seg.trim().replace(/\.+$/g, '');
+      const lower = s.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join('. ');
 }
 
 function measureRegistroPairCellHeight(doc, imgW, imgH, captionFromApp, photoNumber) {
@@ -1369,19 +1416,11 @@ async function drawPdfRegistroItemGroup(
     PDF_NC_AFTER_PHOTO_GAP_MM +
     measureLocProbCombinedMm(doc, contentWidth, descPad, locText, mergedProb, lineH);
 
-  /** Altura só das linhas de fotos (sem localização/problemática no fim). */
-  function remainingPhotoHeightFromRow(ri) {
-    let s = 0;
-    for (let j = ri; j < rows.length; j++) {
-      s += rowHeights[j];
-      if (j < rows.length - 1) s += PDF_REG_PAIR_ROW_GAP_MM;
-    }
-    return s;
-  }
-
   let y = yStart;
+  /** Uma linha de fotos de cada vez: aproveita o fim da página; evita saltar página inteira quando só o bloco completo «caberia» em teoria. */
   for (let ri = 0; ri < rows.length; ri++) {
-    if (y + remainingPhotoHeightFromRow(ri) > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
+    const rowH = rowHeights[ri];
+    if (y + rowH > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
       doc.addPage();
       y = PDF_PAGE_TOP_SAFE_MM;
     }
