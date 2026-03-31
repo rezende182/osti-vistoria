@@ -18,6 +18,7 @@ import {
   conclusaoPareceAutomatica,
 } from '../constants/inspectionClassificacao';
 import BrandLogo from '@/components/BrandLogo';
+import TimePickerField from '../components/TimePickerField';
 
 const CLASSIFICACAO_OPTIONS = [
   { value: 'aprovado', label: CLASSIFICACAO_FINAL_LABELS.aprovado, color: 'green' },
@@ -44,6 +45,7 @@ const InspectionReview = () => {
   const [responsavelFinal, setResponsavelFinal] = useState('');
   const [creaFinal, setCreaFinal] = useState('');
   const [dataEmissaoLaudo, setDataEmissaoLaudo] = useState('');
+  const [horarioTermino, setHorarioTermino] = useState('');
 
   const loadInspection = useCallback(async () => {
     try {
@@ -64,6 +66,7 @@ const InspectionReview = () => {
       setDataEmissaoLaudo(
         data.data_final || new Date().toISOString().slice(0, 10)
       );
+      setHorarioTermino(data.horario_termino || '');
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
       toast.error('Erro ao carregar vistoria');
@@ -95,7 +98,7 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal,
         crea_final: creaFinal,
         data_final: dataEmissaoLaudo,
-        horario_termino: inspection?.horario_termino || '',
+        horario_termino: String(horarioTermino || '').trim(),
         outro_somente_conclusao: classificacao === 'outro',
         classificacao_escolha_rotulo: '',
       };
@@ -148,7 +151,7 @@ const InspectionReview = () => {
         responsavel_final: responsavelFinal || '',
         crea_final: creaFinal || '',
         data_final: dataEmissaoLaudo || null,
-        horario_termino: inspection?.horario_termino || '',
+        horario_termino: String(horarioTermino || '').trim(),
         outro_somente_conclusao: classificacao === 'outro',
         classificacao_escolha_rotulo: '',
       };
@@ -310,6 +313,18 @@ const InspectionReview = () => {
               value={creaFinal}
               onChange={(e) => setCreaFinal(e.target.value)}
               className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="mb-6">
+            <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+              Horário de término
+            </label>
+            <TimePickerField
+              data-testid="horario-termino-review-input"
+              value={horarioTermino}
+              onChange={(v) => setHorarioTermino(v)}
+              className="w-full max-w-xs rounded-lg border border-slate-300"
             />
           </div>
 
