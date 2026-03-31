@@ -1227,41 +1227,33 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (foto + legenda; texto sem moldura) ---------- */
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Caixa padrão do registo fotográfico: 8,6 cm × 8,5 cm (largura × altura). */
-const PDF_NC_IMG_W_MM = 86;
-const PDF_NC_IMG_H_MM = 85;
+/**
+ * Caixa única para todas as fotos do registo (largura × altura).
+ * Dimensão pensada para laudo técnico: boa leitura, ~2 itens por página A4 com
+ * descrição típica de 3–4 linhas; textos muito longos podem quebrar para a página seguinte.
+ * A imagem é desenhada com proporção preservada (centrada na caixa). Largura +0,5 mm vs. versão anterior.
+ */
+const PDF_NC_IMG_W_MM = 126;
+const PDF_NC_IMG_H_MM = 58;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
 /**
- * Duas fotos na mesma linha: vão mínimo. Se 2× largura + vão exceder a área útil (ex.: A4),
- * a caixa 8,6×8,5 escala uniformemente para caber.
+ * Registo em par: proporção altura/largura da caixa = `PDF_NC_IMG_H_MM` / `PDF_REG_PAIR_IMG_W_MM`.
+ * Largura útil inteira em duas colunas; vão entre fotos (`PDF_REG_PAIR_GAP_MM` mm).
  */
-const PDF_REG_PAIR_GAP_MM = 0;
+const PDF_REG_PAIR_GAP_MM = 0.2;
+const PDF_REG_PAIR_IMG_W_MM = 85;
 const PDF_REG_PAIR_ROW_GAP_MM = 4;
 
 function registroPairLayoutScaled(contentWidth) {
   const cw = Math.max(40, contentWidth);
   const gap = PDF_REG_PAIR_GAP_MM;
-  let imgW = PDF_NC_IMG_W_MM;
-  let imgH = PDF_NC_IMG_H_MM;
-  const totalPairW = 2 * imgW + gap;
-  if (totalPairW > cw) {
-    const s = cw / totalPairW;
-    imgW *= s;
-    imgH *= s;
-  }
-  const colW = imgW;
-  const scale = imgW / PDF_NC_IMG_W_MM;
-  return {
-    colW,
-    gap,
-    imgW,
-    imgH,
-    scale,
-    singleRowImgW: imgW,
-    singleRowImgH: imgH,
-  };
+  const colW = (cw - gap) / 2;
+  const imgW = colW;
+  const imgH = colW * (PDF_NC_IMG_H_MM / PDF_REG_PAIR_IMG_W_MM);
+  const scale = colW / PDF_REG_PAIR_IMG_W_MM;
+  return { colW, gap, imgW, imgH, scale };
 }
 
 /** Junta todas as descrições NC das fotos do mesmo item num único texto seguido (espaço; sem travessões). */
@@ -1286,7 +1278,7 @@ function measureRegistroPairCellHeight(doc, imgW, imgH, captionFromApp, photoNum
 }
 
 function measureRegistroPairRowMm(doc, photosInRow, layout) {
-  const { imgW, imgH, singleRowImgW, singleRowImgH } = layout;
+  const { imgW, imgH } = layout;
   if (photosInRow.length >= 2) {
     let maxH = 0;
     for (const photo of photosInRow) {
@@ -1298,7 +1290,7 @@ function measureRegistroPairRowMm(doc, photosInRow, layout) {
   }
   const photo = photosInRow[0];
   const cap = pdfTrim(photo.caption);
-  return measureRegistroPairCellHeight(doc, singleRowImgW, singleRowImgH, cap, photo.number);
+  return measureRegistroPairCellHeight(doc, imgW, imgH, cap, photo.number);
 }
 
 async function drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPicTop, photo) {
@@ -1336,11 +1328,11 @@ async function drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPicTop, photo) {
 }
 
 /**
- * Linha 1×2: duas caixas 8,6×8,5 cm (ou a mesma caixa escalada se a página for estreita).
- * Uma foto na linha: mesma caixa, centrada (ex.: terceira foto de um grupo de 3).
+ * Linha do «quadro» 1×2 (bordas invisíveis): duas colunas, imagem centrada na coluna;
+ * linha inteira centrada na área útil. Uma foto: uma coluna centrada na página.
  */
 async function drawPdfRegistroPairRow(doc, yRowTop, tableX, contentWidth, photosInRow, layout) {
-  const { colW, gap, imgW, imgH, singleRowImgW, singleRowImgH } = layout;
+  const { colW, gap, imgW, imgH } = layout;
   const n = photosInRow.length;
   const totalRowW = n === 2 ? 2 * colW + gap : colW;
   const rowLeft = tableX + (contentWidth - totalRowW) / 2;
@@ -1357,16 +1349,10 @@ async function drawPdfRegistroPairRow(doc, yRowTop, tableX, contentWidth, photos
     return maxBottom;
   }
 
-  const picX = tableX + (contentWidth - singleRowImgW) / 2;
+  const colLeft = rowLeft;
+  const picX = colLeft + (colW - imgW) / 2;
   const yPic = yRowTop + PDF_NC_PHOTO_INNER_PAD_MM;
-  return drawPdfRegistroPairCell(
-    doc,
-    picX,
-    singleRowImgW,
-    singleRowImgH,
-    yPic,
-    photosInRow[0]
-  );
+  return drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPic, photosInRow[0]);
 }
 
 /**
@@ -1459,9 +1445,9 @@ async function drawPdfNaoConformidadeTable(
   let picW = PDF_NC_IMG_W_MM;
   let picH = PDF_NC_IMG_H_MM;
   if (picW > maxUsableW) {
-    const s = maxUsableW / picW;
-    picW *= s;
-    picH *= s;
+    const s = maxUsableW / PDF_NC_IMG_W_MM;
+    picW = maxUsableW;
+    picH = PDF_NC_IMG_H_MM * s;
   }
   const picX = tableX + (contentWidth - picW) / 2;
 
