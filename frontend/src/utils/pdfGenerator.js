@@ -424,9 +424,6 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
 /** Logo na capa: altura alvo 5 cm; largura proporcional (limitada à largura útil). */
 const PDF_COVER_LOGO_TARGET_H_MM = 50;
 const PDF_COVER_LOGO_TOP_PAD_MM = 4;
-/** ~25 px entre logo e título (20–30 px). */
-const PDF_COVER_LOGO_GAP_BELOW_MM = 25 * (25.4 / 96);
-
 const PDF_COVER_MARGIN_MM = 20;
 const PDF_COVER_TITLE_MAIN_PT = 20;
 /** Subtítulo 12–14 pt, regular (contraste com o título em negrito). */
@@ -438,7 +435,7 @@ const PDF_COVER_BOTTOM_DATE_PT = 14;
 const PDF_COVER_BOTTOM_LINE_MM = PDF_COVER_BOTTOM_CITY_PT * PDF_PT_TO_MM * 1.45;
 
 /**
- * Primeira página: capa (logo opcional no topo, títulos, cidade/data em baixo).
+ * Primeira página: capa (logo opcional no topo; título e subtítulo ao centro da página).
  * Helvetica no jsPDF equivale a Arial nos laudos.
  */
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
@@ -449,8 +446,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const hasLogo =
     logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/');
 
-  let logoBottomY = PDF_COVER_MARGIN_MM + PDF_COVER_LOGO_TOP_PAD_MM;
-  let logoPlaced = false;
+  let logoTopY = PDF_COVER_MARGIN_MM + PDF_COVER_LOGO_TOP_PAD_MM;
 
   if (hasLogo) {
     try {
@@ -465,12 +461,10 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
         logoUrl,
         getJsPdfFormatFromDataUrl(logoUrl),
         cx - lw / 2,
-        logoBottomY,
+        logoTopY,
         lw,
         lh
       );
-      logoBottomY += lh;
-      logoPlaced = true;
     } catch (e) {
       console.log('Capa: não foi possível incluir o logo.', e);
     }
@@ -484,14 +478,8 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA TÉCNICA', textMaxW);
   const mainBlockH = mainLines.length * mainLineH;
   const totalTitleH = mainBlockH + PDF_COVER_TITLE_MAIN_SUB_GAP_MM + subLineH;
-
-  let y;
-  if (logoPlaced) {
-    y = logoBottomY + PDF_COVER_LOGO_GAP_BELOW_MM + mainLineH * 0.72;
-  } else {
-    const midY = pageHeight / 2;
-    y = midY - totalTitleH / 2 + mainLineH * 0.72;
-  }
+  const midY = pageHeight / 2;
+  let y = midY - totalTitleH / 2 + mainLineH * 0.72;
 
   mainLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
