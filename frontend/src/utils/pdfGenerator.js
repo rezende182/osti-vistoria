@@ -1138,25 +1138,17 @@ function pdfRegistroDisplayValue(s) {
 }
 
 /**
- * Problemática no PDF: sem travessões entre trechos; frases com «. » e maiúscula no início de cada uma.
- * Aceita texto antigo ainda com « — » ou «-» entre repetições.
+ * Problemática no PDF: um único texto corrido; remove travessões / traços usados como separadores.
  */
 function formatPdfProblematicaParagraph(s) {
   let t = String(s ?? '').trim();
   if (!t) return '\u2014';
-  t = t.replace(/\s*[—–]\s*/g, '. ');
-  t = t.replace(/\.\s*\./g, '.');
-  const parts = t
-    .split(/\.\s+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return '\u2014';
-  return parts
-    .map((p) => {
-      const lower = p.toLowerCase();
-      return lower.charAt(0).toUpperCase() + lower.slice(1);
-    })
-    .join('. ');
+  t = t.replace(/\s*[—–]\s*/g, ' ');
+  t = t.replace(/\s+-\s+/g, ' ');
+  t = t.replace(/\s+/g, ' ');
+  t = t.trim();
+  const lower = t.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
 /** «Localização:» e «Problemática:» em sequência, sem espaço extra entre os dois blocos. */
@@ -1246,54 +1238,30 @@ const PDF_NC_IMG_H_MM = 58;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
-/** Par no registo: colunas + largura de imagem ajustadas para ~largura útil A4 (2 col + gap ≈ área de texto). */
-const PDF_REG_PAIR_COL_W_MM = 85;
-const PDF_REG_PAIR_GAP_MM = 2;
+/**
+ * Registo em par: proporção altura/largura da caixa = `PDF_NC_IMG_H_MM` / `PDF_REG_PAIR_IMG_W_MM`.
+ * Largura útil inteira em duas colunas; espaço mínimo entre fotos (`PDF_REG_PAIR_GAP_MM`).
+ */
+const PDF_REG_PAIR_GAP_MM = 0.5;
 const PDF_REG_PAIR_IMG_W_MM = 85;
 const PDF_REG_PAIR_ROW_GAP_MM = 4;
 
 function registroPairLayoutScaled(contentWidth) {
-  const ideal = 2 * PDF_REG_PAIR_COL_W_MM + PDF_REG_PAIR_GAP_MM;
-  const scale = Math.min(1, contentWidth / ideal);
-  const colW = PDF_REG_PAIR_COL_W_MM * scale;
-  const gap = PDF_REG_PAIR_GAP_MM * scale;
-  const imgW = PDF_REG_PAIR_IMG_W_MM * scale;
-  /** Altura igual à caixa padrão do registo (`PDF_NC_IMG_H_MM`), não à proporção da foto única em mm. */
-  const imgH = PDF_NC_IMG_H_MM * scale;
+  const cw = Math.max(40, contentWidth);
+  const gap = PDF_REG_PAIR_GAP_MM;
+  const colW = (cw - gap) / 2;
+  const imgW = colW;
+  const imgH = colW * (PDF_NC_IMG_H_MM / PDF_REG_PAIR_IMG_W_MM);
+  const scale = colW / PDF_REG_PAIR_IMG_W_MM;
   return { colW, gap, imgW, imgH, scale };
 }
 
-/** Normaliza texto para deduplicar descrições repetidas (mesma NC em várias fotos). */
-function normalizeProbDescriptionKey(s) {
-  return String(s ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-}
-
-/** Junta as descrições das fotos do mesmo item: «. » entre frases; repetições iguais em sequência são omitidas. */
+/** Junta todas as descrições NC das fotos do mesmo item num único texto seguido (espaço; sem travessões). */
 function mergePhotoDescriptionsSegmented(photos) {
   const raw = (photos || []).map((p) => pdfTrim(p?.description)).filter(Boolean);
   if (raw.length === 0) return '\u2014';
-
-  const deduped = [];
-  for (const t of raw) {
-    const k = normalizeProbDescriptionKey(t);
-    const prevK =
-      deduped.length > 0 ? normalizeProbDescriptionKey(deduped[deduped.length - 1]) : null;
-    if (k && k !== prevK) deduped.push(t.trim());
-  }
-
-  if (deduped.length === 0) return '\u2014';
-  if (deduped.length === 1) return deduped[0];
-
-  return deduped
-    .map((seg) => {
-      const s = seg.trim().replace(/\.+$/g, '');
-      const lower = s.toLowerCase();
-      return lower.charAt(0).toUpperCase() + lower.slice(1);
-    })
-    .join('. ');
+  if (raw.length === 1) return raw[0].trim();
+  return raw.map((t) => t.trim()).join(' ');
 }
 
 function measureRegistroPairCellHeight(doc, imgW, imgH, captionFromApp, photoNumber) {
