@@ -799,9 +799,9 @@ const PDF_NC_HEADER_PAD_H = 1.6;
 const PDF_NC_LINE_W = 0.12;
 const PDF_NC_LINE_W_OUTER = 0.18;
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Área da imagem no registo fotográfico: 8,2 cm × 6 cm (largura × altura). */
-const PDF_NC_IMG_W_MM = 82;
-const PDF_NC_IMG_H_MM = 60;
+/** Área da imagem no registo fotográfico: 12 cm × 9 cm (largura × altura). */
+const PDF_NC_IMG_W_MM = 120;
+const PDF_NC_IMG_H_MM = 90;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
@@ -1366,16 +1366,53 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   doc.setPage(totalPagesLaudo);
 
   // ============================================================
-  // RODAPÉ em todas as páginas
+  // CABEÇALHO (logo à direita) + RODAPÉ em todas as páginas (capa = p. 1 sem logo/rodapé)
   // ============================================================
   const footerLeftText = buildPdfFooterLeftLine();
   const totalPages = doc.internal.getNumberOfPages();
   const footerBottomY = pageHeight - PDF_PAGE_MARGIN_MM;
   const footerLineStep = PDF_BODY_LINE_MM * 0.72;
 
+  let headerLogoDraw = null;
+  const headerLogoUrl = inspection.pdf_logo_data_url;
+  if (
+    headerLogoUrl &&
+    typeof headerLogoUrl === 'string' &&
+    headerLogoUrl.startsWith('data:image/')
+  ) {
+    try {
+      const { width: ihw, height: ihh } = await getDataUrlImageDimensions(headerLogoUrl);
+      const maxHeaderLogoW = 42;
+      const maxHeaderLogoH = 14;
+      const { w: hlw, h: hlh } = fitLogoSizeMm(ihw, ihh, maxHeaderLogoW, maxHeaderLogoH);
+      headerLogoDraw = {
+        url: headerLogoUrl,
+        fmt: getJsPdfFormatFromDataUrl(headerLogoUrl),
+        w: hlw,
+        h: hlh,
+      };
+    } catch (e) {
+      console.log('Cabeçalho: logo não incluído.', e);
+    }
+  }
+
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1) continue;
     doc.setPage(i);
+    if (headerLogoDraw) {
+      try {
+        doc.addImage(
+          headerLogoDraw.url,
+          headerLogoDraw.fmt,
+          pageWidth - PDF_PAGE_MARGIN_MM - headerLogoDraw.w,
+          PDF_PAGE_MARGIN_MM,
+          headerLogoDraw.w,
+          headerLogoDraw.h
+        );
+      } catch (e) {
+        console.log('Cabeçalho: erro ao desenhar logo.', e);
+      }
+    }
     doc.setFontSize(PDF_BODY_PT);
     doc.setFont(PDF_FONT, 'normal');
     doc.setTextColor(100, 100, 100);
