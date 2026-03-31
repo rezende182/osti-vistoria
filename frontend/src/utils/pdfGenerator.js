@@ -1228,10 +1228,8 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 /* ---------- Registo fotográfico (foto + legenda; texto sem moldura) ---------- */
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
 /**
- * Caixa única para todas as fotos do registo (largura × altura).
- * Dimensão pensada para laudo técnico: boa leitura, ~2 itens por página A4 com
- * descrição típica de 3–4 linhas; textos muito longos podem quebrar para a página seguinte.
- * A imagem é desenhada com proporção preservada (centrada na caixa). Largura +0,5 mm vs. versão anterior.
+ * Proporção da caixa de foto em registo com uma imagem: a largura real é a área útil
+ * (`contentWidth` menos padding lateral); a altura escala com a mesma razão 126:58.
  */
 const PDF_NC_IMG_W_MM = 126;
 const PDF_NC_IMG_H_MM = 58;
@@ -1253,7 +1251,11 @@ function registroPairLayoutScaled(contentWidth) {
   const imgW = colW;
   const imgH = colW * (PDF_NC_IMG_H_MM / PDF_REG_PAIR_IMG_W_MM);
   const scale = colW / PDF_REG_PAIR_IMG_W_MM;
-  return { colW, gap, imgW, imgH, scale };
+  /** Linha com uma só foto: largura total (mesma lógica que `drawPdfNaoConformidadeTable`). */
+  const maxUsableW = cw - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
+  const singleRowImgW = maxUsableW;
+  const singleRowImgH = PDF_NC_IMG_H_MM * (singleRowImgW / PDF_NC_IMG_W_MM);
+  return { colW, gap, imgW, imgH, scale, singleRowImgW, singleRowImgH };
 }
 
 /** Junta todas as descrições NC das fotos do mesmo item num único texto seguido (espaço; sem travessões). */
@@ -1278,7 +1280,7 @@ function measureRegistroPairCellHeight(doc, imgW, imgH, captionFromApp, photoNum
 }
 
 function measureRegistroPairRowMm(doc, photosInRow, layout) {
-  const { imgW, imgH } = layout;
+  const { imgW, imgH, singleRowImgW, singleRowImgH } = layout;
   if (photosInRow.length >= 2) {
     let maxH = 0;
     for (const photo of photosInRow) {
@@ -1290,7 +1292,7 @@ function measureRegistroPairRowMm(doc, photosInRow, layout) {
   }
   const photo = photosInRow[0];
   const cap = pdfTrim(photo.caption);
-  return measureRegistroPairCellHeight(doc, imgW, imgH, cap, photo.number);
+  return measureRegistroPairCellHeight(doc, singleRowImgW, singleRowImgH, cap, photo.number);
 }
 
 async function drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPicTop, photo) {
@@ -1328,11 +1330,11 @@ async function drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPicTop, photo) {
 }
 
 /**
- * Linha do «quadro» 1×2 (bordas invisíveis): duas colunas, imagem centrada na coluna;
- * linha inteira centrada na área útil. Uma foto: uma coluna centrada na página.
+ * Linha 1×2: duas colunas com largura máxima e vão mínimo. Uma foto na linha: largura útil inteira
+ * (ex.: terceira foto de um grupo de 3), alinhada ao bloco de uma foto isolada no mesmo capítulo.
  */
 async function drawPdfRegistroPairRow(doc, yRowTop, tableX, contentWidth, photosInRow, layout) {
-  const { colW, gap, imgW, imgH } = layout;
+  const { colW, gap, imgW, imgH, singleRowImgW, singleRowImgH } = layout;
   const n = photosInRow.length;
   const totalRowW = n === 2 ? 2 * colW + gap : colW;
   const rowLeft = tableX + (contentWidth - totalRowW) / 2;
@@ -1349,10 +1351,16 @@ async function drawPdfRegistroPairRow(doc, yRowTop, tableX, contentWidth, photos
     return maxBottom;
   }
 
-  const colLeft = rowLeft;
-  const picX = colLeft + (colW - imgW) / 2;
+  const picX = tableX + (contentWidth - singleRowImgW) / 2;
   const yPic = yRowTop + PDF_NC_PHOTO_INNER_PAD_MM;
-  return drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPic, photosInRow[0]);
+  return drawPdfRegistroPairCell(
+    doc,
+    picX,
+    singleRowImgW,
+    singleRowImgH,
+    yPic,
+    photosInRow[0]
+  );
 }
 
 /**
@@ -1442,13 +1450,8 @@ async function drawPdfNaoConformidadeTable(
   const descPad = PDF_NC_DESC_PAD_MM;
 
   const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-  let picW = PDF_NC_IMG_W_MM;
-  let picH = PDF_NC_IMG_H_MM;
-  if (picW > maxUsableW) {
-    const s = maxUsableW / PDF_NC_IMG_W_MM;
-    picW = maxUsableW;
-    picH = PDF_NC_IMG_H_MM * s;
-  }
+  const picW = maxUsableW;
+  const picH = PDF_NC_IMG_H_MM * (picW / PDF_NC_IMG_W_MM);
   const picX = tableX + (contentWidth - picW) / 2;
 
   const captionFromApp = pdfTrim(photo.caption);
