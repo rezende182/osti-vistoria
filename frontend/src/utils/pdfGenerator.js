@@ -129,6 +129,15 @@ function pdfTrim(v) {
   return v == null ? '' : String(v).trim();
 }
 
+/** Área no laudo: número + « m² » (ex.: 90 m²). Evita duplicar a unidade. */
+function formatPdfImovelAreaM2(areaTexto) {
+  const raw = pdfTrim(areaTexto);
+  if (!raw) return '';
+  const semUnidade = raw.replace(/\s*m[²2]\s*$/i, '').trim();
+  if (!semUnidade) return '';
+  return `${semUnidade} m²`;
+}
+
 /** UF só com a sigla (ex.: SP), sem o nome do estado após "—". */
 function pdfUfSomenteSigla(uf) {
   const s = pdfTrim(uf);
@@ -308,7 +317,10 @@ function buildIdentificacaoTableBody(inspection) {
 
   rows.push(pdfIdentSectionRowCompact('Dados do imóvel'));
   const tipoLinha = pdfTipoImovelUnificado(inspection);
-  const tipoAreaRow = pdfIdentRowTipoImovelEArea(tipoLinha, inspection.imovel_area);
+  const tipoAreaRow = pdfIdentRowTipoImovelEArea(
+    tipoLinha,
+    formatPdfImovelAreaM2(inspection.imovel_area)
+  );
   if (tipoAreaRow) rows.push(tipoAreaRow);
 
   rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
@@ -834,13 +846,6 @@ const PDF_NC_IMG_H_MM = 58;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
-function colImageDimensionsMm(colW) {
-  const maxUsableW = colW - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-  let picW = Math.min(PDF_NC_IMG_W_MM, maxUsableW);
-  let picH = PDF_NC_IMG_H_MM * (picW / PDF_NC_IMG_W_MM);
-  return { picW, picH };
-}
-
 function measureRegistroPhotoCellHeight(doc, picW, picH, captionFromApp, photoNumber) {
   const cap = pdfTrim(captionFromApp);
   const capH = cap
@@ -889,33 +894,60 @@ async function drawPdfRegistroPhotoCell(doc, picX, picW, picH, yPicTop, photo) {
 }
 
 function measureRegistroRowMm(doc, contentWidth, photosInRow) {
-  const colGap = PDF_NC_TWO_COL_GAP_MM;
-  const colW = (contentWidth - colGap) / 2;
-  const { picW, picH } = colImageDimensionsMm(colW);
-  let maxH = 0;
-  for (const photo of photosInRow) {
-    const cap = pdfTrim(photo.caption);
-    const h = measureRegistroPhotoCellHeight(doc, picW, picH, cap, photo.number);
-    maxH = Math.max(maxH, h);
+  if (photosInRow.length >= 2) {
+    const picW = PDF_NC_IMG_W_MM;
+    const picH = PDF_NC_IMG_H_MM;
+    let maxH = 0;
+    for (const photo of photosInRow) {
+      const cap = pdfTrim(photo.caption);
+      const h = measureRegistroPhotoCellHeight(doc, picW, picH, cap, photo.number);
+      maxH = Math.max(maxH, h);
+    }
+    return maxH;
   }
-  return maxH;
+  const photo = photosInRow[0];
+  const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
+  let picW = PDF_NC_IMG_W_MM;
+  let picH = PDF_NC_IMG_H_MM;
+  if (picW > maxUsableW) {
+    const s = maxUsableW / PDF_NC_IMG_W_MM;
+    picW = maxUsableW;
+    picH = PDF_NC_IMG_H_MM * s;
+  }
+  const cap = pdfTrim(photo.caption);
+  return measureRegistroPhotoCellHeight(doc, picW, picH, cap, photo.number);
 }
 
 async function drawPdfRegistroPhotoRow(doc, yRowTop, tableX, contentWidth, photosInRow) {
   const colGap = PDF_NC_TWO_COL_GAP_MM;
-  const colW = (contentWidth - colGap) / 2;
-  const { picW, picH } = colImageDimensionsMm(colW);
-  const colLefts = [tableX, tableX + colW + colGap];
-  let maxBottom = yRowTop;
-  for (let i = 0; i < photosInRow.length; i++) {
-    const photo = photosInRow[i];
-    const colLeft = colLefts[i];
-    const picX = colLeft + (colW - picW) / 2;
-    const yPic = yRowTop + PDF_NC_PHOTO_INNER_PAD_MM;
-    const bottom = await drawPdfRegistroPhotoCell(doc, picX, picW, picH, yPic, photo);
-    maxBottom = Math.max(maxBottom, bottom);
+  if (photosInRow.length >= 2) {
+    const picW = PDF_NC_IMG_W_MM;
+    const picH = PDF_NC_IMG_H_MM;
+    const colW = (contentWidth - colGap) / 2;
+    const colLefts = [tableX, tableX + colW + colGap];
+    let maxBottom = yRowTop;
+    for (let i = 0; i < 2; i++) {
+      const photo = photosInRow[i];
+      const colLeft = colLefts[i];
+      const picX = colLeft + (colW - picW) / 2;
+      const yPic = yRowTop + PDF_NC_PHOTO_INNER_PAD_MM;
+      const bottom = await drawPdfRegistroPhotoCell(doc, picX, picW, picH, yPic, photo);
+      maxBottom = Math.max(maxBottom, bottom);
+    }
+    return maxBottom;
   }
-  return maxBottom;
+  const photo = photosInRow[0];
+  const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
+  let picW = PDF_NC_IMG_W_MM;
+  let picH = PDF_NC_IMG_H_MM;
+  if (picW > maxUsableW) {
+    const s = maxUsableW / PDF_NC_IMG_W_MM;
+    picW = maxUsableW;
+    picH = PDF_NC_IMG_H_MM * s;
+  }
+  const picX = tableX + (contentWidth - picW) / 2;
+  const yPic = yRowTop + PDF_NC_PHOTO_INNER_PAD_MM;
+  return drawPdfRegistroPhotoCell(doc, picX, picW, picH, yPic, photo);
 }
 
 /**
@@ -925,12 +957,18 @@ async function drawPdfRegistroItemGroup(
   doc,
   yStart,
   margin,
-  contentWidth,
+  _contentWidthPortrait,
   roomNameUpper,
   photos
 ) {
+  void yStart;
+  void _contentWidthPortrait;
+  /** Página A4 horizontal: duas fotos ao lado com caixa padrão 120×58 mm (laudo). */
+  doc.addPage('a4', 'l');
+  const pageW = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const tableX = margin;
+  const contentWidth = pageW - 2 * margin;
   const lineH = PDF_BODY_LINE_MM;
   const descPad = PDF_NC_DESC_PAD_MM;
   const interRow = PDF_NC_REG_INTER_ROW_GAP_MM;
@@ -957,10 +995,10 @@ async function drawPdfRegistroItemGroup(
     return s;
   }
 
-  let y = yStart;
+  let y = PDF_PAGE_TOP_SAFE_MM;
   for (let ri = 0; ri < rows.length; ri++) {
     if (y + remainingHeightFromRow(ri) > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
-      doc.addPage();
+      doc.addPage('a4', 'l');
       y = PDF_PAGE_TOP_SAFE_MM;
     }
     y = await drawPdfRegistroPhotoRow(doc, y, tableX, contentWidth, rows[ri]);
@@ -968,13 +1006,14 @@ async function drawPdfRegistroItemGroup(
   }
 
   if (y + textBlockH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
-    doc.addPage();
+    doc.addPage('a4', 'l');
     y = PDF_PAGE_TOP_SAFE_MM;
   }
   y += PDF_NC_AFTER_PHOTO_GAP_MM;
   y = drawPdfLocProbCombined(doc, tableX, y, contentWidth, descPad, locText, mergedProb, lineH);
 
-  return y + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
+  doc.addPage('a4', 'p');
+  return PDF_PAGE_TOP_SAFE_MM + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
 }
 
 /** Texto completo do capítulo ENCERRAMENTO (n.º de folhas só após fecho do documento). */

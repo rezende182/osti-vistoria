@@ -140,7 +140,7 @@ const NewInspection = () => {
     imovel_area: '',
     imovel_numero_pavimentos: '',
     tipo_imovel: 'novo',
-    energia_disponivel: 'sim',
+    energia_disponivel: '',
     documentos_recebidos: [],
     pdf_logo_data_url: '',
     responsavel_cpf_cnpj: '',
