@@ -10,8 +10,8 @@ export const PDF_PT_TO_MM = 25.4 / 72;
 export const PDF_LINE_HEIGHT_FACTOR = 1.5;
 export const PDF_BODY_LINE_MM = PDF_BODY_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
 
-/** Margens laterais e zona segura vertical (2,5 cm). */
-export const PDF_PAGE_MARGIN_MM = 25;
+/** Margens laterais e zona segura vertical (2 cm). */
+export const PDF_PAGE_MARGIN_MM = 20;
 
 /** Títulos de capítulo (1., 2., …): negrito 14 pt; antes 12 pt / depois 6 pt */
 export const PDF_CHAPTER_TITLE_PT = 14;

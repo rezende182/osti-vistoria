@@ -799,8 +799,8 @@ const PDF_NC_HEADER_PAD_H = 1.6;
 const PDF_NC_LINE_W = 0.12;
 const PDF_NC_LINE_W_OUTER = 0.18;
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Área da imagem no registo fotográfico: 9 cm × 6 cm (largura × altura). */
-const PDF_NC_IMG_W_MM = 90;
+/** Área da imagem no registo fotográfico: 8,2 cm × 6 cm (largura × altura). */
+const PDF_NC_IMG_W_MM = 82;
 const PDF_NC_IMG_H_MM = 60;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
