@@ -12,7 +12,6 @@ import {
   PDF_FONT,
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
-  PDF_PAGE_BOTTOM_SAFE_MM,
   PDF_PAGE_TOP_SAFE_MM,
   PDF_CHAPTER_TITLE_PT,
   PDF_CHAPTER_TITLE_BEFORE_MM,
@@ -29,6 +28,24 @@ import {
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 import { METODOLOGIA_PLACEHOLDER_REG_NC } from '../constants/laudoEntregaTextos';
 import { resolveVerificationTextForLaudo } from '../constants/checklistElementTemplates';
+
+/**
+ * Margem inferior útil no laudo: margem 20 mm + faixa do rodapé (~16 mm) + folga.
+ * (Helvetica ≈ Arial; Calibri exigiria fonte embutida.)
+ */
+const PDF_LAUDO_PAGE_BOTTOM_SAFE_MM = 38;
+const laudoBodyParagraphsOpts = { bottomMarginMm: PDF_LAUDO_PAGE_BOTTOM_SAFE_MM };
+
+/** Rodapé institucional (páginas 2+): faixa ~1,6 cm, linha superior cinza. */
+const PDF_LAUDO_FOOTER_BAND_MM = 16;
+const PDF_LAUDO_FOOTER_BOTTOM_MARGIN_MM = 20;
+const PDF_LAUDO_FOOTER_LINE_GRAY = [170, 170, 170];
+const PDF_LAUDO_FOOTER_PT = 8;
+const PDF_LAUDO_FOOTER_LOGO_MAX_H_MM = 9;
+const PDF_LAUDO_FOOTER_LOGO_MAX_W_MM = 28;
+const PDF_LAUDO_FOOTER_CENTER_TITLE = 'OSTI ENGENHARIA – VISTORIAS E PERÍCIAS';
+const PDF_LAUDO_FOOTER_CENTER_CONTACT = 'contato@osti.com.br | (13) 99999-9999';
+const PDF_LAUDO_FOOTER_CENTER_CITY = 'Praia Grande/SP';
 
 /** Garante `;` entre itens com marcador e `.` no último de cada lista (ambiente). */
 function punctuatePdfChecklistItemBlock(block, isLastInList) {
@@ -436,6 +453,85 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   return 'JPEG';
 }
 
+async function buildPdfLaudoFooterLogoBox(logoUrl) {
+  if (!logoUrl || typeof logoUrl !== 'string' || !logoUrl.startsWith('data:image/')) {
+    return null;
+  }
+  try {
+    const { width: iw, height: ih } = await getDataUrlImageDimensions(logoUrl);
+    const { w, h } = fitLogoSizeMm(
+      iw,
+      ih,
+      PDF_LAUDO_FOOTER_LOGO_MAX_W_MM,
+      PDF_LAUDO_FOOTER_LOGO_MAX_H_MM
+    );
+    return {
+      url: logoUrl,
+      w,
+      h,
+      fmt: getJsPdfFormatFromDataUrl(logoUrl),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function drawPdfLaudoFooterPage(
+  doc,
+  pageNum,
+  totalPages,
+  pageWidth,
+  pageHeight,
+  margin,
+  contentWidth,
+  logoBox,
+  centerTitle,
+  centerContact,
+  centerCity
+) {
+  const bandTop =
+    pageHeight - PDF_LAUDO_FOOTER_BOTTOM_MARGIN_MM - PDF_LAUDO_FOOTER_BAND_MM;
+  doc.setDrawColor(...PDF_LAUDO_FOOTER_LINE_GRAY);
+  doc.setLineWidth(0.11);
+  doc.line(margin, bandTop, pageWidth - margin, bandTop);
+  doc.setDrawColor(0, 0, 0);
+
+  const bandBottom = pageHeight - PDF_LAUDO_FOOTER_BOTTOM_MARGIN_MM;
+  const yMid = bandTop + (bandBottom - bandTop) / 2;
+
+  const leftW = contentWidth * 0.26;
+  const centerW = contentWidth * 0.48;
+  const xLeftCol = margin;
+  const xCenter = margin + leftW + centerW / 2;
+  const xRight = pageWidth - margin;
+
+  const fs = PDF_LAUDO_FOOTER_PT;
+  const lh = fs * PDF_PT_TO_MM * 1.12;
+
+  if (logoBox && logoBox.url) {
+    const lx = xLeftCol + Math.max(0, (leftW - logoBox.w) / 2);
+    const ly = yMid - logoBox.h / 2;
+    doc.addImage(logoBox.url, logoBox.fmt, lx, ly, logoBox.w, logoBox.h);
+  }
+
+  doc.setFontSize(fs);
+  doc.setTextColor(0, 0, 0);
+  const blockH = 3 * lh;
+  let y0 = yMid - blockH / 2 + lh * 0.72;
+  doc.setFont(PDF_FONT, 'bold');
+  doc.text(centerTitle, xCenter, y0, { align: 'center', maxWidth: centerW });
+  y0 += lh;
+  doc.setFont(PDF_FONT, 'normal');
+  doc.text(centerContact, xCenter, y0, { align: 'center', maxWidth: centerW });
+  y0 += lh;
+  doc.text(centerCity, xCenter, y0, { align: 'center', maxWidth: centerW });
+
+  doc.setFont(PDF_FONT, 'normal');
+  doc.text(`Página ${pageNum} de ${totalPages}`, xRight, yMid + lh * 0.2, {
+    align: 'right',
+  });
+}
+
 /** Capa A4: margens 2 cm; Helvetica = Arial no motor PDF. */
 const PDF_COVER_MARGIN_MM = 20;
 const PDF_COVER_LOGO_W_MM = 70;
@@ -448,6 +544,8 @@ const PDF_COVER_FIELD_LINE_STEP_MM = 15;
 const PDF_COVER_TRACKING_PT = 0.35;
 /** Espaço entre o bloco central e a cidade no rodapé. */
 const PDF_COVER_GAP_ABOVE_FOOTER_MM = 10;
+/** Cidade e data no fim da capa: sem espaço extra entre linhas (só altura da fonte ~12 pt). */
+const PDF_COVER_CITY_DATE_LINE_MM = PDF_COVER_INFO_PT * PDF_PT_TO_MM * 1.05;
 
 /**
  * Valor do campo Endereço (sem o rótulo): logradouro, Apartamento/Bloco, Cidade - UF.
@@ -525,7 +623,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   );
 
   const yDataRodape = pageHeight - PDF_COVER_MARGIN_MM - 2;
-  const yCidadeRodape = yDataRodape - PDF_COVER_FIELD_LINE_STEP_MM;
+  const yCidadeRodape = yDataRodape - PDF_COVER_CITY_DATE_LINE_MM;
   const yLimiteBlocoCentral = yCidadeRodape - PDF_COVER_GAP_ABOVE_FOOTER_MM;
 
   let y = PDF_COVER_MARGIN_MM;
@@ -586,7 +684,9 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     },
     {
       label: 'Responsável Técnico:',
-      value: `${formatPdfResponsavelTecnicoNome(inspection.responsavel_tecnico)} — CREA ${creaTxt}`,
+      value: `${formatPdfResponsavelTecnicoNome(
+        inspection.responsavel_tecnico
+      )} — CREA: nº ${creaTxt}`,
     },
   ];
 
@@ -621,11 +721,6 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   if (dataRodape) {
     doc.text(dataRodape, cx, yDataRodape, { align: 'center' });
   }
-}
-
-/** Rodapé esquerdo do laudo. */
-function buildPdfFooterLeftLine() {
-  return 'Laudo de Vistoria Técnica';
 }
 
 // Formatar data
@@ -1106,7 +1201,7 @@ async function drawPdfRegistroItemGroup(
 
   let y = yStart;
   for (let ri = 0; ri < rows.length; ri++) {
-    if (y + remainingHeightFromRow(ri) > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
+    if (y + remainingHeightFromRow(ri) > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
       doc.addPage();
       y = PDF_PAGE_TOP_SAFE_MM;
     }
@@ -1114,7 +1209,7 @@ async function drawPdfRegistroItemGroup(
     if (ri < rows.length - 1) y += PDF_REG_PAIR_ROW_GAP_MM;
   }
 
-  if (y + textBlockH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
+  if (y + textBlockH > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
     doc.addPage();
     y = PDF_PAGE_TOP_SAFE_MM;
   }
@@ -1184,7 +1279,7 @@ async function drawPdfNaoConformidadeTable(
   const totalH = photoH + PDF_NC_AFTER_PHOTO_GAP_MM + locProbH;
 
   let y = yStart;
-  if (y + totalH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
+  if (y + totalH > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
     doc.addPage();
     y = PDF_PAGE_TOP_SAFE_MM;
   }
@@ -1244,7 +1339,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   // Verificar nova página
   const checkNewPage = (neededSpace = 30) => {
-    if (yPos + neededSpace > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
+    if (yPos + neededSpace > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
       doc.addPage();
       yPos = PDF_PAGE_TOP_SAFE_MM;
       return true;
@@ -1323,7 +1418,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      checkNewPage
+      checkNewPage,
+      laudoBodyParagraphsOpts
     );
   }
 
@@ -1353,7 +1449,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      checkNewPage
+      checkNewPage,
+      laudoBodyParagraphsOpts
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
     const refItens = [
@@ -1381,7 +1478,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         margin,
         contentWidth,
         yPos,
-        checkNewPage
+        checkNewPage,
+        laudoBodyParagraphsOpts
       );
     }
 
@@ -1395,7 +1493,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      checkNewPage
+      checkNewPage,
+      laudoBodyParagraphsOpts
     );
 
     checkNewPage(52);
@@ -1429,7 +1528,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      checkNewPage
+      checkNewPage,
+      laudoBodyParagraphsOpts
     );
 
     // ============================================================
@@ -1451,7 +1551,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    checkNewPage
+    checkNewPage,
+    laudoBodyParagraphsOpts
   );
   yPos += PDF_PARAGRAPH_GAP_MM;
 
@@ -1496,7 +1597,15 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         doc.setFont(PDF_FONT, 'normal');
         doc.setFontSize(PDF_BODY_PT);
         doc.setTextColor(0, 0, 0);
-        yPos = drawBodyParagraphs(doc, block, listX, checklistTextWidth, yPos, checkNewPage);
+        yPos = drawBodyParagraphs(
+          doc,
+          block,
+          listX,
+          checklistTextWidth,
+          yPos,
+          checkNewPage,
+          laudoBodyParagraphsOpts
+        );
         yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
 
         const photosWithUrl = (item.photos || []).filter((p) => p && p.url);
@@ -1534,7 +1643,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      checkNewPage
+      checkNewPage,
+      laudoBodyParagraphsOpts
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
   } else {
@@ -1544,7 +1654,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      checkNewPage
+      checkNewPage,
+      laudoBodyParagraphsOpts
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
     let ncIdx = 0;
@@ -1611,7 +1722,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      checkNewPage
+      checkNewPage,
+      laudoBodyParagraphsOpts
     );
   }
 
@@ -1668,6 +1780,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       responsavel,
       crea,
       signatureAreaMm: 26,
+      bottomMarginMm: PDF_LAUDO_PAGE_BOTTOM_SAFE_MM,
     }
   );
 
@@ -1680,33 +1793,33 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     encBodyTopY,
-    checkNewPage
+    checkNewPage,
+    laudoBodyParagraphsOpts
   );
   doc.setPage(totalPagesLaudo);
 
   // ============================================================
-  // RODAPÉ em todas as páginas (capa = p. 1 sem rodapé/numerar)
+  // Rodapé institucional (capa = p. 1 sem rodapé)
   // ============================================================
-  const footerLeftText = buildPdfFooterLeftLine();
   const totalPages = doc.internal.getNumberOfPages();
-  const footerBottomY = pageHeight - PDF_PAGE_BOTTOM_SAFE_MM;
-  const footerLineStep = PDF_BODY_LINE_MM * 0.72;
+  const footerLogoBox = await buildPdfLaudoFooterLogoBox(inspection.pdf_logo_data_url);
 
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1) continue;
     doc.setPage(i);
-    doc.setFontSize(PDF_BODY_PT);
-    doc.setFont(PDF_FONT, 'normal');
-    doc.setTextColor(100, 100, 100);
-    const footerLines = doc.splitTextToSize(footerLeftText, contentWidth - 2);
-    let fy = footerBottomY - (footerLines.length - 1) * footerLineStep;
-    footerLines.forEach((ln) => {
-      doc.text(ln, margin, fy);
-      fy += footerLineStep;
-    });
-    doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, footerBottomY, {
-      align: 'right',
-    });
+    drawPdfLaudoFooterPage(
+      doc,
+      i,
+      totalPages,
+      pageWidth,
+      pageHeight,
+      margin,
+      contentWidth,
+      footerLogoBox,
+      PDF_LAUDO_FOOTER_CENTER_TITLE,
+      PDF_LAUDO_FOOTER_CENTER_CONTACT,
+      PDF_LAUDO_FOOTER_CENTER_CITY
+    );
   }
 
   // Gerar arquivo
