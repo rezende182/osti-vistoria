@@ -95,6 +95,15 @@ function fitLogoSizeMm(naturalW, naturalH, maxW, maxH) {
   return { w, h };
 }
 
+/** Logo na capa com largura fixa (altura proporcional). */
+function fitLogoWidthFixedMm(naturalW, naturalH, targetW) {
+  if (!naturalW || !naturalH) {
+    return { w: targetW, h: targetW * 0.35 };
+  }
+  const aspect = naturalW / naturalH;
+  return { w: targetW, h: targetW / aspect };
+}
+
 /** Endereço, cidade e UF para a secção 3. Introdução (identificação da vistoria). */
 function formatPdfIntroLocalizacao(inspection) {
   const e = (inspection.endereco || '').trim();
@@ -427,87 +436,115 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   return 'JPEG';
 }
 
-/** Logo na capa: altura alvo (~3,6 cm); largura proporcional (limitada à largura útil). */
-const PDF_COVER_LOGO_TARGET_H_MM = 36;
-const PDF_COVER_LOGO_TOP_PAD_MM = 4;
-/** Capa: título principal maior que nos capítulos internos; subtítulo e rodapé 12 pt. */
-const PDF_COVER_TITLE_MAIN_PT = 17;
-const PDF_COVER_TITLE_SUB_PT = PDF_BODY_PT;
-const PDF_COVER_TITLE_MAIN_SUB_GAP_MM = 3.2;
+/** Capa A4: margens 2 cm; Helvetica = Arial no motor PDF. */
+const PDF_COVER_MARGIN_MM = 20;
+const PDF_COVER_LOGO_W_MM = 70;
+const PDF_COVER_GAP_BELOW_LOGO_MM = 35;
+const PDF_COVER_TITLE_MAIN_PT = 24;
+const PDF_COVER_TITLE_SUB_PT = 16;
+const PDF_COVER_GAP_MAIN_SUB_MM = 5;
+const PDF_COVER_GAP_BELOW_SUB_MM = 25;
+const PDF_COVER_INFO_PT = 12;
+const PDF_COVER_INFO_LINE_FACTOR = 1.3;
+const PDF_COVER_TRACKING_PT = 0.35;
+const PDF_COVER_FOOTER_PT = 8;
+const PDF_COVER_FOOTER_GRAY = [88, 88, 88];
 
 /**
- * Primeira página: capa (logo opcional no topo; título e subtítulo ao centro da página).
- * Helvetica no jsPDF equivale a Arial nos laudos.
+ * Primeira página: capa institucional (logo 7 cm; título 24 pt; bloco de dados; rodapé opcional).
  */
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const cx = pageWidth / 2;
-  const textMaxW = pageWidth - PDF_PAGE_MARGIN_MM * 2;
-  const maxLogoW = textMaxW;
+  const textMaxW = pageWidth - 2 * PDF_COVER_MARGIN_MM;
   const logoUrl = inspection.pdf_logo_data_url;
   const hasLogo =
     logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/');
 
-  let logoTopY = PDF_PAGE_TOP_SAFE_MM + PDF_COVER_LOGO_TOP_PAD_MM;
+  let y = PDF_COVER_MARGIN_MM;
 
   if (hasLogo) {
     try {
       const { width: iw, height: ih } = await getDataUrlImageDimensions(logoUrl);
-      const { w: lw, h: lh } = fitLogoSizeMm(
-        iw,
-        ih,
-        maxLogoW,
-        PDF_COVER_LOGO_TARGET_H_MM
-      );
+      const { w: lw, h: lh } = fitLogoWidthFixedMm(iw, ih, PDF_COVER_LOGO_W_MM);
       doc.addImage(
         logoUrl,
         getJsPdfFormatFromDataUrl(logoUrl),
         cx - lw / 2,
-        logoTopY,
+        y,
         lw,
         lh
       );
+      y += lh + PDF_COVER_GAP_BELOW_LOGO_MM;
     } catch (e) {
       console.log('Capa: não foi possível incluir o logo.', e);
+      y += PDF_COVER_GAP_BELOW_LOGO_MM;
     }
+  } else {
+    y += 12;
   }
 
   doc.setTextColor(0, 0, 0);
   const mainLineH = PDF_COVER_TITLE_MAIN_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
-  const subLineH = PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_COVER_TITLE_MAIN_PT);
+  if (typeof doc.setCharSpace === 'function') {
+    doc.setCharSpace(PDF_COVER_TRACKING_PT);
+  }
   const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA TÉCNICA', textMaxW);
-  const mainBlockH = mainLines.length * mainLineH;
-  const totalTitleH = mainBlockH + PDF_COVER_TITLE_MAIN_SUB_GAP_MM + subLineH;
-  const midY = pageHeight / 2;
-  let y = midY - totalTitleH / 2 + mainLineH * 0.72;
-
+  y += mainLineH * 0.85;
   mainLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
     y += mainLineH;
   });
+  if (typeof doc.setCharSpace === 'function') {
+    doc.setCharSpace(0);
+  }
 
-  y += PDF_COVER_TITLE_MAIN_SUB_GAP_MM;
+  y += PDF_COVER_GAP_MAIN_SUB_MM;
+  const subLineH = PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_COVER_TITLE_SUB_PT);
-  doc.text('RECEBIMENTO DE IMÓVEL', cx, y, { align: 'center' });
+  const subLines = doc.splitTextToSize('Recebimento de Imóvel', textMaxW);
+  subLines.forEach((ln) => {
+    doc.text(ln, cx, y, { align: 'center' });
+    y += subLineH;
+  });
 
-  const cidadeTxt = pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf);
-  const dataTxt = formatPdfLaudoCoverDateDdMmYyyy(
-    inspection.data_final || inspection.data
-  );
+  y += PDF_COVER_GAP_BELOW_SUB_MM;
 
-  const yDate = pageHeight - PDF_PAGE_BOTTOM_SAFE_MM - 10;
-  const yCity = yDate - PDF_BODY_LINE_MM;
+  const infoLineH = PDF_COVER_INFO_PT * PDF_PT_TO_MM * PDF_COVER_INFO_LINE_FACTOR;
   doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_BODY_PT);
-  if (cidadeTxt && dataTxt) {
-    doc.text(cidadeTxt, cx, yCity, { align: 'center' });
-    doc.text(dataTxt, cx, yDate, { align: 'center' });
-  } else if (cidadeTxt) {
-    doc.text(cidadeTxt, cx, yDate, { align: 'center' });
-  } else if (dataTxt) {
-    doc.text(dataTxt, cx, yDate, { align: 'center' });
+  doc.setFontSize(PDF_COVER_INFO_PT);
+
+  const enderecoBloco = pdfTrim(inspection.endereco);
+  const cidadeUf = pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf);
+  const linhaEndereco = [enderecoBloco, cidadeUf].filter(Boolean).join(' — ') || '\u2014';
+
+  const linhasInfo = [
+    linhaEndereco,
+    pdfTrim(inspection.cliente) || '\u2014',
+    `Data da vistoria: ${
+      formatPdfLaudoCoverDateDdMmYyyy(inspection.data_final || inspection.data) || '\u2014'
+    }`,
+    `Responsável técnico: ${formatPdfResponsavelTecnicoNome(inspection.responsavel_tecnico)}`,
+  ];
+
+  linhasInfo.forEach((texto) => {
+    const partes = doc.splitTextToSize(texto, textMaxW);
+    partes.forEach((ln) => {
+      doc.text(ln, cx, y, { align: 'center' });
+      y += infoLineH;
+    });
+  });
+
+  const marcaRodape = pdfTrim(inspection.pdf_empresa_nome);
+  if (marcaRodape) {
+    const footerBaseline = pageHeight - PDF_COVER_MARGIN_MM - 2;
+    doc.setFont(PDF_FONT, 'normal');
+    doc.setFontSize(PDF_COVER_FOOTER_PT);
+    doc.setTextColor(...PDF_COVER_FOOTER_GRAY);
+    doc.text(marcaRodape, cx, footerBaseline, { align: 'center', maxWidth: textMaxW });
+    doc.setTextColor(0, 0, 0);
   }
 }
 
