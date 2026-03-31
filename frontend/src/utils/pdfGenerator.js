@@ -421,10 +421,9 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   return 'JPEG';
 }
 
-/** Marca d’água: ocupa quase a página inteira (proporção mantida). */
-const PDF_COVER_WATERMARK_MAX_W_FRAC = 0.94;
-const PDF_COVER_WATERMARK_MAX_H_FRAC = 0.9;
-const PDF_COVER_WATERMARK_OPACITY = 0.11;
+/** Logo no topo da capa: proporção mantida, cor normal (sem transparência). */
+const PDF_COVER_LOGO_MAX_W_MM = 72;
+const PDF_COVER_LOGO_MAX_H_MM = 24;
 
 const PDF_COVER_MARGIN_MM = 20;
 const PDF_COVER_TITLE_MAIN_PT = 20;
@@ -434,27 +433,8 @@ const PDF_COVER_TITLE_MAIN_SUB_GAP_MM = 2.8;
 const PDF_COVER_FOOTER_PT = 14;
 const PDF_COVER_FOOTER_LINE_MM = PDF_COVER_FOOTER_PT * PDF_PT_TO_MM * 1.45;
 
-async function drawPdfCoverWatermark(doc, logoUrl, pageWidth, pageHeight) {
-  const { width: iw, height: ih } = await getDataUrlImageDimensions(logoUrl);
-  const maxW = pageWidth * PDF_COVER_WATERMARK_MAX_W_FRAC;
-  const maxH = pageHeight * PDF_COVER_WATERMARK_MAX_H_FRAC;
-  const { w, h } = fitLogoSizeMm(iw, ih, maxW, maxH);
-  const x = (pageWidth - w) / 2;
-  const y = (pageHeight - h) / 2;
-  const fmt = getJsPdfFormatFromDataUrl(logoUrl);
-  doc.saveGraphicsState();
-  try {
-    doc.setGState(new doc.GState({ opacity: PDF_COVER_WATERMARK_OPACITY }));
-    doc.addImage(logoUrl, fmt, x, y, w, h);
-  } catch (e) {
-    console.log('Capa: não foi possível desenhar a marca d’água do logo.', e);
-  } finally {
-    doc.restoreGraphicsState();
-  }
-}
-
 /**
- * Primeira página: capa (marca d’água opcional, títulos ao centro, rodapé).
+ * Primeira página: capa (logo opcional no topo, títulos ao centro, rodapé).
  * Helvetica no jsPDF equivale a Arial nos laudos.
  */
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
@@ -466,9 +446,23 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
 
   if (hasLogo) {
     try {
-      await drawPdfCoverWatermark(doc, logoUrl, pageWidth, pageHeight);
+      const { width: iw, height: ih } = await getDataUrlImageDimensions(logoUrl);
+      const { w: lw, h: lh } = fitLogoSizeMm(
+        iw,
+        ih,
+        PDF_COVER_LOGO_MAX_W_MM,
+        PDF_COVER_LOGO_MAX_H_MM
+      );
+      doc.addImage(
+        logoUrl,
+        getJsPdfFormatFromDataUrl(logoUrl),
+        cx - lw / 2,
+        PDF_COVER_MARGIN_MM + 4,
+        lw,
+        lh
+      );
     } catch (e) {
-      console.log('Capa: marca d’água omitida.', e);
+      console.log('Capa: não foi possível incluir o logo.', e);
     }
   }
 
