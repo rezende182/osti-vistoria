@@ -58,18 +58,6 @@ function punctuatePdfChecklistItemBlock(block, isLastInList) {
   return s + end;
 }
 
-const PDF_ESPECIFICACOES_INTRO =
-  'Este laudo técnico de vistoria foi elaborado com base na verificação das condições aparentes da edificação, considerando o atendimento às boas práticas construtivas e às diretrizes das seguintes normas técnicas e documentos:';
-
-const PDF_ESPECIFICACOES_NORMAS = [
-  'ABNT NBR 13752:1996 – Perícias de engenharia na construção civil',
-  'ABNT NBR 16747 – Inspeção predial',
-  'ABNT NBR 15575 – Desempenho de edificações habitacionais',
-];
-
-const PDF_ESPECIFICACOES_SEM_DOCS =
-  'Não foi disponibilizado qualquer documento técnico por parte da construtora até a data da vistoria.';
-
 const PDF_REGISTRO_FOTOGRAFICO_INTRO =
   'Descrição dos problemas evidenciados durante a vistoria, com respectivos registros fotográficos do estado em que o imóvel se encontra e seus vícios aparentes:';
 
@@ -523,7 +511,7 @@ function estimateIdentificacaoTableHeightMm(
   return h + 12;
 }
 
-/** Texto fixo da secção 2. INTRODUÇÃO (fluxo sem Objetivo/Especificações) com dados da identificação. */
+/** Texto fixo da secção 2. INTRODUÇÃO (fluxo sem Objetivo/Metodologia estendida) com dados da identificação. */
 function buildPdfIntroducaoText(inspection) {
   const loc = formatPdfIntroLocalizacao(inspection);
   const fluxo = String(inspection.tipo_vistoria_fluxo || '').trim();
@@ -1494,12 +1482,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   const entregaLaudoExt = isEntregaImovelLaudoExtended(inspection);
   const objChapterNum = 2;
-  const especChapterNum = 3;
-  const metodologiaChapterNum = 4;
-  const checklistChapterNum = entregaLaudoExt ? 5 : 3;
-  const ncChapterNum = entregaLaudoExt ? 6 : 4;
-  const conclusaoChapterNum = entregaLaudoExt ? 7 : 5;
-  const encerramentoChapterNum = entregaLaudoExt ? 8 : 6;
+  const metodologiaChapterNum = 3;
+  const checklistChapterNum = entregaLaudoExt ? 4 : 3;
+  const ncChapterNum = entregaLaudoExt ? 5 : 4;
+  const conclusaoChapterNum = entregaLaudoExt ? 6 : 5;
+  const encerramentoChapterNum = entregaLaudoExt ? 7 : 6;
 
   // ============================================================
   // Corpo do laudo (após capa)
@@ -1580,11 +1567,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin: { left: margin, right: margin },
   });
 
-  yPos = doc.lastAutoTable.finalY + 10;
-
-  const docsList = Array.isArray(inspection.documentos_recebidos)
-    ? inspection.documentos_recebidos.filter((d) => pdfTrim(d))
-    : [];
+  const yAfterIdentTable = doc.lastAutoTable.finalY;
 
   if (entregaLaudoExt) {
     const objT = pdfTrim(inspection.laudo_objetivo);
@@ -1594,19 +1577,17 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       doc,
       contentWidth,
       titleObjetivo,
-      yPos,
+      yAfterIdentTable,
       PDF_PAGE_TOP_SAFE_MM
     );
     const hObjBody = measureBodyParagraphsHeightMm(doc, objBody, contentWidth);
-    const usableH =
-      pageHeight - PDF_PAGE_TOP_SAFE_MM - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
-    if (
-      hObjTitle + hObjBody <= usableH &&
-      yPos + hObjTitle + hObjBody > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM
-    ) {
-      doc.addPage();
-      yPos = PDF_PAGE_TOP_SAFE_MM;
-    }
+    const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
+    const roomForObjetivo =
+      bottomLimit - yAfterIdentTable - hObjTitle - hObjBody;
+    /** Entre o fim da tabela e «2. OBJETIVO»: até 10 mm, reduzindo o necessário para caber na mesma página. */
+    const gapPosObjetivoMm = Math.max(0, Math.min(10, roomForObjetivo));
+    yPos = yAfterIdentTable + gapPosObjetivoMm;
+
     yPos = drawChapterTitle(doc, margin, contentWidth, yPos, titleObjetivo, {
       minFollowingMm: 28,
     });
@@ -1619,73 +1600,12 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       checkNewPage,
       laudoBodyParagraphsOpts
     );
+  } else {
+    yPos = yAfterIdentTable + 10;
   }
 
   if (entregaLaudoExt) {
     const metaText = finalizeLaudoMetodologiaPdf(inspection, ncChapterNum);
-
-    yPos = drawChapterTitle(
-      doc,
-      margin,
-      contentWidth,
-      yPos,
-      pdfChapterTitleUpperCase(`${especChapterNum}. ESPECIFICAÇÕES TÉCNICAS`),
-      {
-        minFollowingMm: 32,
-      }
-    );
-    yPos = drawSubsectionTitle(
-      doc,
-      margin,
-      contentWidth,
-      yPos,
-      pdfAbntHeadingTitleCase(`${especChapterNum}.1 Referências`),
-      {
-        minFollowingMm: 28,
-      }
-    );
-    doc.setFont(PDF_FONT, 'normal');
-    doc.setFontSize(PDF_BODY_PT);
-    doc.setTextColor(0, 0, 0);
-    yPos = drawBodyParagraphs(
-      doc,
-      PDF_ESPECIFICACOES_INTRO,
-      margin,
-      contentWidth,
-      yPos,
-      checkNewPage,
-      laudoBodyParagraphsOpts
-    );
-    yPos += PDF_PARAGRAPH_GAP_MM;
-    const refItens = [
-      ...PDF_ESPECIFICACOES_NORMAS,
-      ...(docsList.length > 0 ? docsList : []),
-    ];
-    const nRef = refItens.length;
-    refItens.forEach((raw, refIdx) => {
-      checkNewPage(18);
-      const base = pdfTrim(String(raw)).replace(/[.;]\s*$/, '');
-      const punct = refIdx === nRef - 1 ? '.' : ';';
-      const line = `\u2013 ${base}${punct}`;
-      const wrapped = doc.splitTextToSize(line, contentWidth);
-      wrapped.forEach((wln) => {
-        checkNewPage(8);
-        doc.text(wln, margin, yPos);
-        yPos += PDF_BODY_LINE_MM;
-      });
-    });
-    yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
-    if (docsList.length === 0) {
-      yPos = drawBodyParagraphs(
-        doc,
-        PDF_ESPECIFICACOES_SEM_DOCS,
-        margin,
-        contentWidth,
-        yPos,
-        checkNewPage,
-        laudoBodyParagraphsOpts
-      );
-    }
 
     checkNewPage(40);
     yPos = drawChapterTitle(
@@ -1744,7 +1664,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
 
     // ============================================================
-    // 3. VERIFICAÇÃO DOS AMBIENTES (após introdução; fluxo sem Metodologia/Especificações)
+    // 3. VERIFICAÇÃO DOS AMBIENTES (após introdução; fluxo sem Metodologia)
     // ============================================================
     yPos = drawChapterTitle(
       doc,
