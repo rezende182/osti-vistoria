@@ -395,8 +395,29 @@ const InspectionDetail = () => {
                 </IdBlock>
 
                 <IdBlock title="Dados do Imóvel">
-                  {tipoImovelUnificadoLabel(inspection) ? (
-                    <IdRow label="Tipo do Imóvel">{tipoImovelUnificadoLabel(inspection)}</IdRow>
+                  {tipoImovelUnificadoLabel(inspection) || tStr(inspection.imovel_area) ? (
+                    <div className="grid grid-cols-1 gap-3 border-t border-slate-100 py-3 first:border-t-0 first:pt-0 sm:grid-cols-2">
+                      {tipoImovelUnificadoLabel(inspection) ? (
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Tipo do imóvel
+                          </span>
+                          <p className="mt-1 text-sm font-medium text-slate-900">
+                            {tipoImovelUnificadoLabel(inspection)}
+                          </p>
+                        </div>
+                      ) : null}
+                      {tStr(inspection.imovel_area) ? (
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Área do imóvel
+                          </span>
+                          <p className="mt-1 text-sm font-medium text-slate-900">
+                            {inspection.imovel_area}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
                   ) : null}
                   <IdRow label="Endereço">{inspection.endereco}</IdRow>
                   {inspection.imovel_categoria === 'apartamento' && tStr(inspection.unidade) ? (
@@ -521,8 +542,29 @@ const InspectionDetail = () => {
                       />
                     </IdRow>
                   ) : null}
-                  {tipoImovelUnificadoLabel(inspection) ? (
-                    <IdRow label="Tipo do Imóvel">{tipoImovelUnificadoLabel(inspection)}</IdRow>
+                  {tipoImovelUnificadoLabel(inspection) || tStr(inspection.imovel_area) ? (
+                    <div className="grid grid-cols-1 gap-3 border-t border-slate-100 py-3 first:border-t-0 first:pt-0 sm:grid-cols-2">
+                      {tipoImovelUnificadoLabel(inspection) ? (
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Tipo do imóvel
+                          </span>
+                          <p className="mt-1 text-sm font-medium text-slate-900">
+                            {tipoImovelUnificadoLabel(inspection)}
+                          </p>
+                        </div>
+                      ) : null}
+                      {tStr(inspection.imovel_area) ? (
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                            Área do imóvel
+                          </span>
+                          <p className="mt-1 text-sm font-medium text-slate-900">
+                            {inspection.imovel_area}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
                   ) : null}
                 </IdBlock>
 

@@ -108,6 +108,7 @@ class InspectionCreateIn(BaseModel):
     tipo_imovel: Literal["novo", "usado", "reformado"] = "novo"
     energia_disponivel: Literal["sim", "nao"] = "sim"
     imovel_tipologia: Literal["terreo", "sobrado"] = "terreo"
+    imovel_area: str = ""
     imovel_numero_pavimentos: str = ""
     documentos_recebidos: List[str] = []
     tipo_vistoria_fluxo: Optional[
@@ -246,6 +247,7 @@ class Inspection(BaseModel):
     tipo_imovel: Literal["novo", "usado", "reformado"]
     energia_disponivel: Literal["sim", "nao"]
     imovel_tipologia: Literal["terreo", "sobrado"] = "terreo"
+    imovel_area: str = ""
     imovel_numero_pavimentos: str = ""
     documentos_recebidos: List[str] = []
     rooms_checklist: List[RoomChecklist] = []
@@ -334,6 +336,7 @@ class IdentificationUpdate(BaseModel):
     imovel_categoria: Optional[Literal["apartamento", "casa"]] = None
     contratante_cpf_cnpj: Optional[str] = None
     imovel_tipologia: Optional[Literal["terreo", "sobrado"]] = None
+    imovel_area: Optional[str] = None
     imovel_numero_pavimentos: Optional[str] = None
     responsavel_cpf_cnpj: Optional[str] = None
     responsavel_construtora: Optional[str] = None

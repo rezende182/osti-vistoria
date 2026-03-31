@@ -220,6 +220,19 @@ function pdfTipoImovelUnificado(inspection) {
   return '';
 }
 
+/** Tipo do imóvel e área na mesma linha (quatro colunas). */
+function pdfIdentRowTipoImovelEArea(tipoTexto, areaTexto) {
+  const t = pdfTrim(tipoTexto);
+  const a = pdfTrim(areaTexto);
+  if (!t && !a) return null;
+  return [
+    pdfIdentLabelCell('Tipo do imóvel'),
+    { content: t || '—' },
+    pdfIdentLabelCell('Área do imóvel'),
+    { content: a || '—' },
+  ];
+}
+
 /** Versão compacta para a tabela 1 (primeira página). */
 function pdfIdentSectionRowCompact(title) {
   return [
@@ -295,8 +308,8 @@ function buildIdentificacaoTableBody(inspection) {
   }
 
   const tipoLinha = pdfTipoImovelUnificado(inspection);
-  const tipoRow = pdfIdentRowFull('Tipo do imóvel', tipoLinha, false);
-  if (tipoRow) rows.push(tipoRow);
+  const tipoAreaRow = pdfIdentRowTipoImovelEArea(tipoLinha, inspection.imovel_area);
+  if (tipoAreaRow) rows.push(tipoAreaRow);
 
   const empRow = pdfIdentRowEmpreendimentoConstrutora(
     inspection.empreendimento,

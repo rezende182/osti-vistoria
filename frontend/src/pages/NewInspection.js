@@ -138,6 +138,7 @@ const NewInspection = () => {
     laudo_metodologia: '',
     imovel_categoria: '',
     imovel_tipologia: '',
+    imovel_area: '',
     imovel_numero_pavimentos: '',
     tipo_imovel: 'novo',
     energia_disponivel: 'sim',
@@ -594,6 +595,21 @@ const NewInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Área do imóvel
+                </label>
+                <input
+                  data-testid="input-imovel-area"
+                  type="text"
+                  name="imovel_area"
+                  value={formData.imovel_area}
+                  onChange={handleChange}
+                  placeholder="Ex.: 85 m²"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Endereço *
                 </label>
                 <input
@@ -965,6 +981,21 @@ const NewInspection = () => {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Área do imóvel
+                </label>
+                <input
+                  data-testid="input-imovel-area"
+                  type="text"
+                  name="imovel_area"
+                  value={formData.imovel_area}
+                  onChange={handleChange}
+                  placeholder="Ex.: 85 m²"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
+                />
               </div>
               <div className="mb-4">
                 <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
