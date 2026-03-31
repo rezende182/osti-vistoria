@@ -56,6 +56,10 @@ const PDF_REGISTRO_FOTOGRAFICO_INTRO =
 const PDF_REGISTRO_SEM_FOTOS_TEXTO =
   'Registra-se que não foi realizado registro fotográfico, uma vez que não foram constatadas não conformidades aparentes no imóvel no momento da vistoria, não havendo, portanto, elementos que justificassem tal procedimento.';
 
+/** Texto fixo antes do checklist do capítulo «Verificação dos ambientes». */
+const PDF_VERIFICACAO_AMBIENTES_INTRO =
+  'Apresentam-se, a seguir, os elementos e sistemas construtivos verificados em cada ambiente do imóvel, com base em inspeção visual realizada no momento da vistoria.\n\nOs critérios de verificação adotados encontram-se discriminados por ambiente, servindo como referência para os registros técnicos constantes neste laudo.';
+
 /** Dimensões naturais da imagem (browser) para calcular largura proporcional sem distorção */
 function getDataUrlImageDimensions(dataUrl) {
   return new Promise((resolve) => {
@@ -1158,6 +1162,16 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       { minFollowingMm: 52 }
     );
   }
+
+  yPos = drawBodyParagraphs(
+    doc,
+    PDF_VERIFICACAO_AMBIENTES_INTRO,
+    margin,
+    contentWidth,
+    yPos,
+    checkNewPage
+  );
+  yPos += PDF_PARAGRAPH_GAP_MM;
 
   const checklistTextWidth = contentWidth - PDF_LIST_INDENT_MM;
   const ncPhotoEntries = [];
