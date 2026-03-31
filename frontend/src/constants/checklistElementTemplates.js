@@ -102,7 +102,24 @@ const V = {
     'Integridade aparente, revestimento, grelha e suportes, duto/chaminé (exaustão), bancada/apoio e limpeza geral.',
   instalacoesGas: 'Pontos de gás, vedação, segurança e posicionamento adequado.',
   piscina:
-    'Estrutura, fixação, revestimento, bordas e acabamento, piso ao redor (nivelamento, caimento e antiderrapante), drenagem (ralos), casa de máquinas (bomba e filtro), sistema hidráulico, escadas/acessos, segurança, limpeza geral e dimensões.',
+    'Estrutura (integridade aparente, fissuras ou deformações), revestimento (condição, descolamentos e acabamento), bordas (nivelamento, alinhamento, fixação e integridade), piso ao redor (nivelamento, caimento, condição antiderrapante e peças soltas), drenagem (ralos e escoamento), sistema hidráulico (bomba, filtro, sucção/retorno e funcionamento básico), casa de máquinas (organização, fixação e vazamentos aparentes), escadas/acessos (fixação e estabilidade), segurança (condições que ofereçam risco) e limpeza geral/estado de conservação.',
+  estruturaCobertura:
+    'Alinhamento, fixação, integridade estrutural aparente e sinais de umidade ou deterioração.',
+  telhas:
+    'Integridade (quebradas, trincadas ou danificadas), alinhamento, sobreposição adequada e presença de deslocamentos.',
+  rufos:
+    'Fixação, vedação e presença de falhas.',
+  rufosCalhasCondutores:
+    'Funcionamento do escoamento, fixação, vedação, presença de falhas, obstruções e direcionamento adequado de água.',
+  lajeCobertura:
+    'Fissuras ou trincas, acúmulo de água, caimento e sinais de infiltração.',
+  pingadeiras: 'Funcionamento e posicionamento adequado.',
+  acessoCobertura: 'Condições de acesso, segurança e facilidade de inspeção.',
+  caixaInspecao: 'Tampa, vedação, integridade, limpeza e acesso.',
+  caixaGordura:
+    'Vedação, acúmulo de resíduos, limpeza, funcionamento e tampa.',
+  caixaDagua:
+    'Estrutura, tampa/vedação, limpeza interna, presença de sujeira ou contaminação, fissuras ou trincas, vazamentos, boia (funcionamento), extravasor/ladrão, tubulações e conexões, fixação/apoio, acesso/manutenção e funcionamento geral.',
   moveis:
     'Estrutura, acabamento, ferragens, funcionamento, portas, gavetas e condições gerais.',
   eletrodomesticos: 'Estado geral e funcionamento.',
@@ -153,6 +170,9 @@ export const MASTER_ITEM_CATALOG = [
   E('Tanque', V.tanque),
   E('Instalação para Máquina de Lavar', V.instalacaoMaquina),
   E('Piscina', V.piscina),
+  E('Caixa de Inspeção', V.caixaInspecao),
+  E('Caixa de Gordura', V.caixaGordura),
+  E("Caixa d'água", V.caixaDagua),
   E('Churrasqueira (Estrutura)', V.churrasqueiraEstrutura),
   E('Móveis', V.moveis),
   E('Eletrodomésticos', V.eletrodomesticos),
@@ -290,7 +310,15 @@ export const ROOM_ELEMENT_TEMPLATES = {
     E('Dimensões', V.dimensoes),
   ],
 
-  cobertura_telhado: [],
+  cobertura_telhado: [
+    E('Estrutura da Cobertura', V.estruturaCobertura),
+    E('Telhas', V.telhas),
+    E('Rufos', V.rufos),
+    E('Rufos, calhas e condutores verticais', V.rufosCalhasCondutores),
+    E('Laje de Cobertura', V.lajeCobertura),
+    E('Pingadeiras', V.pingadeiras),
+    E('Acesso à Cobertura', V.acessoCobertura),
+  ],
 };
 
 export function getElementsForRoomType(roomType) {
