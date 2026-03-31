@@ -195,6 +195,16 @@ function pdfCidadeUfCapaHyphenUpper(cidade, uf) {
   return '';
 }
 
+/** Capa — campo Endereço: ex. «Praia Grande - SP» (cidade em título; UF maiúscula). */
+function pdfCidadeUfCapaTitleHyphen(cidade, uf) {
+  const cityFmt = pdfCidadeTituloLaudo(cidade);
+  const u = pdfUfSomenteSigla(uf).toUpperCase();
+  if (cityFmt && u) return `${cityFmt} - ${u}`;
+  if (cityFmt) return cityFmt;
+  if (u) return u;
+  return '';
+}
+
 /** Cidade em formato título (ex.: «Praia Grande») para a identificação no PDF. */
 function pdfCidadeTituloLaudo(cidade) {
   const c = pdfTrim(cidade);
@@ -705,15 +715,16 @@ const PDF_COVER_GAP_ABOVE_FOOTER_MM = 10;
 const PDF_COVER_CITY_DATE_LINE_MM = 10;
 
 /**
- * Valor do campo Endereço (sem o rótulo): logradouro, Apartamento/Bloco, Cidade - UF.
+ * Valor do campo Endereço (sem o rótulo): logradouro, unidade em linha, cidade em título - UF.
+ * Ex.: Rua …, 357, Apto 1.103 Bloco A, Praia Grande - SP
  */
 function buildPdfCoverEnderecoValor(inspection) {
   const parts = [];
   const e = pdfTrim(inspection.endereco);
   if (e) parts.push(e);
   const u = pdfTrim(inspection.unidade);
-  if (u) parts.push(`Apartamento/Bloco: ${u}`);
-  const loc = pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf);
+  if (u) parts.push(u);
+  const loc = pdfCidadeUfCapaTitleHyphen(inspection.cidade, inspection.uf);
   if (loc) parts.push(loc);
   return parts.length ? parts.join(', ') : '\u2014';
 }
@@ -1208,15 +1219,15 @@ const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
  * descrição típica de 3–4 linhas; textos muito longos podem quebrar para a página seguinte.
  * A imagem é desenhada com proporção preservada (centrada na caixa). Largura +0,5 mm vs. versão anterior.
  */
-const PDF_NC_IMG_W_MM = 125.5;
+const PDF_NC_IMG_W_MM = 126;
 const PDF_NC_IMG_H_MM = 58;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
 /** Par no registo: colunas + largura de imagem ajustadas para ~largura útil A4 (2 col + gap ≈ área de texto). */
-const PDF_REG_PAIR_COL_W_MM = 84.5;
+const PDF_REG_PAIR_COL_W_MM = 85;
 const PDF_REG_PAIR_GAP_MM = 2;
-const PDF_REG_PAIR_IMG_W_MM = 84.5;
+const PDF_REG_PAIR_IMG_W_MM = 85;
 const PDF_REG_PAIR_ROW_GAP_MM = 4;
 
 function registroPairLayoutScaled(contentWidth) {
