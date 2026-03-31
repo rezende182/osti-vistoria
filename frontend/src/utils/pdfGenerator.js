@@ -837,7 +837,7 @@ const PDF_NC_IMG_H_MM = 58;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
-/** Par no registo: colunas ~8,5 cm, imagem 8,2 cm, espaço 0,5 cm (escala se necessário para caber na margem). */
+/** Par no registo: colunas ~8,5 cm, imagem 8,2 × 5,8 cm (mesma altura que foto única do laudo), espaço 0,5 cm. */
 const PDF_REG_PAIR_COL_W_MM = 85;
 const PDF_REG_PAIR_GAP_MM = 5;
 const PDF_REG_PAIR_IMG_W_MM = 82;
@@ -849,7 +849,8 @@ function registroPairLayoutScaled(contentWidth) {
   const colW = PDF_REG_PAIR_COL_W_MM * scale;
   const gap = PDF_REG_PAIR_GAP_MM * scale;
   const imgW = PDF_REG_PAIR_IMG_W_MM * scale;
-  const imgH = PDF_NC_IMG_H_MM * (imgW / PDF_NC_IMG_W_MM);
+  /** Altura igual à caixa padrão do registo (`PDF_NC_IMG_H_MM`), não à proporção da foto única 120 mm. */
+  const imgH = PDF_NC_IMG_H_MM * scale;
   return { colW, gap, imgW, imgH, scale };
 }
 
