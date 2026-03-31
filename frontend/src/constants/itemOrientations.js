@@ -226,7 +226,7 @@ const ORIENTATION_DEFS = [
     ]),
   },
   {
-    keys: ['ralo'],
+    keys: ['ralo', 'ralos'],
     title: 'Ralo',
     bullets: B([
       'Testar escoamento com volume de água',

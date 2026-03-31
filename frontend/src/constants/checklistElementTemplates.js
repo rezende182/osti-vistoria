@@ -133,40 +133,36 @@ const V = {
 /**
  * Catálogo completo para «Adicionar item» (qualquer ambiente).
  * Itens já presentes no ambiente são filtrados por nome.
- * Ordem lógica: interior (tipo sala) → pisos/revestimentos → aberturas → elétrica/clima → água/gás
- * → áreas molhadas/lavanderia → circulação vertical → estrutura/cobertura → exterior → lazer → mobiliário.
  */
 export const MASTER_ITEM_CATALOG = [
-  E('Limpeza', V.limpeza),
-  E('Dimensões', V.dimensoes),
   E('Piso (Cerâmica)', V.pisoCeramica),
-  E('Rodapés', V.rodapes),
-  E('Paredes', V.paredes),
-  E('Pintura', V.pintura),
-  E('Teto', V.teto),
-  E('Revestimento da Parede (Azulejo)', V.revestimentoAzulejo),
   E('Piso (Contrapiso)', V.pisoContrapiso),
   E('Piso (Área Molhada)', V.pisoAreaMolhada),
   E('Piso (Área Externa)', V.pisoAreaExterna),
+  E('Rodapés', V.rodapes),
+  E('Paredes', V.paredes),
+  E('Pintura', V.pintura),
+  E('Revestimento da Parede (Azulejo)', V.revestimentoAzulejo),
+  E('Teto', V.teto),
   E('Esquadria (Porta)', V.esquadriaPorta),
+  E('Soleira / Baguete', V.soleiraBaguete),
   E('Esquadria (Janela)', V.esquadriaJanela),
   E('Peitoril', V.peitoril),
-  E('Soleira / Baguete', V.soleiraBaguete),
   E('Tomadas e Interruptores', V.tomadasInterruptores),
   E('Iluminação', V.iluminacao),
   E('Quadro de energia', V.quadroEnergia),
   E('Infraestrutura para Ar-Condicionado', V.infraAC),
   E('Instalações Hidráulicas', V.instalacoesHidraulicas),
-  E('Instalações de Gás', V.instalacoesGas),
-  E('Ventilação', V.ventilacao),
-  E('Ralos', V.ralos),
   E('Pia', V.pia),
   E('Bancadas', V.bancadas),
+  E('Instalações de Gás', V.instalacoesGas),
+  E('Ventilação', V.ventilacao),
+  E('Ralo', V.ralos),
+  E('Tanque', V.tanque),
+  E('Instalação para Máquina de Lavar', V.instalacaoMaquina),
   E('Vaso Sanitário', V.vasoSanitario),
   E('Lavatório / Cuba', V.lavatorioCuba),
   E('Box / Área de Banho', V.boxBanho),
-  E('Tanque', V.tanque),
-  E('Instalação para Máquina de Lavar', V.instalacaoMaquina),
   E('Escada', V.escada),
   E('Guarda-corpo', V.guardaCorpo),
   E('Estrutura Aparente (Vigas e Pilares)', V.estruturaVigas),
@@ -182,6 +178,8 @@ export const MASTER_ITEM_CATALOG = [
   E("Caixa d'água", V.caixaDagua),
   E('Móveis', V.moveis),
   E('Eletrodomésticos', V.eletrodomesticos),
+  E('Limpeza', V.limpeza),
+  E('Dimensões', V.dimensoes),
 ];
 
 /** @type {Record<string, Array<{ name: string, verificationText: string }>>} */
@@ -229,7 +227,7 @@ export const ROOM_ELEMENT_TEMPLATES = {
     E('Bancadas', V.bancadas),
     E('Pia', V.pia),
     E('Instalações Hidráulicas', V.instalacoesHidraulicas),
-    E('Ralos', V.ralos),
+    E('Ralo', V.ralos),
     E('Tomadas e Interruptores', V.tomadasInterruptores),
     E('Iluminação', V.iluminacao),
     E('Esquadria (Janela)', V.esquadriaJanela),
@@ -241,7 +239,7 @@ export const ROOM_ELEMENT_TEMPLATES = {
     E('Piso (Área Molhada)', V.pisoAreaMolhada),
     E('Revestimento da Parede (Azulejo)', V.revestimentoAzulejo),
     E('Teto', V.teto),
-    E('Ralos', V.ralos),
+    E('Ralo', V.ralos),
     E('Instalações Hidráulicas', V.instalacoesHidraulicas),
     E('Vaso Sanitário', V.vasoSanitario),
     E('Lavatório / Cuba', V.lavatorioCuba),
@@ -257,7 +255,7 @@ export const ROOM_ELEMENT_TEMPLATES = {
     E('Piso (Área Molhada)', V.pisoAreaMolhada),
     E('Paredes', V.paredes),
     E('Teto', V.teto),
-    E('Ralos', V.ralos),
+    E('Ralo', V.ralos),
     E('Instalações Hidráulicas', V.instalacoesHidraulicas),
     E('Tanque', V.tanque),
     E('Instalação para Máquina de Lavar', V.instalacaoMaquina),
@@ -270,7 +268,7 @@ export const ROOM_ELEMENT_TEMPLATES = {
 
   varanda_sacada: [
     E('Piso (Área Externa)', V.pisoAreaExterna),
-    E('Ralos', V.ralos),
+    E('Ralo', V.ralos),
     E('Guarda-corpo', V.guardaCorpo),
     E('Esquadria (Porta)', V.esquadriaPorta),
     E('Peitoril', V.peitoril),
@@ -287,7 +285,7 @@ export const ROOM_ELEMENT_TEMPLATES = {
     E('Bancadas', V.bancadas),
     E('Pia', V.pia),
     E('Instalações Hidráulicas', V.instalacoesHidraulicas),
-    E('Ralos', V.ralos),
+    E('Ralo', V.ralos),
     E('Churrasqueira (Estrutura)', V.churrasqueiraEstrutura),
     E('Iluminação', V.iluminacao),
     E('Limpeza', V.limpeza),
@@ -346,7 +344,18 @@ export function normalizeChecklistItemName(s) {
 /** Texto de verificação do catálogo mestre para um nome de item (ou null). */
 export function getMasterCatalogEntryByName(itemName) {
   const n = normalizeChecklistItemName(itemName);
-  return MASTER_ITEM_CATALOG.find((el) => normalizeChecklistItemName(el.name) === n) || null;
+  const direct = MASTER_ITEM_CATALOG.find(
+    (el) => normalizeChecklistItemName(el.name) === n
+  );
+  if (direct) return direct;
+  /** Nome antigo no checklist / PDF. */
+  if (n === 'ralos') {
+    return (
+      MASTER_ITEM_CATALOG.find((el) => normalizeChecklistItemName(el.name) === 'ralo') ||
+      null
+    );
+  }
+  return null;
 }
 
 function capitalizeFirstLaudo(text) {

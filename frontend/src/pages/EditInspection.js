@@ -611,16 +611,24 @@ const EditInspection = () => {
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Área do imóvel
                 </label>
-                <input
-                  data-testid="input-imovel-area"
-                  type="text"
-                  name="imovel_area"
-                  value={formData.imovel_area}
-                  onChange={handleChange}
-                  placeholder="Ex.: 85 m²"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  autoComplete="off"
-                />
+                <div className="relative">
+                  <input
+                    data-testid="input-imovel-area"
+                    type="text"
+                    name="imovel_area"
+                    value={formData.imovel_area}
+                    onChange={handleChange}
+                    placeholder="Ex.: 85"
+                    className="w-full rounded-lg border border-slate-300 py-3 pl-4 pr-14 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
+                  />
+                  <span
+                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 select-none text-sm text-slate-500"
+                    aria-hidden
+                  >
+                    m²
+                  </span>
+                </div>
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -995,16 +1003,24 @@ const EditInspection = () => {
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Área do imóvel
                 </label>
-                <input
-                  data-testid="input-imovel-area"
-                  type="text"
-                  name="imovel_area"
-                  value={formData.imovel_area}
-                  onChange={handleChange}
-                  placeholder="Ex.: 85 m²"
-                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  autoComplete="off"
-                />
+                <div className="relative">
+                  <input
+                    data-testid="input-imovel-area"
+                    type="text"
+                    name="imovel_area"
+                    value={formData.imovel_area}
+                    onChange={handleChange}
+                    placeholder="Ex.: 85"
+                    className="w-full rounded-lg border border-slate-300 py-3 pl-4 pr-14 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoComplete="off"
+                  />
+                  <span
+                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 select-none text-sm text-slate-500"
+                    aria-hidden
+                  >
+                    m²
+                  </span>
+                </div>
               </div>
               <div className="mb-4">
                 <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">

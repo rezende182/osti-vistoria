@@ -779,7 +779,7 @@ const InspectionChecklist = () => {
                     }}
                     className="min-h-touch w-full rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/80 px-4 py-3 text-left font-semibold text-blue-900 transition-colors hover:border-blue-400 hover:bg-blue-100/90 sm:min-h-0"
                   >
-                    Outro ambiente (nome livre)…
+                    Outro ambiente
                   </button>
                 </div>
                 <button
