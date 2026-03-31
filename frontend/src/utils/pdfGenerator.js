@@ -439,19 +439,33 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
 /** Capa A4: margens 2 cm; Helvetica = Arial no motor PDF. */
 const PDF_COVER_MARGIN_MM = 20;
 const PDF_COVER_LOGO_W_MM = 70;
-const PDF_COVER_GAP_BELOW_LOGO_MM = 35;
+const PDF_COVER_GAP_BELOW_LOGO_MM = 28;
 const PDF_COVER_TITLE_MAIN_PT = 24;
-const PDF_COVER_TITLE_SUB_PT = 16;
-const PDF_COVER_GAP_MAIN_SUB_MM = 5;
-const PDF_COVER_GAP_BELOW_SUB_MM = 25;
+/** Espaço reduzido entre título e bloco «Assunto / Contratante / …». */
+const PDF_COVER_GAP_AFTER_TITLE_MM = 8;
 const PDF_COVER_INFO_PT = 12;
 const PDF_COVER_INFO_LINE_FACTOR = 1.3;
 const PDF_COVER_TRACKING_PT = 0.35;
-const PDF_COVER_FOOTER_PT = 8;
-const PDF_COVER_FOOTER_GRAY = [88, 88, 88];
+/** Reserva no rodapé para cidade + data (acima da margem inferior). */
+const PDF_COVER_BOTTOM_BLOCK_MM = 22;
 
 /**
- * Primeira página: capa institucional (logo 7 cm; título 24 pt; bloco de dados; rodapé opcional).
+ * Endereço na capa: logradouro, Apartamento/Bloco se houver, Cidade - UF.
+ */
+function buildPdfCoverEnderecoCompleto(inspection) {
+  const parts = [];
+  const e = pdfTrim(inspection.endereco);
+  if (e) parts.push(e);
+  const u = pdfTrim(inspection.unidade);
+  if (u) parts.push(`Apartamento/Bloco: ${u}`);
+  const loc = pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf);
+  if (loc) parts.push(loc);
+  const inner = parts.length ? parts.join(', ') : '\u2014';
+  return `Endereço: ${inner}`;
+}
+
+/**
+ * Primeira página: logo → título → assunto/contratante/endereço/RT; rodapé: Cidade - UF e data.
  */
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const cx = pageWidth / 2;
@@ -459,6 +473,16 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const logoUrl = inspection.pdf_logo_data_url;
   const hasLogo =
     logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/');
+
+  const infoLineH = PDF_COVER_INFO_PT * PDF_PT_TO_MM * PDF_COVER_INFO_LINE_FACTOR;
+  const cidadeRodape = pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf);
+  const dataRodape = formatPdfLaudoCoverDateDdMmYyyy(
+    inspection.data_final || inspection.data
+  );
+
+  const yDataRodape = pageHeight - PDF_COVER_MARGIN_MM - 2;
+  const yCidadeRodape = yDataRodape - infoLineH * 1.05;
+  const yMaxCorpo = yCidadeRodape - PDF_COVER_BOTTOM_BLOCK_MM;
 
   let y = PDF_COVER_MARGIN_MM;
 
@@ -500,51 +524,39 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     doc.setCharSpace(0);
   }
 
-  y += PDF_COVER_GAP_MAIN_SUB_MM;
-  const subLineH = PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
-  doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_COVER_TITLE_SUB_PT);
-  const subLines = doc.splitTextToSize('Recebimento de Imóvel', textMaxW);
-  subLines.forEach((ln) => {
-    doc.text(ln, cx, y, { align: 'center' });
-    y += subLineH;
-  });
+  y += PDF_COVER_GAP_AFTER_TITLE_MM;
 
-  y += PDF_COVER_GAP_BELOW_SUB_MM;
-
-  const infoLineH = PDF_COVER_INFO_PT * PDF_PT_TO_MM * PDF_COVER_INFO_LINE_FACTOR;
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_COVER_INFO_PT);
 
-  const enderecoBloco = pdfTrim(inspection.endereco);
-  const cidadeUf = pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf);
-  const linhaEndereco = [enderecoBloco, cidadeUf].filter(Boolean).join(' — ') || '\u2014';
-
+  const creaTxt = pdfTrim(inspection.crea) || '\u2014';
   const linhasInfo = [
-    linhaEndereco,
-    pdfTrim(inspection.cliente) || '\u2014',
-    `Data da vistoria: ${
-      formatPdfLaudoCoverDateDdMmYyyy(inspection.data_final || inspection.data) || '\u2014'
-    }`,
-    `Responsável técnico: ${formatPdfResponsavelTecnicoNome(inspection.responsavel_tecnico)}`,
+    'Assunto: Vistoria Técnica para Recebimento de Imóvel',
+    `Contratante: ${pdfTrim(inspection.cliente) || '\u2014'}`,
+    buildPdfCoverEnderecoCompleto(inspection),
+    `Responsável Técnico: ${formatPdfResponsavelTecnicoNome(
+      inspection.responsavel_tecnico
+    )} — CREA ${creaTxt}`,
   ];
 
-  linhasInfo.forEach((texto) => {
+  for (const texto of linhasInfo) {
     const partes = doc.splitTextToSize(texto, textMaxW);
-    partes.forEach((ln) => {
+    for (const ln of partes) {
+      if (y > yMaxCorpo) break;
       doc.text(ln, cx, y, { align: 'center' });
       y += infoLineH;
-    });
-  });
+    }
+    if (y > yMaxCorpo) break;
+  }
 
-  const marcaRodape = pdfTrim(inspection.pdf_empresa_nome);
-  if (marcaRodape) {
-    const footerBaseline = pageHeight - PDF_COVER_MARGIN_MM - 2;
-    doc.setFont(PDF_FONT, 'normal');
-    doc.setFontSize(PDF_COVER_FOOTER_PT);
-    doc.setTextColor(...PDF_COVER_FOOTER_GRAY);
-    doc.text(marcaRodape, cx, footerBaseline, { align: 'center', maxWidth: textMaxW });
-    doc.setTextColor(0, 0, 0);
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_COVER_INFO_PT);
+  doc.setTextColor(0, 0, 0);
+  if (cidadeRodape) {
+    doc.text(cidadeRodape, cx, yCidadeRodape, { align: 'center' });
+  }
+  if (dataRodape) {
+    doc.text(dataRodape, cx, yDataRodape, { align: 'center' });
   }
 }
 
