@@ -15,6 +15,7 @@ import {
   PDF_PAGE_TOP_SAFE_MM,
   PDF_CHAPTER_TITLE_PT,
   PDF_CHAPTER_TITLE_BEFORE_MM,
+  PDF_CHAPTER_TITLE_AFTER_MM,
   PDF_CHAPTER_LINE_MM,
   PDF_LIST_INDENT_MM,
   PDF_LIST_ITEM_EXTRA_GAP_MM,
@@ -1732,30 +1733,58 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   // ENCERRAMENTO — reserva de espaço + desenho único após total de páginas (sem retângulo branco)
   // ============================================================
-  checkNewPage(40);
-  yPos = drawChapterTitle(
-    doc,
-    margin,
-    contentWidth,
-    yPos,
-    `${encerramentoChapterNum}. ENCERRAMENTO`,
-    { minFollowingMm: 48 }
-  );
+  /** Reserva com n.º de folhas “máximo”; texto final desenhado depois do fecho do PDF. */
+  const reservedEncH = measureEncerramentoCompletoMm(doc, contentWidth, 99999);
+  const encTitleText = `${encerramentoChapterNum}. ENCERRAMENTO`;
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_CHAPTER_TITLE_PT);
+  const encTitleLines = doc.splitTextToSize(encTitleText, contentWidth);
+  const encTitleBlockH =
+    PDF_CHAPTER_TITLE_BEFORE_MM +
+    encTitleLines.length * PDF_CHAPTER_LINE_MM +
+    PDF_CHAPTER_TITLE_AFTER_MM;
+
+  const signatureAreaMm = 26;
+  /** Espaço data → linha de assinatura (layout em `drawResponsavelAssinaturaSection`). */
+  const gapDataAssinaturaMm = 12;
+  const assinaturaBlockH =
+    12 +
+    signatureAreaMm +
+    10 +
+    PDF_BODY_LINE_MM * 6 +
+    24 +
+    (gapDataAssinaturaMm - 16);
+  /** Entre o fim do texto do encerramento e a data (local) à direita — um pouco menor que antes. */
+  const encerramentoToAssinaturaGapMm = 5;
+
+  const afterEncTitleMm =
+    PDF_PARAGRAPH_GAP_MM +
+    reservedEncH +
+    PDF_PARAGRAPH_GAP_MM +
+    PDF_PARAGRAPH_GAP_MM * 1.5 +
+    encerramentoToAssinaturaGapMm +
+    assinaturaBlockH;
+
+  if (yPos + encTitleBlockH + afterEncTitleMm > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
+    doc.addPage();
+    yPos = PDF_PAGE_TOP_SAFE_MM;
+  }
+
+  yPos = drawChapterTitle(doc, margin, contentWidth, yPos, encTitleText, {
+    minFollowingMm: afterEncTitleMm,
+    bottomMarginMm: PDF_LAUDO_PAGE_BOTTOM_SAFE_MM,
+  });
   const encStartPage = doc.internal.getNumberOfPages();
   yPos += PDF_PARAGRAPH_GAP_MM;
   const encBodyTopY = yPos;
-  /** Reserva com n.º de folhas “máximo” para não sobrepor a assinatura; texto final desenhado depois. */
-  const reservedEncH = measureEncerramentoCompletoMm(doc, contentWidth, 99999);
   yPos = encBodyTopY + reservedEncH;
   yPos += PDF_PARAGRAPH_GAP_MM;
 
   // ============================================================
   // Responsável técnico / assinatura (sem título de capítulo)
   // ============================================================
-  checkNewPage(36);
   yPos += PDF_PARAGRAPH_GAP_MM * 1.5;
-  /** Espaço extra entre o fim do texto do encerramento e a linha local/data (assinatura). */
-  yPos += 10;
+  yPos += encerramentoToAssinaturaGapMm;
 
   const responsavel = formatPdfResponsavelTecnicoNome(
     inspection.responsavel_final || inspection.responsavel_tecnico || ''
@@ -1780,6 +1809,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       responsavel,
       crea,
       signatureAreaMm: 26,
+      gapAfterLocalDateMm: gapDataAssinaturaMm,
       bottomMarginMm: PDF_LAUDO_PAGE_BOTTOM_SAFE_MM,
     }
   );

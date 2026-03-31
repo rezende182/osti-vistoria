@@ -591,6 +591,8 @@ export function drawResponsavelAssinaturaSection(
     responsavel = '',
     crea = '',
     signatureAreaMm = 26,
+    /** Espaço entre a linha da data (local) e a linha de assinatura; padrão 16 mm. */
+    gapAfterLocalDateMm = 16,
   } = options;
 
   const pageOpts = {
@@ -598,17 +600,24 @@ export function drawResponsavelAssinaturaSection(
     topMarginMm: options.topMarginMm ?? PDF_PAGE_TOP_SAFE_MM,
   };
 
-  const blockH = 12 + signatureAreaMm + 10 + PDF_BODY_LINE_MM * 6 + 24;
+  const texto = String(localTexto || '').trim();
+  const gapAfterDate = texto ? gapAfterLocalDateMm : 4;
+  const blockH =
+    12 +
+    signatureAreaMm +
+    10 +
+    PDF_BODY_LINE_MM * 6 +
+    24 +
+    (gapAfterDate - (texto ? 16 : 4));
   let y = ensureVerticalSpace(doc, yPos, blockH, pageOpts);
 
-  const texto = String(localTexto || '').trim();
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
   if (texto) {
     doc.text(texto, pageWidth - margin, y, { align: 'right' });
   }
-  y += texto ? 16 : 4;
+  y += gapAfterDate;
 
   y += signatureAreaMm;
 
