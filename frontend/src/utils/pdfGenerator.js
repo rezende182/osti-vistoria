@@ -31,15 +31,15 @@ import { METODOLOGIA_PLACEHOLDER_REG_NC } from '../constants/laudoEntregaTextos'
 import { resolveVerificationTextForLaudo } from '../constants/checklistElementTemplates';
 
 /**
- * Margem inferior útil no laudo: margem inferior do rodapé + faixa (~16 mm) + folga.
+ * Margem inferior útil no laudo: espaço abaixo do rodapé + faixa (~16 mm) + folga (evita sobreposição).
  * (Helvetica ≈ Arial; Calibri exigiria fonte embutida.)
  */
-const PDF_LAUDO_PAGE_BOTTOM_SAFE_MM = 34;
+const PDF_LAUDO_PAGE_BOTTOM_SAFE_MM = 30;
 const laudoBodyParagraphsOpts = { bottomMarginMm: PDF_LAUDO_PAGE_BOTTOM_SAFE_MM };
 
 /** Rodapé institucional (páginas 2+): faixa ~1,6 cm, linha superior cinza. */
 const PDF_LAUDO_FOOTER_BAND_MM = 16;
-const PDF_LAUDO_FOOTER_BOTTOM_MARGIN_MM = 12;
+const PDF_LAUDO_FOOTER_BOTTOM_MARGIN_MM = 8;
 const PDF_LAUDO_FOOTER_LINE_GRAY = [170, 170, 170];
 const PDF_LAUDO_FOOTER_PT = 8;
 const PDF_LAUDO_FOOTER_LOGO_MAX_H_MM = 12;
