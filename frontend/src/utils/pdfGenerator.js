@@ -427,11 +427,11 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   return 'JPEG';
 }
 
-/** Logo na capa: altura alvo 5 cm; largura proporcional (limitada à largura útil). */
-const PDF_COVER_LOGO_TARGET_H_MM = 50;
+/** Logo na capa: altura alvo (~3,6 cm); largura proporcional (limitada à largura útil). */
+const PDF_COVER_LOGO_TARGET_H_MM = 36;
 const PDF_COVER_LOGO_TOP_PAD_MM = 4;
-/** Capa: título 14 pt negrito, subtítulo e rodapé 12 pt (Arial/Helvetica). */
-const PDF_COVER_TITLE_MAIN_PT = PDF_CHAPTER_TITLE_PT;
+/** Capa: título principal maior que nos capítulos internos; subtítulo e rodapé 12 pt. */
+const PDF_COVER_TITLE_MAIN_PT = 17;
 const PDF_COVER_TITLE_SUB_PT = PDF_BODY_PT;
 const PDF_COVER_TITLE_MAIN_SUB_GAP_MM = 3.2;
 
