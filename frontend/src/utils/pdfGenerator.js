@@ -739,37 +739,47 @@ function drawPdfRegistroFotoCaptionFromApp(
 
 const PDF_NC_PROBLEMATICA_LABEL = 'PROBLEMÁTICA:';
 const PDF_NC_LOCALIZACAO_LABEL = 'LOCALIZAÇÃO:';
-/** Espaço entre o fim da legenda e o bloco «Localização». */
+/** Espaço entre o fim da legenda e o bloco «Localização» / «Problemática». */
 const PDF_NC_AFTER_PHOTO_GAP_MM = 6;
-/** Espaço entre «Localização» e «Problemática». */
-const PDF_NC_LOC_PROB_GAP_MM = 4;
+/** Colunas no registo (fotos do mesmo item). */
+const PDF_NC_TWO_COL_GAP_MM = 4;
+const PDF_NC_REG_INTER_ROW_GAP_MM = 4;
 
-function measureLocalizacaoBlockMm(doc, contentWidth, pad, localizacaoText, lineH) {
+function mergePhotoDescriptions(photos) {
+  const parts = (photos || []).map((p) => pdfTrim(p?.description)).filter(Boolean);
+  if (parts.length === 0) return '\u2014';
+  return parts.join(' — ');
+}
+
+/** «LOCALIZAÇÃO:» e «PROBLEMÁTICA:» em sequência, sem espaço extra entre os dois blocos. */
+function measureLocProbCombinedMm(doc, contentWidth, pad, localizacaoText, ncBody, lineH) {
   const innerW = Math.max(20, contentWidth - 2 * pad);
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
-  const bodyH = measureInlineLabelParagraphMm(
+  const hLoc = measureInlineLabelParagraphMm(
     doc,
     innerW,
     PDF_NC_LOCALIZACAO_LABEL,
     localizacaoText
   );
-  return pad + bodyH + pad;
+  const hProb = measureInlineLabelParagraphMm(doc, innerW, PDF_NC_PROBLEMATICA_LABEL, ncBody);
+  return pad + hLoc + hProb + pad;
 }
 
-function drawPdfLocalizacaoBlock(
+function drawPdfLocProbCombined(
   doc,
   tableX,
   yTop,
   contentWidth,
   pad,
   localizacaoText,
+  ncBody,
   lineH
 ) {
   const innerX = tableX + pad;
   const innerW = Math.max(20, contentWidth - 2 * pad);
   const y0 = yTop + pad + lineH * 0.85;
-  const yAfter = drawInlineLabelParagraph(
+  let y = drawInlineLabelParagraph(
     doc,
     innerX,
     innerW,
@@ -778,31 +788,8 @@ function drawPdfLocalizacaoBlock(
     localizacaoText,
     {}
   );
-  return yAfter + pad;
-}
-
-function measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH) {
-  const innerW = Math.max(20, contentWidth - 2 * pad);
-  doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_BODY_PT);
-  const bodyH = measureInlineLabelParagraphMm(doc, innerW, PDF_NC_PROBLEMATICA_LABEL, ncBody);
-  return pad + bodyH + pad;
-}
-
-function drawPdfDescricaoBlock(doc, tableX, yTop, contentWidth, pad, ncBody, lineH) {
-  const innerX = tableX + pad;
-  const innerW = Math.max(20, contentWidth - 2 * pad);
-  const y0 = yTop + pad + lineH * 0.85;
-  const yAfter = drawInlineLabelParagraph(
-    doc,
-    innerX,
-    innerW,
-    y0,
-    PDF_NC_PROBLEMATICA_LABEL,
-    ncBody,
-    {}
-  );
-  return yAfter + pad;
+  y = drawInlineLabelParagraph(doc, innerX, innerW, y, PDF_NC_PROBLEMATICA_LABEL, ncBody, {});
+  return y + pad;
 }
 
 /**
@@ -846,6 +833,149 @@ const PDF_NC_IMG_W_MM = 120;
 const PDF_NC_IMG_H_MM = 58;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
+
+function colImageDimensionsMm(colW) {
+  const maxUsableW = colW - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
+  let picW = Math.min(PDF_NC_IMG_W_MM, maxUsableW);
+  let picH = PDF_NC_IMG_H_MM * (picW / PDF_NC_IMG_W_MM);
+  return { picW, picH };
+}
+
+function measureRegistroPhotoCellHeight(doc, picW, picH, captionFromApp, photoNumber) {
+  const cap = pdfTrim(captionFromApp);
+  const capH = cap
+    ? measureRegistroCaptionHeightFromApp(doc, picW, cap, photoNumber)
+    : 0;
+  return (
+    PDF_NC_PHOTO_INNER_PAD_MM +
+    picH +
+    (capH > 0 ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM + capH : 0) +
+    PDF_NC_PHOTO_INNER_PAD_MM
+  );
+}
+
+async function drawPdfRegistroPhotoCell(doc, picX, picW, picH, yPicTop, photo) {
+  const captionFromApp = pdfTrim(photo.caption);
+  if (photo.url) {
+    try {
+      const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
+      const { width: iw, height: ih } = await getDataUrlImageDimensions(photo.url);
+      const { w: dw, h: dh } = fitLogoSizeMm(iw, ih, picW, picH);
+      const dx = picX + (picW - dw) / 2;
+      const dy = yPicTop + (picH - dh) / 2;
+      doc.addImage(photo.url, imgFmt, dx, dy, dw, dh);
+    } catch (e) {
+      console.error('Erro ao adicionar imagem (NC):', e);
+      doc.setFont(PDF_FONT, 'italic');
+      doc.setFontSize(PDF_BODY_PT);
+      doc.text('[Imagem não disponível]', picX + picW / 2, yPicTop + picH / 2, {
+        align: 'center',
+      });
+      doc.setFont(PDF_FONT, 'normal');
+    }
+  }
+  let yBelowCaption = yPicTop + picH;
+  if (captionFromApp) {
+    yBelowCaption = drawPdfRegistroFotoCaptionFromApp(
+      doc,
+      picX,
+      picW,
+      yPicTop + picH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
+      captionFromApp,
+      photo.number
+    );
+  }
+  return yBelowCaption + PDF_NC_PHOTO_INNER_PAD_MM;
+}
+
+function measureRegistroRowMm(doc, contentWidth, photosInRow) {
+  const colGap = PDF_NC_TWO_COL_GAP_MM;
+  const colW = (contentWidth - colGap) / 2;
+  const { picW, picH } = colImageDimensionsMm(colW);
+  let maxH = 0;
+  for (const photo of photosInRow) {
+    const cap = pdfTrim(photo.caption);
+    const h = measureRegistroPhotoCellHeight(doc, picW, picH, cap, photo.number);
+    maxH = Math.max(maxH, h);
+  }
+  return maxH;
+}
+
+async function drawPdfRegistroPhotoRow(doc, yRowTop, tableX, contentWidth, photosInRow) {
+  const colGap = PDF_NC_TWO_COL_GAP_MM;
+  const colW = (contentWidth - colGap) / 2;
+  const { picW, picH } = colImageDimensionsMm(colW);
+  const colLefts = [tableX, tableX + colW + colGap];
+  let maxBottom = yRowTop;
+  for (let i = 0; i < photosInRow.length; i++) {
+    const photo = photosInRow[i];
+    const colLeft = colLefts[i];
+    const picX = colLeft + (colW - picW) / 2;
+    const yPic = yRowTop + PDF_NC_PHOTO_INNER_PAD_MM;
+    const bottom = await drawPdfRegistroPhotoCell(doc, picX, picW, picH, yPic, photo);
+    maxBottom = Math.max(maxBottom, bottom);
+  }
+  return maxBottom;
+}
+
+/**
+ * Várias fotos do mesmo item: grelha 2 colunas; uma LOCALIZAÇÃO e PROBLEMÁTICA com descrições fundidas.
+ */
+async function drawPdfRegistroItemGroup(
+  doc,
+  yStart,
+  margin,
+  contentWidth,
+  roomNameUpper,
+  photos
+) {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const tableX = margin;
+  const lineH = PDF_BODY_LINE_MM;
+  const descPad = PDF_NC_DESC_PAD_MM;
+  const interRow = PDF_NC_REG_INTER_ROW_GAP_MM;
+  const locText = String(roomNameUpper || '').trim() || '\u2014';
+  const mergedProb = mergePhotoDescriptions(photos);
+
+  const rows = [];
+  for (let i = 0; i < photos.length; i += 2) {
+    rows.push(photos.slice(i, i + 2));
+  }
+
+  const rowHeights = rows.map((row) => measureRegistroRowMm(doc, contentWidth, row));
+  const textBlockH =
+    PDF_NC_AFTER_PHOTO_GAP_MM +
+    measureLocProbCombinedMm(doc, contentWidth, descPad, locText, mergedProb, lineH);
+
+  function remainingHeightFromRow(ri) {
+    let s = 0;
+    for (let j = ri; j < rows.length; j++) {
+      s += rowHeights[j];
+      if (j < rows.length - 1) s += interRow;
+    }
+    s += textBlockH;
+    return s;
+  }
+
+  let y = yStart;
+  for (let ri = 0; ri < rows.length; ri++) {
+    if (y + remainingHeightFromRow(ri) > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
+      doc.addPage();
+      y = PDF_PAGE_TOP_SAFE_MM;
+    }
+    y = await drawPdfRegistroPhotoRow(doc, y, tableX, contentWidth, rows[ri]);
+    if (ri < rows.length - 1) y += interRow;
+  }
+
+  if (y + textBlockH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
+    doc.addPage();
+    y = PDF_PAGE_TOP_SAFE_MM;
+  }
+  y += PDF_NC_AFTER_PHOTO_GAP_MM;
+  y = drawPdfLocProbCombined(doc, tableX, y, contentWidth, descPad, locText, mergedProb, lineH);
+
+  return y + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
+}
 
 /** Texto completo do capítulo ENCERRAMENTO (n.º de folhas só após fecho do documento). */
 function buildEncerramentoCompletoPdf(nFolhas) {
@@ -897,16 +1027,14 @@ async function drawPdfNaoConformidadeTable(
 
   const locText = String(roomNameUpper || '').trim() || '\u2014';
   const ncBody = pdfTrim(photo.description) || '\u2014';
-  const locH = measureLocalizacaoBlockMm(doc, contentWidth, descPad, locText, lineH);
-  const descH = measureDescricaoBlockMm(doc, contentWidth, descPad, ncBody, lineH);
+  const locProbH = measureLocProbCombinedMm(doc, contentWidth, descPad, locText, ncBody, lineH);
 
   const photoH =
     PDF_NC_PHOTO_INNER_PAD_MM +
     picH +
     (capH > 0 ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM + capH : 0) +
     PDF_NC_PHOTO_INNER_PAD_MM;
-  const totalH =
-    photoH + PDF_NC_AFTER_PHOTO_GAP_MM + locH + PDF_NC_LOC_PROB_GAP_MM + descH;
+  const totalH = photoH + PDF_NC_AFTER_PHOTO_GAP_MM + locProbH;
 
   let y = yStart;
   if (y + totalH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
@@ -948,9 +1076,7 @@ async function drawPdfNaoConformidadeTable(
   const yAfterPhotoBlock = yBelowCaption + PDF_NC_PHOTO_INNER_PAD_MM;
 
   let yText = yAfterPhotoBlock + PDF_NC_AFTER_PHOTO_GAP_MM;
-  yText = drawPdfLocalizacaoBlock(doc, tableX, yText, contentWidth, descPad, locText, lineH);
-  yText += PDF_NC_LOC_PROB_GAP_MM;
-  yText = drawPdfDescricaoBlock(doc, tableX, yText, contentWidth, descPad, ncBody, lineH);
+  yText = drawPdfLocProbCombined(doc, tableX, yText, contentWidth, descPad, locText, ncBody, lineH);
 
   return yText + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
 }
@@ -1183,7 +1309,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += PDF_PARAGRAPH_GAP_MM;
 
   const checklistTextWidth = contentWidth - PDF_LIST_INDENT_MM;
-  const ncPhotoEntries = [];
+  const ncPhotoGroups = [];
 
   if (inspection.rooms_checklist && inspection.rooms_checklist.length > 0) {
     let roomNumber = 1;
@@ -1226,10 +1352,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         yPos = drawBodyParagraphs(doc, block, listX, checklistTextWidth, yPos, checkNewPage);
         yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
 
-        for (const p of item.photos || []) {
-          if (p && p.url) {
-            ncPhotoEntries.push({ room, photo: p });
-          }
+        const photosWithUrl = (item.photos || []).filter((p) => p && p.url);
+        if (photosWithUrl.length > 0) {
+          ncPhotoGroups.push({ room, photos: photosWithUrl });
         }
       }
 
@@ -1255,7 +1380,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     `${ncChapterNum}. REGISTRO FOTOGRÁFICO`,
     { minFollowingMm: 52 }
   );
-  if (ncPhotoEntries.length === 0) {
+  if (ncPhotoGroups.length === 0) {
     yPos = drawBodyParagraphs(
       doc,
       PDF_REGISTRO_SEM_FOTOS_TEXTO,
@@ -1276,17 +1401,22 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
     let ncIdx = 0;
-    for (const { room, photo } of ncPhotoEntries) {
+    for (const { room, photos } of ncPhotoGroups) {
       ncIdx += 1;
-      yPos = await drawPdfNaoConformidadeTable(
-        doc,
-        yPos,
-        margin,
-        contentWidth,
-        ncIdx,
-        String(room.room_name || '').toUpperCase(),
-        photo
-      );
+      const roomUpper = String(room.room_name || '').toUpperCase();
+      if (photos.length === 1) {
+        yPos = await drawPdfNaoConformidadeTable(
+          doc,
+          yPos,
+          margin,
+          contentWidth,
+          ncIdx,
+          roomUpper,
+          photos[0]
+        );
+      } else {
+        yPos = await drawPdfRegistroItemGroup(doc, yPos, margin, contentWidth, roomUpper, photos);
+      }
     }
   }
 
