@@ -23,26 +23,25 @@ export const PDF_PAGE_MARGIN_BOTTOM_MM = 15;
 /** Margem lateral — alias para compatibilidade com `PDF_PAGE_MARGIN_MM`. */
 export const PDF_PAGE_MARGIN_MM = PDF_PAGE_MARGIN_SIDE_MM;
 
-/** Uma linha em branco ABNT ≈ entrelinha do corpo (12 pt × 1,5). */
+/** Uma linha do corpo (entrelinha 1,5). Usada como unidade de espaçamento dos títulos. */
 export const PDF_ABNT_BLANK_LINE_MM = PDF_BODY_LINE_MM;
 
-/** Título principal (capítulos 1., 2., …): negrito 14 pt; 1 linha em branco antes/depois (exceto no topo da página); line-height 1,15 */
+/** Título principal: espaçamento 1,5 (linhas) acima e abaixo; negrito 14 pt; line-height 1,15 */
 export const PDF_CHAPTER_TITLE_PT = 14;
-/** Reserva de altura (pior caso: linha em branco antes do título). */
-export const PDF_CHAPTER_TITLE_BEFORE_MM = PDF_ABNT_BLANK_LINE_MM;
-export const PDF_CHAPTER_TITLE_AFTER_MM = PDF_ABNT_BLANK_LINE_MM;
+export const PDF_CHAPTER_TITLE_BEFORE_MM = 1.5 * PDF_ABNT_BLANK_LINE_MM;
+export const PDF_CHAPTER_TITLE_AFTER_MM = 1.5 * PDF_ABNT_BLANK_LINE_MM;
 export const PDF_CHAPTER_LINE_MM =
   PDF_CHAPTER_TITLE_PT * PDF_PT_TO_MM * PDF_TITLE_LINE_HEIGHT_FACTOR;
 
-/** Subtítulo ABNT: 1 linha em branco antes; espaçamento menor depois. */
-export const PDF_SUBSECTION_BEFORE_MM = PDF_ABNT_BLANK_LINE_MM;
-export const PDF_SUBSECTION_AFTER_MM = 4 * PDF_PT_TO_MM;
+/** Subtítulo: 1,5 acima e 1 linha abaixo (entrelinha do corpo). */
+export const PDF_SUBSECTION_BEFORE_MM = 1.5 * PDF_ABNT_BLANK_LINE_MM;
+export const PDF_SUBSECTION_AFTER_MM = 1 * PDF_ABNT_BLANK_LINE_MM;
 export const PDF_SUBSECTION_LINE_MM =
   PDF_BODY_PT * PDF_PT_TO_MM * PDF_TITLE_LINE_HEIGHT_FACTOR;
 
-/** Nível «elementos» (ambientes): alinhado ao subtítulo — 1 linha antes; folga menor depois. */
-export const PDF_ELEMENT_TITLE_BEFORE_MM = PDF_ABNT_BLANK_LINE_MM;
-export const PDF_ELEMENT_TITLE_AFTER_MM = 3 * PDF_PT_TO_MM;
+/** Títulos de ambiente (nível elemento): mesmo ritmo do subtítulo. */
+export const PDF_ELEMENT_TITLE_BEFORE_MM = 1.5 * PDF_ABNT_BLANK_LINE_MM;
+export const PDF_ELEMENT_TITLE_AFTER_MM = 1 * PDF_ABNT_BLANK_LINE_MM;
 
 /** Reserva mínima sob o título para não deixar título órfão no fim da página */
 export const PDF_CHAPTER_KEEP_WITH_NEXT_MM = 36;

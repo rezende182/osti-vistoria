@@ -397,8 +397,17 @@ function buildIdentificacaoTableBody(inspection) {
 }
 
 /**
- * Títulos ABNT no corpo do laudo: «N. TÍTULO» → primeira letra maiúscula, restante em minúsculas (pt-BR).
- * Não aplicar à capa.
+ * Títulos principais do laudo (capítulos): texto após o número todo em MAIÚSCULAS. Não aplicar à capa.
+ */
+function pdfChapterTitleUpperCase(fullTitle) {
+  const t = String(fullTitle ?? '').trim();
+  const m = /^(\d+(?:\.\d+)*)\s+([\s\S]+)$/.exec(t);
+  if (!m) return t.toLocaleUpperCase('pt-BR');
+  return `${m[1]} ${m[2].trim().toLocaleUpperCase('pt-BR')}`.trim();
+}
+
+/**
+ * Subtítulos (ex. 3.1): só a primeira letra em maiúscula; resto em minúsculas (pt-BR).
  */
 function pdfAbntHeadingTitleCase(fullTitle) {
   const t = String(fullTitle ?? '').trim();
@@ -412,12 +421,63 @@ function pdfAbntHeadingTitleCase(fullTitle) {
   return `${m[1]} ${text}`.trim();
 }
 
-/** Título de ambiente no checklist (N.M nome do ambiente), mesma regra de capitalização. */
+/** Título de ambiente (N.M nome): mesma regra dos subtítulos (primeira letra maiúscula). */
 function pdfAbntElementRoomLine(chapterNum, roomIndex, roomNameRaw) {
   const raw = String(roomNameRaw ?? '').trim();
   const lower = raw.toLocaleLowerCase('pt-BR');
   const title = raw ? lower.charAt(0).toUpperCase() + lower.slice(1) : '\u2014';
   return pdfAbntHeadingTitleCase(`${chapterNum}.${roomIndex} ${title}`);
+}
+
+function measureChapterTitleBlockMm(doc, contentWidth, titleText, yStart, topReset) {
+  const blankBefore =
+    yStart <= topReset + 0.5 ? 0 : PDF_CHAPTER_TITLE_BEFORE_MM;
+  doc.setFont(PDF_FONT, 'bold');
+  doc.setFontSize(PDF_CHAPTER_TITLE_PT);
+  const lines = doc.splitTextToSize(String(titleText), contentWidth);
+  return blankBefore + lines.length * PDF_CHAPTER_LINE_MM + PDF_CHAPTER_TITLE_AFTER_MM;
+}
+
+/** Altura estimada da tabela de identificação (autoTable), para manter título + tabela na mesma página. */
+function estimateIdentificacaoTableHeightMm(
+  doc,
+  rows,
+  contentWidth,
+  identLabelColW,
+  identValuePairW
+) {
+  const valueWColSpan3 = identLabelColW + 2 * identValuePairW;
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_IDENT_TABLE_PT);
+  const lh = PDF_IDENT_TABLE_PT * PDF_PT_TO_MM * 1.45;
+  let h = 0;
+  for (const row of rows) {
+    if (!row || !row.length) continue;
+    const first = row[0];
+    if (row.length === 1 && first && first.colSpan === 4) {
+      const txt = String(first.content ?? '');
+      const n = Math.max(1, doc.splitTextToSize(txt, contentWidth - 8).length);
+      h += n * lh + 5;
+      continue;
+    }
+    if (row.length === 2 && row[1] && row[1].colSpan === 3) {
+      const txt = String(row[1].content ?? '');
+      const n = Math.max(1, doc.splitTextToSize(txt, valueWColSpan3 - 4).length);
+      h += n * lh + PDF_IDENT_TABLE_CELL_PAD * 2 + 1;
+      continue;
+    }
+    if (row.length >= 4) {
+      const t1 = String(row[1]?.content ?? row[1] ?? '');
+      const t3 = String(row[3]?.content ?? row[3] ?? '');
+      const n = Math.max(
+        1,
+        doc.splitTextToSize(t1, identValuePairW - 2).length,
+        doc.splitTextToSize(t3, identValuePairW - 2).length
+      );
+      h += n * lh + PDF_IDENT_TABLE_CELL_PAD * 2 + 1;
+    }
+  }
+  return h + 12;
 }
 
 /** Texto fixo da secção 2. INTRODUÇÃO (fluxo sem Objetivo/Especificações) com dados da identificação. */
@@ -1389,24 +1449,49 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   doc.addPage();
   doc.setTextColor(0, 0, 0);
 
+  const entregaLaudoExt = isEntregaImovelLaudoExtended(inspection);
+  const objChapterNum = 2;
+  const especChapterNum = 3;
+  const metodologiaChapterNum = 4;
+  const checklistChapterNum = entregaLaudoExt ? 5 : 3;
+  const ncChapterNum = entregaLaudoExt ? 6 : 4;
+  const conclusaoChapterNum = entregaLaudoExt ? 7 : 5;
+  const encerramentoChapterNum = entregaLaudoExt ? 8 : 6;
+
   // ============================================================
   // Corpo do laudo (após capa)
   // 1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA
   // ============================================================
-  yPos = drawChapterTitle(
-    doc,
-    margin,
-    contentWidth,
-    yPos,
-    pdfAbntHeadingTitleCase('1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA'),
-    { minFollowingMm: 28 }
-  );
-
   const identificacaoData = buildIdentificacaoTableBody(inspection);
-
-  /** Largura do rótulo suficiente para «Empreendimento / Construtora» sem partir palavras. */
   const identLabelColW = 48;
   const identValuePairW = Math.max(24, (contentWidth - identLabelColW * 2) / 2);
+
+  const titleIdentificacao = pdfChapterTitleUpperCase('1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA');
+  const hIdentTitle = measureChapterTitleBlockMm(
+    doc,
+    contentWidth,
+    titleIdentificacao,
+    yPos,
+    PDF_PAGE_TOP_SAFE_MM
+  );
+  const hIdentTable = estimateIdentificacaoTableHeightMm(
+    doc,
+    identificacaoData,
+    contentWidth,
+    identLabelColW,
+    identValuePairW
+  );
+  if (
+    yPos + hIdentTitle + hIdentTable >
+    pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM
+  ) {
+    doc.addPage();
+    yPos = PDF_PAGE_TOP_SAFE_MM;
+  }
+
+  yPos = drawChapterTitle(doc, margin, contentWidth, yPos, titleIdentificacao, {
+    minFollowingMm: 28,
+  });
 
   autoTable(doc, {
     startY: yPos,
@@ -1443,32 +1528,34 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const docsList = Array.isArray(inspection.documentos_recebidos)
     ? inspection.documentos_recebidos.filter((d) => pdfTrim(d))
     : [];
-  const entregaLaudoExt = isEntregaImovelLaudoExtended(inspection);
-
-  /** Numeração sequencial ABNT (sem saltar o 2.º nível). */
-  const objChapterNum = 2;
-  const especChapterNum = 3;
-  const metodologiaChapterNum = 4;
-  const checklistChapterNum = entregaLaudoExt ? 5 : 3;
-  const ncChapterNum = entregaLaudoExt ? 6 : 4;
-  const conclusaoChapterNum = entregaLaudoExt ? 7 : 5;
-  const encerramentoChapterNum = entregaLaudoExt ? 8 : 6;
 
   if (entregaLaudoExt) {
     const objT = pdfTrim(inspection.laudo_objetivo);
-    yPos = drawChapterTitle(
+    const objBody = objT || '\u2014';
+    const titleObjetivo = pdfChapterTitleUpperCase(`${objChapterNum}. OBJETIVO`);
+    const hObjTitle = measureChapterTitleBlockMm(
       doc,
-      margin,
       contentWidth,
+      titleObjetivo,
       yPos,
-      pdfAbntHeadingTitleCase(`${objChapterNum}. OBJETIVO`),
-      {
-        minFollowingMm: 28,
-      }
+      PDF_PAGE_TOP_SAFE_MM
     );
+    const hObjBody = measureBodyParagraphsHeightMm(doc, objBody, contentWidth);
+    const usableH =
+      pageHeight - PDF_PAGE_TOP_SAFE_MM - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
+    if (
+      hObjTitle + hObjBody <= usableH &&
+      yPos + hObjTitle + hObjBody > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM
+    ) {
+      doc.addPage();
+      yPos = PDF_PAGE_TOP_SAFE_MM;
+    }
+    yPos = drawChapterTitle(doc, margin, contentWidth, yPos, titleObjetivo, {
+      minFollowingMm: 28,
+    });
     yPos = drawBodyParagraphs(
       doc,
-      objT || '\u2014',
+      objBody,
       margin,
       contentWidth,
       yPos,
@@ -1476,9 +1563,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       laudoBodyParagraphsOpts
     );
   }
-
-  doc.addPage();
-  yPos = PDF_PAGE_TOP_SAFE_MM;
 
   if (entregaLaudoExt) {
     const metaText = finalizeLaudoMetodologiaPdf(inspection, ncChapterNum);
@@ -1488,7 +1572,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      pdfAbntHeadingTitleCase(`${especChapterNum}. ESPECIFICAÇÕES TÉCNICAS`),
+      pdfChapterTitleUpperCase(`${especChapterNum}. ESPECIFICAÇÕES TÉCNICAS`),
       {
         minFollowingMm: 32,
       }
@@ -1552,7 +1636,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      pdfAbntHeadingTitleCase(`${metodologiaChapterNum}. METODOLOGIA`),
+      pdfChapterTitleUpperCase(`${metodologiaChapterNum}. METODOLOGIA`),
       {
         minFollowingMm: 36,
       }
@@ -1573,7 +1657,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      pdfAbntHeadingTitleCase(`${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`),
+      pdfChapterTitleUpperCase(`${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`),
       { minFollowingMm: 52 }
     );
   } else {
@@ -1585,7 +1669,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      pdfAbntHeadingTitleCase('2. INTRODUÇÃO'),
+      pdfChapterTitleUpperCase('2. INTRODUÇÃO'),
       { minFollowingMm: 45 }
     );
 
@@ -1610,7 +1694,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      pdfAbntHeadingTitleCase(`${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`),
+      pdfChapterTitleUpperCase(`${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`),
       { minFollowingMm: 52 }
     );
   }
@@ -1703,7 +1787,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    pdfAbntHeadingTitleCase(`${ncChapterNum}. REGISTRO FOTOGRÁFICO`),
+    pdfChapterTitleUpperCase(`${ncChapterNum}. REGISTRO FOTOGRÁFICO`),
     { minFollowingMm: 52 }
   );
   if (ncPhotoGroups.length === 0) {
@@ -1764,7 +1848,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    pdfAbntHeadingTitleCase(`${conclusaoChapterNum}. CONCLUSÃO`),
+    pdfChapterTitleUpperCase(`${conclusaoChapterNum}. CONCLUSÃO`),
     {
       minFollowingMm: 52,
     }
@@ -1803,7 +1887,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   /** Reserva com n.º de folhas “máximo”; texto final desenhado depois do fecho do PDF. */
   const reservedEncH = measureEncerramentoCompletoMm(doc, contentWidth, 99999);
-  const encTitleText = pdfAbntHeadingTitleCase(`${encerramentoChapterNum}. ENCERRAMENTO`);
+  const encTitleText = pdfChapterTitleUpperCase(`${encerramentoChapterNum}. ENCERRAMENTO`);
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_CHAPTER_TITLE_PT);
   const encTitleLines = doc.splitTextToSize(encTitleText, contentWidth);
