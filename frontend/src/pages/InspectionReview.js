@@ -265,10 +265,10 @@ const InspectionReview = () => {
             </div>
           </div>
 
-          {/* Corpo do parecer (conclusão) */}
+          {/* Conclusão / observações finais */}
           <div className="mb-6 rounded-lg">
             <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-              Texto do parecer
+              Conclusão/Observações gerais
             </label>
             <textarea
               data-testid="conclusao-textarea"

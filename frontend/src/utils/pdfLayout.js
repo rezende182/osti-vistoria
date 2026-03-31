@@ -596,7 +596,7 @@ export function drawResponsavelAssinaturaSection(
   if (texto) {
     doc.text(texto, pageWidth - margin, y, { align: 'right' });
   }
-  y += texto ? 12 : 4;
+  y += texto ? 16 : 4;
 
   y += signatureAreaMm;
 

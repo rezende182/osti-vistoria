@@ -1059,23 +1059,25 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       checkNewPage
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
-    PDF_ESPECIFICACOES_NORMAS.forEach((ln) => {
-      checkNewPage(10);
-      doc.text(`\u2013 ${ln}`, margin, yPos);
-      yPos += PDF_BODY_LINE_MM;
+    const refItens = [
+      ...PDF_ESPECIFICACOES_NORMAS,
+      ...(docsList.length > 0 ? docsList : []),
+    ];
+    const nRef = refItens.length;
+    refItens.forEach((raw, refIdx) => {
+      checkNewPage(18);
+      const base = pdfTrim(String(raw)).replace(/[.;]\s*$/, '');
+      const punct = refIdx === nRef - 1 ? '.' : ';';
+      const line = `\u2013 ${base}${punct}`;
+      const wrapped = doc.splitTextToSize(line, contentWidth);
+      wrapped.forEach((wln) => {
+        checkNewPage(8);
+        doc.text(wln, margin, yPos);
+        yPos += PDF_BODY_LINE_MM;
+      });
     });
     yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
-    if (docsList.length > 0) {
-      docsList.forEach((docItem) => {
-        checkNewPage(18);
-        const wrapped = doc.splitTextToSize(`\u2013 ${docItem}`, contentWidth);
-        wrapped.forEach((wln) => {
-          checkNewPage(8);
-          doc.text(wln, margin, yPos);
-          yPos += PDF_BODY_LINE_MM;
-        });
-      });
-    } else {
+    if (docsList.length === 0) {
       yPos = drawBodyParagraphs(
         doc,
         PDF_ESPECIFICACOES_SEM_DOCS,
@@ -1322,6 +1324,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   checkNewPage(36);
   yPos += PDF_PARAGRAPH_GAP_MM * 1.5;
+  /** Espaço extra entre o fim do texto do encerramento e a linha local/data (assinatura). */
+  yPos += 10;
 
   const responsavel = inspection.responsavel_final || inspection.responsavel_tecnico || '-';
   const crea = inspection.crea_final || inspection.crea || '-';
