@@ -1219,16 +1219,6 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     `${ncChapterNum}. REGISTRO FOTOGRÁFICO`,
     { minFollowingMm: 52 }
   );
-  yPos = drawBodyParagraphs(
-    doc,
-    PDF_REGISTRO_FOTOGRAFICO_INTRO,
-    margin,
-    contentWidth,
-    yPos,
-    checkNewPage
-  );
-  yPos += PDF_PARAGRAPH_GAP_MM;
-
   if (ncPhotoEntries.length === 0) {
     yPos = drawBodyParagraphs(
       doc,
@@ -1240,6 +1230,15 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
   } else {
+    yPos = drawBodyParagraphs(
+      doc,
+      PDF_REGISTRO_FOTOGRAFICO_INTRO,
+      margin,
+      contentWidth,
+      yPos,
+      checkNewPage
+    );
+    yPos += PDF_PARAGRAPH_GAP_MM;
     let ncIdx = 0;
     for (const { room, photo } of ncPhotoEntries) {
       ncIdx += 1;
