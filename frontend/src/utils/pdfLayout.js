@@ -23,22 +23,26 @@ export const PDF_PAGE_MARGIN_BOTTOM_MM = 15;
 /** Margem lateral — alias para compatibilidade com `PDF_PAGE_MARGIN_MM`. */
 export const PDF_PAGE_MARGIN_MM = PDF_PAGE_MARGIN_SIDE_MM;
 
-/** Título principal (capítulos 1., 2., …): negrito 14 pt; margin-top 12 pt / margin-bottom 6 pt; line-height 1,15 */
+/** Uma linha em branco ABNT ≈ entrelinha do corpo (12 pt × 1,5). */
+export const PDF_ABNT_BLANK_LINE_MM = PDF_BODY_LINE_MM;
+
+/** Título principal (capítulos 1., 2., …): negrito 14 pt; 1 linha em branco antes/depois (exceto no topo da página); line-height 1,15 */
 export const PDF_CHAPTER_TITLE_PT = 14;
-export const PDF_CHAPTER_TITLE_BEFORE_MM = 12 * PDF_PT_TO_MM;
-export const PDF_CHAPTER_TITLE_AFTER_MM = 6 * PDF_PT_TO_MM;
+/** Reserva de altura (pior caso: linha em branco antes do título). */
+export const PDF_CHAPTER_TITLE_BEFORE_MM = PDF_ABNT_BLANK_LINE_MM;
+export const PDF_CHAPTER_TITLE_AFTER_MM = PDF_ABNT_BLANK_LINE_MM;
 export const PDF_CHAPTER_LINE_MM =
   PDF_CHAPTER_TITLE_PT * PDF_PT_TO_MM * PDF_TITLE_LINE_HEIGHT_FACTOR;
 
-/** Subtítulo (ex.: 4.1 Referências): negrito 12 pt; margin-top 10 pt / margin-bottom 4 pt; line-height 1,15 */
-export const PDF_SUBSECTION_BEFORE_MM = 10 * PDF_PT_TO_MM;
+/** Subtítulo ABNT: 1 linha em branco antes; espaçamento menor depois. */
+export const PDF_SUBSECTION_BEFORE_MM = PDF_ABNT_BLANK_LINE_MM;
 export const PDF_SUBSECTION_AFTER_MM = 4 * PDF_PT_TO_MM;
 export const PDF_SUBSECTION_LINE_MM =
   PDF_BODY_PT * PDF_PT_TO_MM * PDF_TITLE_LINE_HEIGHT_FACTOR;
 
-/** Nível «elementos» (ex.: título de ambiente no checklist): margin-top 6 pt / margin-bottom 2 pt; line-height 1,15 */
-export const PDF_ELEMENT_TITLE_BEFORE_MM = 6 * PDF_PT_TO_MM;
-export const PDF_ELEMENT_TITLE_AFTER_MM = 2 * PDF_PT_TO_MM;
+/** Nível «elementos» (ambientes): alinhado ao subtítulo — 1 linha antes; folga menor depois. */
+export const PDF_ELEMENT_TITLE_BEFORE_MM = PDF_ABNT_BLANK_LINE_MM;
+export const PDF_ELEMENT_TITLE_AFTER_MM = 3 * PDF_PT_TO_MM;
 
 /** Reserva mínima sob o título para não deixar título órfão no fim da página */
 export const PDF_CHAPTER_KEEP_WITH_NEXT_MM = 36;
@@ -414,8 +418,13 @@ const defaultPageOpts = () => ({
   topMarginMm: PDF_PAGE_TOP_SAFE_MM,
 });
 
+/** Linha em branco ABNT antes do título; no topo útil da página não se antecipa linha extra. */
+function pdfAbntMarginTopMm(y, topReset, blankMm) {
+  return y <= topReset + 0.5 ? 0 : blankMm;
+}
+
 /**
- * Título principal: negrito 14 pt; margin-top 12 pt / margin-bottom 6 pt; line-height 1,15 (quebra de página se necessário).
+ * Título principal (ABNT): 1 linha em branco antes e depois; negrito 14 pt; line-height 1,15.
  * `options.minFollowingMm` — se não couber título + este espaço para o conteúdo seguinte, quebra antes do título.
  */
 export function drawChapterTitle(doc, margin, contentWidth, yStart, title, options = {}) {
@@ -441,7 +450,7 @@ export function drawChapterTitle(doc, margin, contentWidth, yStart, title, optio
     doc.addPage();
     y = topReset;
   }
-  y += PDF_CHAPTER_TITLE_BEFORE_MM;
+  y += pdfAbntMarginTopMm(y, topReset, PDF_CHAPTER_TITLE_BEFORE_MM);
 
   lines.forEach((ln) => {
     if (y + lineH > pageHeight - bottomSafe) {
@@ -456,7 +465,7 @@ export function drawChapterTitle(doc, margin, contentWidth, yStart, title, optio
 }
 
 /**
- * Subtítulo de secção (ex.: 4.1 Referências): negrito 12 pt; margin-top 10 pt / margin-bottom 4 pt; line-height 1,15.
+ * Subtítulo (ABNT): 1 linha em branco antes; espaço menor depois; negrito 12 pt; line-height 1,15.
  * `options.minFollowingMm` — mantém subtítulo junto ao início do conteúdo seguinte.
  */
 export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, options = {}) {
@@ -482,7 +491,7 @@ export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, op
     doc.addPage();
     y = topReset;
   }
-  y += PDF_SUBSECTION_BEFORE_MM;
+  y += pdfAbntMarginTopMm(y, topReset, PDF_SUBSECTION_BEFORE_MM);
 
   lines.forEach((ln) => {
     if (y + lineH > pageHeight - bottomSafe) {
@@ -497,7 +506,7 @@ export function drawSubsectionTitle(doc, margin, contentWidth, yStart, title, op
 }
 
 /**
- * Título de nível «elemento» (ex.: ambiente no checklist): negrito 12 pt; margin-top 6 pt / margin-bottom 2 pt; line-height 1,15.
+ * Título de nível «elemento» (ex.: ambiente no checklist): como subtítulo ABNT; negrito 12 pt; line-height 1,15.
  */
 export function drawElementTitle(doc, margin, contentWidth, yStart, title, options = {}) {
   const {
@@ -522,7 +531,7 @@ export function drawElementTitle(doc, margin, contentWidth, yStart, title, optio
     doc.addPage();
     y = topReset;
   }
-  y += PDF_ELEMENT_TITLE_BEFORE_MM;
+  y += pdfAbntMarginTopMm(y, topReset, PDF_ELEMENT_TITLE_BEFORE_MM);
 
   lines.forEach((ln) => {
     if (y + lineH > pageHeight - bottomSafe) {

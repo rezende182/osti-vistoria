@@ -396,7 +396,31 @@ function buildIdentificacaoTableBody(inspection) {
   return rows.filter(Boolean);
 }
 
-/** Texto fixo da secção 3. INTRODUÇÃO com dados da identificação. */
+/**
+ * Títulos ABNT no corpo do laudo: «N. TÍTULO» → primeira letra maiúscula, restante em minúsculas (pt-BR).
+ * Não aplicar à capa.
+ */
+function pdfAbntHeadingTitleCase(fullTitle) {
+  const t = String(fullTitle ?? '').trim();
+  const m = /^(\d+(?:\.\d+)*)\s+([\s\S]+)$/.exec(t);
+  if (!m) {
+    const lower = t.toLocaleLowerCase('pt-BR');
+    return lower ? lower.charAt(0).toUpperCase() + lower.slice(1) : t;
+  }
+  const rest = m[2].trim().toLocaleLowerCase('pt-BR');
+  const text = rest ? rest.charAt(0).toUpperCase() + rest.slice(1) : '';
+  return `${m[1]} ${text}`.trim();
+}
+
+/** Título de ambiente no checklist (N.M nome do ambiente), mesma regra de capitalização. */
+function pdfAbntElementRoomLine(chapterNum, roomIndex, roomNameRaw) {
+  const raw = String(roomNameRaw ?? '').trim();
+  const lower = raw.toLocaleLowerCase('pt-BR');
+  const title = raw ? lower.charAt(0).toUpperCase() + lower.slice(1) : '\u2014';
+  return pdfAbntHeadingTitleCase(`${chapterNum}.${roomIndex} ${title}`);
+}
+
+/** Texto fixo da secção 2. INTRODUÇÃO (fluxo sem Objetivo/Especificações) com dados da identificação. */
 function buildPdfIntroducaoText(inspection) {
   const loc = formatPdfIntroLocalizacao(inspection);
   const fluxo = String(inspection.tipo_vistoria_fluxo || '').trim();
@@ -1374,7 +1398,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    '1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA',
+    pdfAbntHeadingTitleCase('1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA'),
     { minFollowingMm: 28 }
   );
 
@@ -1421,11 +1445,27 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     : [];
   const entregaLaudoExt = isEntregaImovelLaudoExtended(inspection);
 
+  /** Numeração sequencial ABNT (sem saltar o 2.º nível). */
+  const objChapterNum = 2;
+  const especChapterNum = 3;
+  const metodologiaChapterNum = 4;
+  const checklistChapterNum = entregaLaudoExt ? 5 : 3;
+  const ncChapterNum = entregaLaudoExt ? 6 : 4;
+  const conclusaoChapterNum = entregaLaudoExt ? 7 : 5;
+  const encerramentoChapterNum = entregaLaudoExt ? 8 : 6;
+
   if (entregaLaudoExt) {
     const objT = pdfTrim(inspection.laudo_objetivo);
-    yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '3. OBJETIVO', {
-      minFollowingMm: 28,
-    });
+    yPos = drawChapterTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      pdfAbntHeadingTitleCase(`${objChapterNum}. OBJETIVO`),
+      {
+        minFollowingMm: 28,
+      }
+    );
     yPos = drawBodyParagraphs(
       doc,
       objT || '\u2014',
@@ -1440,20 +1480,29 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   doc.addPage();
   yPos = PDF_PAGE_TOP_SAFE_MM;
 
-  const checklistChapterNum = entregaLaudoExt ? 6 : 4;
-  const ncChapterNum = entregaLaudoExt ? 7 : 5;
-  const conclusaoChapterNum = entregaLaudoExt ? 8 : 6;
-  const encerramentoChapterNum = entregaLaudoExt ? 9 : 7;
-
   if (entregaLaudoExt) {
     const metaText = finalizeLaudoMetodologiaPdf(inspection, ncChapterNum);
 
-    yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '4. ESPECIFICAÇÕES TÉCNICAS', {
-      minFollowingMm: 32,
-    });
-    yPos = drawSubsectionTitle(doc, margin, contentWidth, yPos, '4.1 Referências', {
-      minFollowingMm: 28,
-    });
+    yPos = drawChapterTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      pdfAbntHeadingTitleCase(`${especChapterNum}. ESPECIFICAÇÕES TÉCNICAS`),
+      {
+        minFollowingMm: 32,
+      }
+    );
+    yPos = drawSubsectionTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      pdfAbntHeadingTitleCase(`${especChapterNum}.1 Referências`),
+      {
+        minFollowingMm: 28,
+      }
+    );
     doc.setFont(PDF_FONT, 'normal');
     doc.setFontSize(PDF_BODY_PT);
     doc.setTextColor(0, 0, 0);
@@ -1498,9 +1547,16 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     }
 
     checkNewPage(40);
-    yPos = drawChapterTitle(doc, margin, contentWidth, yPos, '5. METODOLOGIA', {
-      minFollowingMm: 36,
-    });
+    yPos = drawChapterTitle(
+      doc,
+      margin,
+      contentWidth,
+      yPos,
+      pdfAbntHeadingTitleCase(`${metodologiaChapterNum}. METODOLOGIA`),
+      {
+        minFollowingMm: 36,
+      }
+    );
     yPos = drawBodyParagraphs(
       doc,
       metaText || '\u2014',
@@ -1517,19 +1573,19 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       margin,
       contentWidth,
       yPos,
-      `${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`,
+      pdfAbntHeadingTitleCase(`${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`),
       { minFollowingMm: 52 }
     );
   } else {
     // ============================================================
-    // 3. INTRODUÇÃO
+    // 2. INTRODUÇÃO
     // ============================================================
     yPos = drawChapterTitle(
       doc,
       margin,
       contentWidth,
       yPos,
-      '3. INTRODUÇÃO',
+      pdfAbntHeadingTitleCase('2. INTRODUÇÃO'),
       { minFollowingMm: 45 }
     );
 
@@ -1547,14 +1603,14 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
 
     // ============================================================
-    // 4. VERIFICAÇÃO DOS AMBIENTES (após introdução; fluxo sem bloco Metodologia separado)
+    // 3. VERIFICAÇÃO DOS AMBIENTES (após introdução; fluxo sem Metodologia/Especificações)
     // ============================================================
     yPos = drawChapterTitle(
       doc,
       margin,
       contentWidth,
       yPos,
-      `${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`,
+      pdfAbntHeadingTitleCase(`${checklistChapterNum}. VERIFICAÇÃO DOS AMBIENTES`),
       { minFollowingMm: 52 }
     );
   }
@@ -1593,7 +1649,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         margin,
         contentWidth,
         yPos,
-        `${checklistChapterNum}.${roomNumber} ${room.room_name.toUpperCase()}`
+        pdfAbntElementRoomLine(checklistChapterNum, roomNumber, room.room_name)
       );
 
       for (let itemIdx = 0; itemIdx < itensNoPdf.length; itemIdx++) {
@@ -1647,7 +1703,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     margin,
     contentWidth,
     yPos,
-    `${ncChapterNum}. REGISTRO FOTOGRÁFICO`,
+    pdfAbntHeadingTitleCase(`${ncChapterNum}. REGISTRO FOTOGRÁFICO`),
     { minFollowingMm: 52 }
   );
   if (ncPhotoGroups.length === 0) {
@@ -1702,14 +1758,13 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   // CONCLUSÃO
   // ============================================================
-  yPos += PDF_CHAPTER_TITLE_BEFORE_MM;
   checkNewPage(40);
   yPos = drawChapterTitle(
     doc,
     margin,
     contentWidth,
     yPos,
-    `${conclusaoChapterNum}. CONCLUSÃO`,
+    pdfAbntHeadingTitleCase(`${conclusaoChapterNum}. CONCLUSÃO`),
     {
       minFollowingMm: 52,
     }
@@ -1748,7 +1803,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   /** Reserva com n.º de folhas “máximo”; texto final desenhado depois do fecho do PDF. */
   const reservedEncH = measureEncerramentoCompletoMm(doc, contentWidth, 99999);
-  const encTitleText = `${encerramentoChapterNum}. ENCERRAMENTO`;
+  const encTitleText = pdfAbntHeadingTitleCase(`${encerramentoChapterNum}. ENCERRAMENTO`);
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_CHAPTER_TITLE_PT);
   const encTitleLines = doc.splitTextToSize(encTitleText, contentWidth);
