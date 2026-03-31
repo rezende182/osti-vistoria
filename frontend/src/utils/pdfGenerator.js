@@ -1227,35 +1227,41 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (foto + legenda; texto sem moldura) ---------- */
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/**
- * Proporção da caixa de foto em registo com uma imagem: a largura real é a área útil
- * (`contentWidth` menos padding lateral); a altura escala com a mesma razão 126:58.
- */
-const PDF_NC_IMG_W_MM = 126;
-const PDF_NC_IMG_H_MM = 58;
+/** Caixa padrão do registo fotográfico: 8,5 cm × 6 cm (largura × altura). */
+const PDF_NC_IMG_W_MM = 85;
+const PDF_NC_IMG_H_MM = 60;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
 /**
- * Registo em par: proporção altura/largura da caixa = `PDF_NC_IMG_H_MM` / `PDF_REG_PAIR_IMG_W_MM`.
- * Largura útil inteira em duas colunas; vão entre fotos (`PDF_REG_PAIR_GAP_MM` mm).
+ * Duas fotos na mesma linha: vão mínimo (8,5 + 8,5 cm ≈ largura útil A4 em mm).
+ * Se a área útil for mais estreita, a caixa 8,5×6 escala uniformemente para caber.
  */
-const PDF_REG_PAIR_GAP_MM = 0.2;
-const PDF_REG_PAIR_IMG_W_MM = 85;
+const PDF_REG_PAIR_GAP_MM = 0;
 const PDF_REG_PAIR_ROW_GAP_MM = 4;
 
 function registroPairLayoutScaled(contentWidth) {
   const cw = Math.max(40, contentWidth);
   const gap = PDF_REG_PAIR_GAP_MM;
-  const colW = (cw - gap) / 2;
-  const imgW = colW;
-  const imgH = colW * (PDF_NC_IMG_H_MM / PDF_REG_PAIR_IMG_W_MM);
-  const scale = colW / PDF_REG_PAIR_IMG_W_MM;
-  /** Linha com uma só foto: largura total (mesma lógica que `drawPdfNaoConformidadeTable`). */
-  const maxUsableW = cw - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-  const singleRowImgW = maxUsableW;
-  const singleRowImgH = PDF_NC_IMG_H_MM * (singleRowImgW / PDF_NC_IMG_W_MM);
-  return { colW, gap, imgW, imgH, scale, singleRowImgW, singleRowImgH };
+  let imgW = PDF_NC_IMG_W_MM;
+  let imgH = PDF_NC_IMG_H_MM;
+  const totalPairW = 2 * imgW + gap;
+  if (totalPairW > cw) {
+    const s = cw / totalPairW;
+    imgW *= s;
+    imgH *= s;
+  }
+  const colW = imgW;
+  const scale = imgW / PDF_NC_IMG_W_MM;
+  return {
+    colW,
+    gap,
+    imgW,
+    imgH,
+    scale,
+    singleRowImgW: imgW,
+    singleRowImgH: imgH,
+  };
 }
 
 /** Junta todas as descrições NC das fotos do mesmo item num único texto seguido (espaço; sem travessões). */
@@ -1330,8 +1336,8 @@ async function drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPicTop, photo) {
 }
 
 /**
- * Linha 1×2: duas colunas com largura máxima e vão mínimo. Uma foto na linha: largura útil inteira
- * (ex.: terceira foto de um grupo de 3), alinhada ao bloco de uma foto isolada no mesmo capítulo.
+ * Linha 1×2: duas caixas 8,5×6 cm (ou a mesma caixa escalada se a página for estreita).
+ * Uma foto na linha: mesma caixa, centrada (ex.: terceira foto de um grupo de 3).
  */
 async function drawPdfRegistroPairRow(doc, yRowTop, tableX, contentWidth, photosInRow, layout) {
   const { colW, gap, imgW, imgH, singleRowImgW, singleRowImgH } = layout;
@@ -1450,8 +1456,13 @@ async function drawPdfNaoConformidadeTable(
   const descPad = PDF_NC_DESC_PAD_MM;
 
   const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-  const picW = maxUsableW;
-  const picH = PDF_NC_IMG_H_MM * (picW / PDF_NC_IMG_W_MM);
+  let picW = PDF_NC_IMG_W_MM;
+  let picH = PDF_NC_IMG_H_MM;
+  if (picW > maxUsableW) {
+    const s = maxUsableW / picW;
+    picW *= s;
+    picH *= s;
+  }
   const picX = tableX + (contentWidth - picW) / 2;
 
   const captionFromApp = pdfTrim(photo.caption);
