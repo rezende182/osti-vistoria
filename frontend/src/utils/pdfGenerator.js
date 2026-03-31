@@ -17,6 +17,7 @@ import {
   PDF_CHAPTER_TITLE_PT,
   PDF_CHAPTER_TITLE_BEFORE_MM,
   PDF_CHAPTER_TITLE_AFTER_MM,
+  PDF_ABNT_BLANK_LINE_MM,
   PDF_CHAPTER_LINE_MM,
   PDF_LIST_INDENT_MM,
   PDF_LIST_ITEM_EXTRA_GAP_MM,
@@ -429,13 +430,20 @@ function pdfAbntElementRoomLine(chapterNum, roomIndex, roomNameRaw) {
   return pdfAbntHeadingTitleCase(`${chapterNum}.${roomIndex} ${title}`);
 }
 
-function measureChapterTitleBlockMm(doc, contentWidth, titleText, yStart, topReset) {
-  const blankBefore =
-    yStart <= topReset + 0.5 ? 0 : PDF_CHAPTER_TITLE_BEFORE_MM;
+function measureChapterTitleBlockMm(
+  doc,
+  contentWidth,
+  titleText,
+  yStart,
+  topReset,
+  beforeMm = PDF_CHAPTER_TITLE_BEFORE_MM,
+  afterMm = PDF_CHAPTER_TITLE_AFTER_MM
+) {
+  const blankBefore = yStart <= topReset + 0.5 ? 0 : beforeMm;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_CHAPTER_TITLE_PT);
   const lines = doc.splitTextToSize(String(titleText), contentWidth);
-  return blankBefore + lines.length * PDF_CHAPTER_LINE_MM + PDF_CHAPTER_TITLE_AFTER_MM;
+  return blankBefore + lines.length * PDF_CHAPTER_LINE_MM + afterMm;
 }
 
 /** Altura estimada da tabela de identificação (autoTable), para manter título + tabela na mesma página. */
@@ -1467,12 +1475,17 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const identValuePairW = Math.max(24, (contentWidth - identLabelColW * 2) / 2);
 
   const titleIdentificacao = pdfChapterTitleUpperCase('1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA');
+  /** Espaçamento do título «Identificação»: 1 linha acima/abaixo (como antes do 1,5× nos outros capítulos). */
+  const identificacaoTituloBeforeMm = PDF_ABNT_BLANK_LINE_MM;
+  const identificacaoTituloAfterMm = PDF_ABNT_BLANK_LINE_MM;
   const hIdentTitle = measureChapterTitleBlockMm(
     doc,
     contentWidth,
     titleIdentificacao,
     yPos,
-    PDF_PAGE_TOP_SAFE_MM
+    PDF_PAGE_TOP_SAFE_MM,
+    identificacaoTituloBeforeMm,
+    identificacaoTituloAfterMm
   );
   const hIdentTable = estimateIdentificacaoTableHeightMm(
     doc,
@@ -1491,6 +1504,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
   yPos = drawChapterTitle(doc, margin, contentWidth, yPos, titleIdentificacao, {
     minFollowingMm: 28,
+    chapterTitleBeforeMm: identificacaoTituloBeforeMm,
+    chapterTitleAfterMm: identificacaoTituloAfterMm,
   });
 
   autoTable(doc, {

@@ -429,8 +429,13 @@ function pdfAbntMarginTopMm(y, topReset, blankMm) {
 export function drawChapterTitle(doc, margin, contentWidth, yStart, title, options = {}) {
   const {
     minFollowingMm = PDF_CHAPTER_KEEP_WITH_NEXT_MM,
+    /** Sobrescreve margens verticals do título (ex.: secção Identificação com espaçamento anterior). */
+    chapterTitleBeforeMm,
+    chapterTitleAfterMm,
     ...pageOptsRest
   } = options;
+  const beforeMm = chapterTitleBeforeMm ?? PDF_CHAPTER_TITLE_BEFORE_MM;
+  const afterMm = chapterTitleAfterMm ?? PDF_CHAPTER_TITLE_AFTER_MM;
   const po = { ...defaultPageOpts(), ...pageOptsRest };
   const bottomSafe = po.bottomMarginMm;
   const topReset = po.topMarginMm;
@@ -441,15 +446,14 @@ export function drawChapterTitle(doc, margin, contentWidth, yStart, title, optio
   doc.setTextColor(0, 0, 0);
   const lines = doc.splitTextToSize(String(title), contentWidth);
   const lineH = PDF_CHAPTER_LINE_MM;
-  const totalNeeded =
-    PDF_CHAPTER_TITLE_BEFORE_MM + lines.length * lineH + PDF_CHAPTER_TITLE_AFTER_MM;
+  const totalNeeded = beforeMm + lines.length * lineH + afterMm;
 
   let y = yStart;
   if (y + totalNeeded + minFollowingMm > pageHeight - bottomSafe) {
     doc.addPage();
     y = topReset;
   }
-  y += pdfAbntMarginTopMm(y, topReset, PDF_CHAPTER_TITLE_BEFORE_MM);
+  y += pdfAbntMarginTopMm(y, topReset, beforeMm);
 
   lines.forEach((ln) => {
     if (y + lineH > pageHeight - bottomSafe) {
@@ -459,7 +463,7 @@ export function drawChapterTitle(doc, margin, contentWidth, yStart, title, optio
     doc.text(ln, margin, y);
     y += lineH;
   });
-  y += PDF_CHAPTER_TITLE_AFTER_MM;
+  y += afterMm;
   return y;
 }
 
