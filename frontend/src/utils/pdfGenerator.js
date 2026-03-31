@@ -200,6 +200,18 @@ function pdfIdentRowEmpreendimentoConstrutora(empreendimento, construtora) {
   ];
 }
 
+/** Horário de início e de término na mesma linha (duas colunas rótulo/valor). */
+function pdfIdentRowHorarios(horarioInicio, horarioTermino) {
+  const hi = horarioInicio == null ? '' : String(horarioInicio).trim();
+  const ht = horarioTermino == null ? '' : String(horarioTermino).trim();
+  return [
+    pdfIdentLabelCell('Horário de início'),
+    { content: hi || '—' },
+    pdfIdentLabelCell('Horário de término'),
+    { content: ht || '—' },
+  ];
+}
+
 /** Mesmo texto do botão «Itens verificados» no app (inclui resolução pelo catálogo / tipo de ambiente). */
 function getItemVerificationBody(item, roomType) {
   return resolveVerificationTextForLaudo(item, roomType);
@@ -295,9 +307,18 @@ function buildIdentificacaoTableBody(inspection) {
   rows.push(pdfIdentRowFull('CPF/CNPJ', inspection.contratante_cpf_cnpj, true));
 
   rows.push(pdfIdentSectionRowCompact('Dados do imóvel'));
+  const tipoLinha = pdfTipoImovelUnificado(inspection);
+  const tipoAreaRow = pdfIdentRowTipoImovelEArea(tipoLinha, inspection.imovel_area);
+  if (tipoAreaRow) rows.push(tipoAreaRow);
+
   rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
-  rows.push(pdfIdentRowFull('Cidade', pdfTrim(inspection.cidade) || '—', true));
-  rows.push(pdfIdentRowFull('UF', pdfUfSomenteSigla(inspection.uf) || '—', true));
+  rows.push(
+    pdfIdentRowFull(
+      'Cidade/UF',
+      pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf) || '—',
+      true
+    )
+  );
 
   if (entregaForm && cat === 'apartamento') {
     const unRow = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
@@ -306,10 +327,6 @@ function buildIdentificacaoTableBody(inspection) {
     const apt = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
     if (apt) rows.push(apt);
   }
-
-  const tipoLinha = pdfTipoImovelUnificado(inspection);
-  const tipoAreaRow = pdfIdentRowTipoImovelEArea(tipoLinha, inspection.imovel_area);
-  if (tipoAreaRow) rows.push(tipoAreaRow);
 
   const empRow = pdfIdentRowEmpreendimentoConstrutora(
     inspection.empreendimento,
@@ -334,8 +351,7 @@ function buildIdentificacaoTableBody(inspection) {
     false
   );
   if (rcRow) rows.push(rcRow);
-  rows.push(pdfIdentRowFull('Horário de início', pdfTrim(inspection.horario_inicio), true));
-  rows.push(pdfIdentRowFull('Horário de término', pdfTrim(inspection.horario_termino), true));
+  rows.push(pdfIdentRowHorarios(inspection.horario_inicio, inspection.horario_termino));
 
   return rows.filter(Boolean);
 }

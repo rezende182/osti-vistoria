@@ -39,8 +39,7 @@ function validateIdentificationRequired(fd) {
     isFilled(fd.crea) &&
     isFilled(fd.responsavel_cpf_cnpj) &&
     isFilled(fd.data) &&
-    isFilled(fd.horario_inicio) &&
-    isFilled(fd.horario_termino)
+    isFilled(fd.horario_inicio)
   );
 }
 
@@ -210,13 +209,13 @@ const EditInspection = () => {
     if (formData.tipo_vistoria_fluxo === 'apartamento') {
       if (!validateEntregaImovel(formData)) {
         toast.error(
-          'Preencha os campos obrigatórios: dados do responsável técnico (nome, CREA, CPF), contratante (nome e CPF/CNPJ), imóvel (endereço, cidade, UF, condição), data e horários de início e término da vistoria, tipo do imóvel (Apartamento, Casa Térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
+          'Preencha os campos obrigatórios: dados do responsável técnico (nome, CREA, CPF), contratante (nome e CPF/CNPJ), imóvel (endereço, cidade, UF, condição), data e horário de início da vistoria, tipo do imóvel (Apartamento, Casa Térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
         );
         return;
       }
     } else if (!validateIdentificationRequired(formData)) {
       toast.error(
-        'Preencha os campos obrigatórios: responsável técnico (nome, CREA, CPF), contratante (nome e CPF/CNPJ), imóvel (endereço, cidade, UF, condição), data e horários de início e término da vistoria.'
+        'Preencha os campos obrigatórios: responsável técnico (nome, CREA, CPF), contratante (nome e CPF/CNPJ), imóvel (endereço, cidade, UF, condição), data e horário de início da vistoria.'
       );
       return;
     }
@@ -787,17 +786,6 @@ const EditInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Horário de término *
-                </label>
-                <TimePickerField
-                  data-testid="input-horario-termino"
-                  value={formData.horario_termino}
-                  onChange={(v) => setFormData({ ...formData, horario_termino: v })}
-                  className="w-full max-w-xs rounded-lg border border-slate-300"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Responsável da Construtora (quem acompanhou a vistoria)
                 </label>
                 <input
@@ -1103,17 +1091,6 @@ const EditInspection = () => {
                   data-testid="input-horario-inicio"
                   value={formData.horario_inicio}
                   onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
-                  className="w-full max-w-xs rounded-lg border border-slate-300"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Horário de término *
-                </label>
-                <TimePickerField
-                  data-testid="input-horario-termino"
-                  value={formData.horario_termino}
-                  onChange={(v) => setFormData({ ...formData, horario_termino: v })}
                   className="w-full max-w-xs rounded-lg border border-slate-300"
                 />
               </div>
