@@ -1661,7 +1661,11 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       pdfChapterTitleUpperCase(
         `${especificacoesChapterNum}. ESPECIFICAÇÕES TÉCNICAS`
       ),
-      { minFollowingMm: 36 }
+      {
+        minFollowingMm: 36,
+        /** Espaço total até «3.1 Referências» ≈ 1 cm (só o 1 cm do subtítulo ABNT). */
+        chapterTitleAfterMm: 0,
+      }
     );
     yPos = drawSubsectionTitle(
       doc,
