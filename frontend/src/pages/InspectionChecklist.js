@@ -18,6 +18,7 @@ import BrandLogo from '@/components/BrandLogo';
 import {
   ROOM_TYPE_LABELS,
   ROOM_TYPE_ORDER,
+  ROOM_TYPE_CUSTOM,
   buildItemsFromRoomType,
   getAvailableElementsToAdd,
   getElementsForRoomType,
@@ -90,6 +91,9 @@ const InspectionChecklist = () => {
   /** Fluxo da vistoria (ex.: entrega de imóvel) — define o destino do botão «voltar». */
   const [tipoVistoriaFluxo, setTipoVistoriaFluxo] = useState('');
   const [showAddRoom, setShowAddRoom] = useState(false);
+  /** Modal «Adicionar ambiente»: escolher tipo ou nome livre (`custom`). */
+  const [addRoomStep, setAddRoomStep] = useState('choose');
+  const [customRoomNameInput, setCustomRoomNameInput] = useState('');
   /** Confirmação antes de excluir ambiente (mobile + desktop) */
   const [deleteRoomTarget, setDeleteRoomTarget] = useState(null);
   /** Confirmação antes de remover item do checklist */
@@ -384,7 +388,32 @@ const InspectionChecklist = () => {
     setRoomsData([...roomsData, newRoomData]);
     setSelectedRoomId(newId);
     setShowAddRoom(false);
+    setAddRoomStep('choose');
+    setCustomRoomNameInput('');
     toast.success(`${newName} adicionado!`);
+  };
+
+  const addCustomRoom = () => {
+    const name = customRoomNameInput.trim();
+    if (!name) {
+      toast.error('Indique o nome do ambiente.');
+      return;
+    }
+    const newId = `${ROOM_TYPE_CUSTOM}_${Date.now()}`;
+    const newRoom = { id: newId, name, type: ROOM_TYPE_CUSTOM };
+    const newRoomData = {
+      room_id: newId,
+      room_name: name,
+      room_type: ROOM_TYPE_CUSTOM,
+      items: [],
+    };
+    setRoomsList((prev) => [...prev, newRoom]);
+    setRoomsData((prev) => [...prev, newRoomData]);
+    setSelectedRoomId(newId);
+    setShowAddRoom(false);
+    setAddRoomStep('choose');
+    setCustomRoomNameInput('');
+    toast.success(`${name} adicionado! Adicione os itens pelo botão do checklist.`);
   };
 
   const requestDeleteRoom = (roomId) => {
@@ -455,7 +484,15 @@ const InspectionChecklist = () => {
   };
 
   const handleOpenAddRoomModal = () => {
+    setAddRoomStep('choose');
+    setCustomRoomNameInput('');
     setShowAddRoom(true);
+  };
+
+  const closeAddRoomModal = () => {
+    setShowAddRoom(false);
+    setAddRoomStep('choose');
+    setCustomRoomNameInput('');
   };
 
   const handleSaveAndContinue = async () => {
@@ -716,29 +753,98 @@ const InspectionChecklist = () => {
       {showAddRoom && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
           <div className="w-full max-w-md rounded-t-xl bg-white p-6 shadow-xl sm:rounded-lg">
-            <h3 className="text-xl font-bold text-slate-900 font-secondary uppercase mb-4">
-              Adicionar ambiente
-            </h3>
-            <div className="space-y-2 max-h-[min(70vh,28rem)] overflow-y-auto pr-1">
-              {ROOM_TYPE_ORDER.map((type) => (
+            {addRoomStep === 'choose' ? (
+              <>
+                <h3 className="mb-4 text-xl font-bold font-secondary uppercase text-slate-900">
+                  Adicionar ambiente
+                </h3>
+                <div className="max-h-[min(70vh,28rem)] space-y-2 overflow-y-auto pr-1">
+                  {ROOM_TYPE_ORDER.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      data-testid={`add-room-${type}`}
+                      onClick={() => addRoom(type)}
+                      className="min-h-touch w-full rounded-lg bg-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition-colors hover:bg-slate-200 sm:min-h-0"
+                    >
+                      {ROOM_TYPE_LABELS[type]}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    data-testid="add-room-custom"
+                    onClick={() => {
+                      setAddRoomStep('customName');
+                      setCustomRoomNameInput('');
+                    }}
+                    className="min-h-touch w-full rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/80 px-4 py-3 text-left font-semibold text-blue-900 transition-colors hover:border-blue-400 hover:bg-blue-100/90 sm:min-h-0"
+                  >
+                    Outro ambiente (nome livre)…
+                  </button>
+                </div>
                 <button
-                  key={type}
                   type="button"
-                  data-testid={`add-room-${type}`}
-                  onClick={() => addRoom(type)}
-                  className="min-h-touch w-full rounded-lg bg-slate-100 px-4 py-3 text-left font-semibold text-slate-700 transition-colors hover:bg-slate-200 sm:min-h-0"
+                  onClick={closeAddRoomModal}
+                  className="mt-4 min-h-touch w-full rounded-lg bg-slate-900 px-4 py-3 font-semibold text-white transition-colors hover:bg-slate-800 sm:min-h-0"
                 >
-                  {ROOM_TYPE_LABELS[type]}
+                  Cancelar
                 </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowAddRoom(false)}
-              className="mt-4 min-h-touch w-full rounded-lg bg-slate-900 px-4 py-3 font-semibold text-white transition-colors hover:bg-slate-800 sm:min-h-0"
-            >
-              Cancelar
-            </button>
+              </>
+            ) : (
+              <>
+                <h3 className="mb-2 text-xl font-bold font-secondary uppercase text-slate-900">
+                  Nome do ambiente
+                </h3>
+                <p className="mb-4 text-sm leading-relaxed text-slate-600">
+                  Escolha como identificar este espaço. Depois pode adicionar itens normalmente pelo
+                  checklist.
+                </p>
+                <input
+                  type="text"
+                  data-testid="custom-room-name-input"
+                  value={customRoomNameInput}
+                  onChange={(e) => setCustomRoomNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addCustomRoom();
+                    }
+                  }}
+                  placeholder="Ex.: Depósito, lavabo externo, hall"
+                  className="mb-4 min-h-touch w-full rounded-lg border-2 border-slate-200 px-3 py-3 text-base text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 sm:min-h-0"
+                  autoFocus
+                  autoComplete="off"
+                  aria-label="Nome do ambiente personalizado"
+                />
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddRoomStep('choose');
+                      setCustomRoomNameInput('');
+                    }}
+                    className="min-h-touch w-full rounded-lg border-2 border-slate-200 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50 sm:min-h-0 sm:w-auto sm:min-w-[7rem]"
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="confirm-custom-room"
+                    onClick={addCustomRoom}
+                    className="min-h-touch w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 sm:min-h-0 sm:w-auto sm:min-w-[10rem]"
+                  >
+                    Adicionar ambiente
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeAddRoomModal}
+                  className="mt-3 min-h-touch w-full rounded-lg bg-slate-900 px-4 py-3 font-semibold text-white transition-colors hover:bg-slate-800 sm:min-h-0"
+                >
+                  Cancelar
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

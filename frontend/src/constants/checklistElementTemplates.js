@@ -14,7 +14,12 @@ export const ROOM_TYPE_LABELS = {
   area_gourmet: 'ÁREA GOURMET',
   garagem: 'GARAGEM',
   cobertura_telhado: 'COBERTURA/TELHADO',
+  /** Nome exibido só como fallback; o utilizador define o nome ao criar o ambiente. */
+  custom: 'Outro ambiente',
 };
+
+/** `room_type` para ambiente com nome livre e itens só pelo catálogo. */
+export const ROOM_TYPE_CUSTOM = 'custom';
 
 function capitalizeFirst(text) {
   const t = (text || '').trim();
@@ -320,6 +325,9 @@ export const ROOM_ELEMENT_TEMPLATES = {
     E('Pingadeiras', V.pingadeiras),
     E('Acesso à Cobertura', V.acessoCobertura),
   ],
+
+  /** Nome do ambiente vem do utilizador; itens apenas via «Adicionar item». */
+  custom: [],
 };
 
 export function getElementsForRoomType(roomType) {
