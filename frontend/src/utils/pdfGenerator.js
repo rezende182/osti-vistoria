@@ -722,6 +722,48 @@ function drawPdfRegistroFotoCaptionFromApp(
 }
 
 const PDF_NC_PROBLEMATICA_LABEL = 'PROBLEMÁTICA:';
+const PDF_NC_LOCALIZACAO_LABEL = 'LOCALIZAÇÃO:';
+/** Espaço entre o fim da legenda e o bloco «Localização». */
+const PDF_NC_AFTER_PHOTO_GAP_MM = 6;
+/** Espaço entre «Localização» e «Problemática». */
+const PDF_NC_LOC_PROB_GAP_MM = 4;
+
+function measureLocalizacaoBlockMm(doc, contentWidth, pad, localizacaoText, lineH) {
+  const innerW = Math.max(20, contentWidth - 2 * pad);
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
+  const bodyH = measureInlineLabelParagraphMm(
+    doc,
+    innerW,
+    PDF_NC_LOCALIZACAO_LABEL,
+    localizacaoText
+  );
+  return pad + bodyH + pad;
+}
+
+function drawPdfLocalizacaoBlock(
+  doc,
+  tableX,
+  yTop,
+  contentWidth,
+  pad,
+  localizacaoText,
+  lineH
+) {
+  const innerX = tableX + pad;
+  const innerW = Math.max(20, contentWidth - 2 * pad);
+  const y0 = yTop + pad + lineH * 0.85;
+  const yAfter = drawInlineLabelParagraph(
+    doc,
+    innerX,
+    innerW,
+    y0,
+    PDF_NC_LOCALIZACAO_LABEL,
+    localizacaoText,
+    {}
+  );
+  return yAfter + pad;
+}
 
 function measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH) {
   const innerW = Math.max(20, contentWidth - 2 * pad);
@@ -776,14 +818,7 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
   return out.length ? out : [String(text)];
 }
 
-/* ---------- Registo fotográfico (faixa azul | foto+legenda | problemática) ---------- */
-const PDF_NC_HEADER_DARK = [18, 45, 108];
-const PDF_NC_HEADER_PT = 10;
-const PDF_NC_HEADER_LINE_MM = PDF_NC_HEADER_PT * PDF_PT_TO_MM * 1.28;
-const PDF_NC_HEADER_PAD_V = 1.15;
-const PDF_NC_HEADER_PAD_H = 1.6;
-const PDF_NC_LINE_W = 0.12;
-const PDF_NC_LINE_W_OUTER = 0.18;
+/* ---------- Registo fotográfico (foto + legenda; texto sem moldura) ---------- */
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
 /**
  * Caixa única para todas as fotos do registo (largura × altura).
@@ -813,8 +848,8 @@ function measureEncerramentoCompletoMm(doc, contentWidth, nFolhas) {
 }
 
 /**
- * Registo fotográfico: legenda = campo «Legenda» do app (`photo.caption`);
- * Problemática (`photo.description`) — fundo branco; sem linha divisória entre legenda e texto.
+ * Registo fotográfico: foto + legenda (inalterados); abaixo «LOCALIZAÇÃO:» e «PROBLEMÁTICA:»
+ * (mesmo fluxo de texto que antes), sem moldura nem faixa.
  */
 async function drawPdfNaoConformidadeTable(
   doc,
@@ -825,19 +860,11 @@ async function drawPdfNaoConformidadeTable(
   roomNameUpper,
   photo
 ) {
+  void ncIdx;
   const pageHeight = doc.internal.pageSize.getHeight();
   const tableX = margin;
   const lineH = PDF_BODY_LINE_MM;
   const descPad = PDF_NC_DESC_PAD_MM;
-
-  const headText = `ITEM ${String(ncIdx).padStart(2, '0')} |  LOCALIZAÇÃO: ${roomNameUpper}`.toUpperCase();
-  doc.setFont(PDF_FONT, 'bold');
-  doc.setFontSize(PDF_NC_HEADER_PT);
-  const headLines = doc.splitTextToSize(headText, contentWidth - 2 * PDF_NC_HEADER_PAD_H);
-  const headH =
-    PDF_NC_HEADER_PAD_V +
-    headLines.length * PDF_NC_HEADER_LINE_MM +
-    PDF_NC_HEADER_PAD_V;
 
   const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
   let picW = PDF_NC_IMG_W_MM;
@@ -852,7 +879,9 @@ async function drawPdfNaoConformidadeTable(
   const captionFromApp = pdfTrim(photo.caption);
   const capH = measureRegistroCaptionHeightFromApp(doc, picW, captionFromApp, photo.number);
 
+  const locText = String(roomNameUpper || '').trim() || '\u2014';
   const ncBody = pdfTrim(photo.description) || '\u2014';
+  const locH = measureLocalizacaoBlockMm(doc, contentWidth, descPad, locText, lineH);
   const descH = measureDescricaoBlockMm(doc, contentWidth, descPad, ncBody, lineH);
 
   const photoH =
@@ -860,7 +889,8 @@ async function drawPdfNaoConformidadeTable(
     picH +
     (capH > 0 ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM + capH : 0) +
     PDF_NC_PHOTO_INNER_PAD_MM;
-  const totalH = headH + photoH + descH;
+  const totalH =
+    photoH + PDF_NC_AFTER_PHOTO_GAP_MM + locH + PDF_NC_LOC_PROB_GAP_MM + descH;
 
   let y = yStart;
   if (y + totalH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
@@ -868,32 +898,7 @@ async function drawPdfNaoConformidadeTable(
     y = PDF_PAGE_TOP_SAFE_MM;
   }
 
-  const yAfterHead = y + headH;
-  const yAfterPhoto = yAfterHead + photoH;
-
-  doc.setFillColor(PDF_NC_HEADER_DARK[0], PDF_NC_HEADER_DARK[1], PDF_NC_HEADER_DARK[2]);
-  doc.rect(tableX, y, contentWidth, headH, 'F');
-
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(PDF_NC_LINE_W_OUTER);
-  doc.rect(tableX, y, contentWidth, totalH, 'S');
-  doc.setLineWidth(PDF_NC_LINE_W);
-  doc.line(tableX, yAfterHead, tableX + contentWidth, yAfterHead);
-  const yDescBottom = yAfterPhoto + descH;
-  doc.line(tableX, yAfterPhoto, tableX, yDescBottom);
-  doc.line(tableX + contentWidth, yAfterPhoto, tableX + contentWidth, yDescBottom);
-  doc.line(tableX, yDescBottom, tableX + contentWidth, yDescBottom);
-
-  doc.setTextColor(255, 255, 255);
-  let hy = y + PDF_NC_HEADER_PAD_V + PDF_NC_HEADER_LINE_MM * 0.82;
-  headLines.forEach((ln) => {
-    doc.text(ln, tableX + PDF_NC_HEADER_PAD_H, hy);
-    hy += PDF_NC_HEADER_LINE_MM;
-  });
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(PDF_BODY_PT);
-
-  const yPic = yAfterHead + PDF_NC_PHOTO_INNER_PAD_MM;
+  const yPic = y + PDF_NC_PHOTO_INNER_PAD_MM;
   if (photo.url) {
     try {
       const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
@@ -913,8 +918,9 @@ async function drawPdfNaoConformidadeTable(
     }
   }
 
+  let yBelowCaption = yPic + picH;
   if (captionFromApp) {
-    drawPdfRegistroFotoCaptionFromApp(
+    yBelowCaption = drawPdfRegistroFotoCaptionFromApp(
       doc,
       picX,
       picW,
@@ -923,10 +929,14 @@ async function drawPdfNaoConformidadeTable(
       photo.number
     );
   }
+  const yAfterPhotoBlock = yBelowCaption + PDF_NC_PHOTO_INNER_PAD_MM;
 
-  drawPdfDescricaoBlock(doc, tableX, yAfterPhoto, contentWidth, descPad, ncBody, lineH);
+  let yText = yAfterPhotoBlock + PDF_NC_AFTER_PHOTO_GAP_MM;
+  yText = drawPdfLocalizacaoBlock(doc, tableX, yText, contentWidth, descPad, locText, lineH);
+  yText += PDF_NC_LOC_PROB_GAP_MM;
+  yText = drawPdfDescricaoBlock(doc, tableX, yText, contentWidth, descPad, ncBody, lineH);
 
-  return y + totalH + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
+  return yText + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
 }
 
 // Gerar PDF
