@@ -542,11 +542,20 @@ function buildPdfIntroducaoText(inspection) {
   ].join('\n\n');
 }
 
-/** Fluxo Entrega de Imóvel com blocos Objetivo / Relato / Metodologia no laudo. */
+/**
+ * Fluxo Entrega de Imóvel com blocos Objetivo / Especificações / Metodologia no laudo.
+ * Inclui categoria ainda vazia ou registos antigos em que `imovel_categoria` não veio da API.
+ */
 function isEntregaImovelLaudoExtended(inspection) {
   const f = String(inspection.tipo_vistoria_fluxo || '').trim();
+  if (f !== 'apartamento') return false;
   const c = inspection.imovel_categoria;
-  return f === 'apartamento' && (c === 'apartamento' || c === 'casa');
+  const cStr = c == null ? '' : String(c).trim();
+  return (
+    c === 'apartamento' ||
+    c === 'casa' ||
+    cStr === ''
+  );
 }
 
 function finalizeLaudoMetodologiaPdf(inspection, registroNaoConformidadesItemNum) {

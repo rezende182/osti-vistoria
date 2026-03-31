@@ -3,8 +3,8 @@
  * HTML e bundles (/static/js, /static/css) NÃO entram no cache dinâmico, para não
  * ficar com interface antiga (ex.: código já removido do repositório).
  */
-const STATIC_CACHE = 'vistoria-static-v18';
-const DYNAMIC_CACHE = 'vistoria-dynamic-v18';
+const STATIC_CACHE = 'vistoria-static-v19';
+const DYNAMIC_CACHE = 'vistoria-dynamic-v19';
 
 const STATIC_ASSETS = [
   '/manifest.json',
