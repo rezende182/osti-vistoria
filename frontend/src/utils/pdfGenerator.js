@@ -1240,9 +1240,9 @@ const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
 /**
  * Registo em par: proporção altura/largura da caixa = `PDF_NC_IMG_H_MM` / `PDF_REG_PAIR_IMG_W_MM`.
- * Largura útil inteira em duas colunas; espaço mínimo entre fotos (`PDF_REG_PAIR_GAP_MM`).
+ * Largura útil inteira em duas colunas; vão entre fotos (`PDF_REG_PAIR_GAP_MM` mm).
  */
-const PDF_REG_PAIR_GAP_MM = 0.5;
+const PDF_REG_PAIR_GAP_MM = 0.2;
 const PDF_REG_PAIR_IMG_W_MM = 85;
 const PDF_REG_PAIR_ROW_GAP_MM = 4;
 
