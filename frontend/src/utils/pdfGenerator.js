@@ -237,134 +237,92 @@ function pdfIdentSectionRowCompact(title) {
   ];
 }
 
-/** Horário de início e de término na mesma linha (duas colunas rótulo/valor). */
-function pdfIdentRowHorarios(horarioInicio, horarioTermino) {
-  const hi = horarioInicio == null ? '' : String(horarioInicio).trim();
-  const ht = horarioTermino == null ? '' : String(horarioTermino).trim();
-  return [
-    pdfIdentLabelCell('Horário de início'),
-    { content: hi || '—' },
-    pdfIdentLabelCell('Horário de término'),
-    { content: ht || '—' },
-  ];
+/** Nome do RT no laudo com prefixo «Eng.» (evita duplicar se já existir). */
+function formatPdfResponsavelTecnicoNome(name) {
+  const n = pdfTrim(name);
+  if (!n) return '\u2014';
+  if (/^Eng\.?\s/i.test(n)) return n;
+  return `Eng. ${n}`;
 }
 
-/** Corpo da tabela 1 — fluxo Entrega de Imóvel com `imovel_categoria` usa blocos alinhados ao formulário. */
+/** Condição do imóvel (Novo / Usado / Reformado) para o PDF. */
+function pdfCondicaoImovelTexto(inspection) {
+  const tipo = inspection.tipo_imovel;
+  if (tipo === 'novo') return 'Novo';
+  if (tipo === 'usado') return 'Usado';
+  if (tipo === 'reformado') return 'Reformado';
+  return '';
+}
+
+/**
+ * Corpo da tabela «Identificação da vistoria técnica» — mesma ordem em todos os fluxos;
+ * campos opcionais só entram no PDF se preenchidos (exceto obrigatórios, que usam traço se vazio).
+ */
 function buildIdentificacaoTableBody(inspection) {
   const fluxo = String(inspection.tipo_vistoria_fluxo || '').trim();
   const cat = inspection.imovel_categoria;
   const entregaForm =
     fluxo === 'apartamento' && (cat === 'apartamento' || cat === 'casa');
 
-  if (entregaForm) {
-    const rows = [];
-
-    rows.push(pdfIdentSectionRowCompact('Identificação do Responsável Técnico'));
-    rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
-    rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
-    const rtDoc = pdfIdentRowFull('CPF / CNPJ', inspection.responsavel_cpf_cnpj, false);
-    if (rtDoc) rows.push(rtDoc);
-
-    rows.push(pdfIdentSectionRowCompact('Identificação do contratante'));
-    rows.push(pdfIdentRowFull('Contratante', inspection.cliente, true));
-    const cDoc = pdfIdentRowFull('CPF / CNPJ', inspection.contratante_cpf_cnpj, false);
-    if (cDoc) rows.push(cDoc);
-
-    rows.push(pdfIdentSectionRowCompact('Dados do Imóvel'));
-    rows.push(
-      pdfIdentRowFull('Tipo do Imóvel', pdfTipoImovelUnificado(inspection), true)
-    );
-    rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
-    if (cat === 'apartamento') {
-      const unRow = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
-      if (unRow) rows.push(unRow);
-    }
-    const cidUf = pdfCidadeUfTexto(inspection.cidade, inspection.uf);
-    rows.push(pdfIdentRowFull('Cidade', cidUf || '—', true));
-    const empRow = pdfIdentRowEmpreendimentoConstrutora(
-      inspection.empreendimento,
-      inspection.construtora
-    );
-    if (empRow) rows.push(empRow);
-    const tipo = inspection.tipo_imovel;
-    const tipoStr =
-      tipo === 'novo'
-        ? 'Novo'
-        : tipo === 'usado'
-          ? 'Usado'
-          : tipo === 'reformado'
-            ? 'Reformado'
-            : '';
-    const trTipo = pdfIdentRowFull('Condição do imóvel', tipoStr, false);
-    if (trTipo) rows.push(trTipo);
-    const en = inspection.energia_disponivel;
-    const enStr = en === 'sim' ? 'Sim' : en === 'nao' ? 'Não' : '';
-    const trEn = pdfIdentRowFull('Energia disponível', enStr, false);
-    if (trEn) rows.push(trEn);
-
-    rows.push(pdfIdentSectionRowCompact('Identificação da vistoria'));
-    rows.push(pdfIdentRowFull('Data da vistoria', formatDate(inspection.data), true));
-    const rcRow = pdfIdentRowFull(
-      'Responsável da Construtora',
-      inspection.responsavel_construtora,
-      false
-    );
-    if (rcRow) rows.push(rcRow);
-    rows.push(pdfIdentRowHorarios(inspection.horario_inicio, inspection.horario_termino));
-    return rows.filter(Boolean);
-  }
-
   const rows = [];
 
-  rows.push(pdfIdentSectionRowCompact('Contratante e imóvel'));
-  rows.push(pdfIdentRowFull('Cliente', inspection.cliente, true));
+  rows.push(pdfIdentSectionRowCompact('Identificação do Responsável Técnico'));
+  rows.push(
+    pdfIdentRowFull(
+      'Responsável Técnico',
+      formatPdfResponsavelTecnicoNome(inspection.responsavel_tecnico),
+      true
+    )
+  );
+  rows.push(pdfIdentRowFull('CREA', inspection.crea, true));
+  rows.push(pdfIdentRowFull('CPF', inspection.responsavel_cpf_cnpj, true));
+
+  rows.push(pdfIdentSectionRowCompact('Identificação do contratante'));
+  rows.push(pdfIdentRowFull('Contratante', inspection.cliente, true));
+  rows.push(pdfIdentRowFull('CPF/CNPJ', inspection.contratante_cpf_cnpj, true));
+
+  rows.push(pdfIdentSectionRowCompact('Dados do imóvel'));
   rows.push(pdfIdentRowFull('Endereço', inspection.endereco, true));
+  rows.push(pdfIdentRowFull('Cidade', pdfTrim(inspection.cidade) || '—', true));
+  rows.push(pdfIdentRowFull('UF', pdfUfSomenteSigla(inspection.uf) || '—', true));
 
-  const cidUfG = pdfCidadeUfTexto(inspection.cidade, inspection.uf);
-  rows.push(pdfIdentRowFull('Cidade', cidUfG || '—', true));
-
-  if (fluxo === 'apartamento') {
-    const apt = pdfIdentRowFull('Entrega de Imóvel', inspection.unidade, false);
+  if (entregaForm && cat === 'apartamento') {
+    const unRow = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
+    if (unRow) rows.push(unRow);
+  } else if (fluxo === 'apartamento') {
+    const apt = pdfIdentRowFull('Apartamento / Bloco', inspection.unidade, false);
     if (apt) rows.push(apt);
   }
 
-  const empRowG = pdfIdentRowEmpreendimentoConstrutora(
+  const tipoLinha = pdfTipoImovelUnificado(inspection);
+  const tipoRow = pdfIdentRowFull('Tipo do imóvel', tipoLinha, false);
+  if (tipoRow) rows.push(tipoRow);
+
+  const empRow = pdfIdentRowEmpreendimentoConstrutora(
     inspection.empreendimento,
     inspection.construtora
   );
-  if (empRowG) rows.push(empRowG);
+  if (empRow) rows.push(empRow);
 
-  const tipoLinhaG = pdfTipoImovelUnificado(inspection);
-  const tipoRowG = pdfIdentRowFull('Tipo do Imóvel', tipoLinhaG, false);
-  if (tipoRowG) rows.push(tipoRowG);
-
-  rows.push(pdfIdentSectionRowCompact('Responsável técnico'));
-  const rtDoc = pdfIdentRowFull('CPF / CNPJ', inspection.responsavel_cpf_cnpj, false);
-  if (rtDoc) rows.push(rtDoc);
-  rows.push(pdfIdentRowFull('Responsável Técnico', inspection.responsavel_tecnico, true));
-  rows.push(pdfIdentRowFull('CREA / CAU', inspection.crea, true));
-
-  rows.push(pdfIdentSectionRowCompact('Identificação da vistoria'));
-  rows.push(pdfIdentRowFull('Data', formatDate(inspection.data), true));
-
-  rows.push(pdfIdentRowHorarios(inspection.horario_inicio, inspection.horario_termino));
-
-  const tipo = inspection.tipo_imovel;
-  const tipoStr =
-    tipo === 'novo'
-      ? 'Novo'
-      : tipo === 'usado'
-        ? 'Usado'
-        : tipo === 'reformado'
-          ? 'Reformado'
-          : '';
-  const trTipo = pdfIdentRowFull('Condição do imóvel', tipoStr, false);
-  if (trTipo) rows.push(trTipo);
+  const condStr = pdfCondicaoImovelTexto(inspection);
+  const trCond = pdfIdentRowFull('Condição do imóvel', condStr, false);
+  if (trCond) rows.push(trCond);
 
   const en = inspection.energia_disponivel;
   const enStr = en === 'sim' ? 'Sim' : en === 'nao' ? 'Não' : '';
   const trEn = pdfIdentRowFull('Energia disponível', enStr, false);
   if (trEn) rows.push(trEn);
+
+  rows.push(pdfIdentSectionRowCompact('Identificação da vistoria'));
+  rows.push(pdfIdentRowFull('Data da vistoria', formatDate(inspection.data), true));
+  const rcRow = pdfIdentRowFull(
+    'Responsável da Construtora',
+    inspection.responsavel_construtora,
+    false
+  );
+  if (rcRow) rows.push(rcRow);
+  rows.push(pdfIdentRowFull('Horário de início', pdfTrim(inspection.horario_inicio), true));
+  rows.push(pdfIdentRowFull('Horário de término', pdfTrim(inspection.horario_termino), true));
 
   return rows.filter(Boolean);
 }
@@ -750,11 +708,13 @@ function drawPdfRegistroFotoCaptionFromApp(
   return y + lh * 0.2;
 }
 
+const PDF_NC_PROBLEMATICA_LABEL = 'PROBLEMÁTICA:';
+
 function measureDescricaoBlockMm(doc, contentWidth, pad, ncBody, lineH) {
   const innerW = Math.max(20, contentWidth - 2 * pad);
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
-  const bodyH = measureInlineLabelParagraphMm(doc, innerW, 'Descrição:', ncBody);
+  const bodyH = measureInlineLabelParagraphMm(doc, innerW, PDF_NC_PROBLEMATICA_LABEL, ncBody);
   return pad + bodyH + pad;
 }
 
@@ -762,7 +722,15 @@ function drawPdfDescricaoBlock(doc, tableX, yTop, contentWidth, pad, ncBody, lin
   const innerX = tableX + pad;
   const innerW = Math.max(20, contentWidth - 2 * pad);
   const y0 = yTop + pad + lineH * 0.85;
-  const yAfter = drawInlineLabelParagraph(doc, innerX, innerW, y0, 'Descrição:', ncBody, {});
+  const yAfter = drawInlineLabelParagraph(
+    doc,
+    innerX,
+    innerW,
+    y0,
+    PDF_NC_PROBLEMATICA_LABEL,
+    ncBody,
+    {}
+  );
   return yAfter + pad;
 }
 
@@ -795,7 +763,7 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
   return out.length ? out : [String(text)];
 }
 
-/* ---------- Registo fotográfico (faixa azul | foto+legenda | Descrição) ---------- */
+/* ---------- Registo fotográfico (faixa azul | foto+legenda | problemática) ---------- */
 const PDF_NC_HEADER_DARK = [18, 45, 108];
 const PDF_NC_HEADER_PT = 10;
 const PDF_NC_HEADER_LINE_MM = PDF_NC_HEADER_PT * PDF_PT_TO_MM * 1.28;
@@ -833,7 +801,7 @@ function measureEncerramentoCompletoMm(doc, contentWidth, nFolhas) {
 
 /**
  * Registo fotográfico: legenda = campo «Legenda» do app (`photo.caption`);
- * «Descrição da não conformidade» (`photo.description`) — fundo branco, só linhas finas.
+ * Problemática (`photo.description`) — fundo branco; sem linha divisória entre legenda e texto.
  */
 async function drawPdfNaoConformidadeTable(
   doc,
@@ -898,8 +866,10 @@ async function drawPdfNaoConformidadeTable(
   doc.rect(tableX, y, contentWidth, totalH, 'S');
   doc.setLineWidth(PDF_NC_LINE_W);
   doc.line(tableX, yAfterHead, tableX + contentWidth, yAfterHead);
-  doc.line(tableX, yAfterPhoto, tableX + contentWidth, yAfterPhoto);
-  doc.rect(tableX, yAfterPhoto, contentWidth, descH, 'S');
+  const yDescBottom = yAfterPhoto + descH;
+  doc.line(tableX, yAfterPhoto, tableX, yDescBottom);
+  doc.line(tableX + contentWidth, yAfterPhoto, tableX + contentWidth, yDescBottom);
+  doc.line(tableX, yDescBottom, tableX + contentWidth, yDescBottom);
 
   doc.setTextColor(255, 255, 255);
   let hy = y + PDF_NC_HEADER_PAD_V + PDF_NC_HEADER_LINE_MM * 0.82;
@@ -1352,7 +1322,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   /** Espaço extra entre o fim do texto do encerramento e a linha local/data (assinatura). */
   yPos += 10;
 
-  const responsavel = inspection.responsavel_final || inspection.responsavel_tecnico || '-';
+  const responsavel = formatPdfResponsavelTecnicoNome(
+    inspection.responsavel_final || inspection.responsavel_tecnico || ''
+  );
   const crea = inspection.crea_final || inspection.crea || '-';
   /** Data por extenso na assinatura: emissão do laudo (finalização), não a data da identificação. */
   const localAssinatura = formatPdfAssinaturaDataLine(

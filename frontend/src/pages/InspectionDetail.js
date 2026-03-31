@@ -39,6 +39,14 @@ function tStr(v) {
   return String(v).trim();
 }
 
+/** Exibição alinhada ao PDF: prefixo «Eng.» no nome do RT. */
+function formatDisplayEngNome(name) {
+  const n = tStr(name);
+  if (!n) return '—';
+  if (/^Eng\.?\s/i.test(n)) return n;
+  return `Eng. ${n}`;
+}
+
 function condicaoImovelLabel(tipo) {
   if (tipo === 'novo') return 'Novo';
   if (tipo === 'usado') return 'Usado';
@@ -370,17 +378,19 @@ const InspectionDetail = () => {
               inspection.imovel_categoria === 'casa') ? (
               <>
                 <IdBlock title="Identificação do Responsável Técnico">
-                  <IdRow label="Nome do Responsável Técnico">{inspection.responsavel_tecnico}</IdRow>
-                  <IdRow label="CREA / CAU">{inspection.crea}</IdRow>
+                  <IdRow label="Nome do Responsável Técnico">
+                    {formatDisplayEngNome(inspection.responsavel_tecnico)}
+                  </IdRow>
+                  <IdRow label="CREA">{inspection.crea}</IdRow>
                   {tStr(inspection.responsavel_cpf_cnpj) ? (
-                    <IdRow label="CPF / CNPJ">{inspection.responsavel_cpf_cnpj}</IdRow>
+                    <IdRow label="CPF">{inspection.responsavel_cpf_cnpj}</IdRow>
                   ) : null}
                 </IdBlock>
 
                 <IdBlock title="Identificação do contratante">
-                  <IdRow label="Nome">{inspection.cliente}</IdRow>
+                  <IdRow label="Nome do contratante">{inspection.cliente}</IdRow>
                   {tStr(inspection.contratante_cpf_cnpj) ? (
-                    <IdRow label="CPF / CNPJ">{inspection.contratante_cpf_cnpj}</IdRow>
+                    <IdRow label="CPF/CNPJ">{inspection.contratante_cpf_cnpj}</IdRow>
                   ) : null}
                 </IdBlock>
 
@@ -487,7 +497,10 @@ const InspectionDetail = () => {
             ) : (
               <>
                 <IdBlock title="Contratante e imóvel">
-                  <IdRow label="Cliente">{inspection.cliente}</IdRow>
+                  <IdRow label="Nome do contratante">{inspection.cliente}</IdRow>
+                  {tStr(inspection.contratante_cpf_cnpj) ? (
+                    <IdRow label="CPF/CNPJ">{inspection.contratante_cpf_cnpj}</IdRow>
+                  ) : null}
                   <IdRow label="Endereço">{inspection.endereco}</IdRow>
                   {cidadeUfExibicao(inspection.cidade, inspection.uf) ? (
                     <IdRow label="Cidade">
@@ -514,11 +527,13 @@ const InspectionDetail = () => {
                 </IdBlock>
 
                 <IdBlock title="Responsável técnico">
+                  <IdRow label="Responsável Técnico">
+                    {formatDisplayEngNome(inspection.responsavel_tecnico)}
+                  </IdRow>
+                  <IdRow label="CREA">{inspection.crea}</IdRow>
                   {tStr(inspection.responsavel_cpf_cnpj) ? (
-                    <IdRow label="CPF / CNPJ">{inspection.responsavel_cpf_cnpj}</IdRow>
+                    <IdRow label="CPF">{inspection.responsavel_cpf_cnpj}</IdRow>
                   ) : null}
-                  <IdRow label="Responsável Técnico">{inspection.responsavel_tecnico}</IdRow>
-                  <IdRow label="CREA / CAU">{inspection.crea}</IdRow>
                 </IdBlock>
 
                 <IdBlock title="Identificação da vistoria">

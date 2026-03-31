@@ -49,23 +49,27 @@ function getTipoFluxoFromUrl(searchParams, location) {
   return null;
 }
 
-/** Obrigatórios: cliente, data, endereço, cidade, UF, responsável técnico, CREA. */
+/** Campos obrigatórios da identificação (alinhados ao PDF). */
 function validateIdentificationRequired(fd) {
   return (
     isFilled(fd.cliente) &&
-    isFilled(fd.data) &&
+    isFilled(fd.contratante_cpf_cnpj) &&
     isFilled(fd.endereco) &&
     isFilled(fd.cidade) &&
     isFilled(fd.uf) &&
+    isFilled(fd.tipo_imovel) &&
     isFilled(fd.responsavel_tecnico) &&
-    isFilled(fd.crea)
+    isFilled(fd.crea) &&
+    isFilled(fd.responsavel_cpf_cnpj) &&
+    isFilled(fd.data) &&
+    isFilled(fd.horario_inicio) &&
+    isFilled(fd.horario_termino)
   );
 }
 
-/** Fluxo Entrega de Imóvel: categoria; Casa → tipologia; Apartamento → unidade obrigatória; CPF/CNPJ contratante. */
+/** Fluxo Entrega de Imóvel: categoria; Casa → tipologia; Apartamento → unidade obrigatória. */
 function validateEntregaImovel(fd) {
   if (!validateIdentificationRequired(fd)) return false;
-  if (!isFilled(fd.contratante_cpf_cnpj)) return false;
   if (!isFilled(fd.imovel_categoria)) return false;
   if (fd.imovel_categoria === 'casa') {
     if (fd.imovel_tipologia !== 'terreo' && fd.imovel_tipologia !== 'sobrado') {
@@ -204,7 +208,7 @@ const NewInspection = () => {
     if (tipoImovelFluxo === 'apartamento' && entregaStep === 1) {
       if (!validateEntregaImovel(formData)) {
         toast.error(
-          'Preencha os campos obrigatórios: CPF/CNPJ do contratante, tipo do imóvel (Apartamento, Casa Térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
+          'Preencha os campos obrigatórios: dados do responsável técnico (nome, CREA, CPF), contratante (nome e CPF/CNPJ), imóvel (endereço, cidade, UF, condição), data e horários de início e término da vistoria, tipo do imóvel (Apartamento, Casa Térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
         );
         return;
       }
@@ -216,7 +220,7 @@ const NewInspection = () => {
     if (tipoImovelFluxo === 'area_comum' && entregaStep === 1) {
       if (!validateIdentificationRequired(formData)) {
         toast.error(
-          'Preencha os campos obrigatórios: cliente, data, endereço, cidade, UF, responsável técnico e CREA.'
+          'Preencha os campos obrigatórios: responsável técnico (nome, CREA, CPF), contratante (nome e CPF/CNPJ), imóvel (endereço, cidade, UF, condição), data e horários de início e término da vistoria.'
         );
         return;
       }
@@ -228,13 +232,13 @@ const NewInspection = () => {
     if (tipoImovelFluxo === 'apartamento') {
       if (!validateEntregaImovel(formData)) {
         toast.error(
-          'Preencha os campos obrigatórios: CPF/CNPJ do contratante, tipo do imóvel (Apartamento, Casa Térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
+          'Preencha os campos obrigatórios: dados do responsável técnico (nome, CREA, CPF), contratante (nome e CPF/CNPJ), imóvel (endereço, cidade, UF, condição), data e horários de início e término da vistoria, tipo do imóvel (Apartamento, Casa Térrea ou Sobrado), e Apartamento/Bloco quando for apartamento.'
         );
         return;
       }
     } else if (!validateIdentificationRequired(formData)) {
       toast.error(
-        'Preencha os campos obrigatórios: cliente, data, endereço, cidade, UF, responsável técnico e CREA.'
+        'Preencha os campos obrigatórios: responsável técnico (nome, CREA, CPF), contratante (nome e CPF/CNPJ), imóvel (endereço, cidade, UF, condição), data e horários de início e término da vistoria.'
       );
       return;
     }
@@ -473,7 +477,7 @@ const NewInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  CREA / CAU *
+                  CREA *
                 </label>
                 <input
                   data-testid="input-crea"
@@ -487,14 +491,15 @@ const NewInspection = () => {
               </div>
               <div className="mb-6">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  CPF / CNPJ
+                  CPF *
                 </label>
                 <input
                   type="text"
                   name="responsavel_cpf_cnpj"
                   value={formData.responsavel_cpf_cnpj}
                   onChange={handleChange}
-                  placeholder="CPF ou CNPJ do responsável técnico"
+                  required
+                  placeholder="CPF do responsável técnico"
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   autoComplete="off"
                 />
@@ -503,7 +508,7 @@ const NewInspection = () => {
               {sectionTitle('Identificação do contratante')}
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Nome *
+                  Nome do contratante *
                 </label>
                 <input
                   data-testid="input-cliente"
@@ -517,7 +522,7 @@ const NewInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  CPF / CNPJ *
+                  CPF/CNPJ *
                 </label>
                 <input
                   data-testid="input-contratante-cpf-cnpj"
@@ -679,7 +684,7 @@ const NewInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Condição do imóvel
+                  Condição do imóvel *
                 </label>
                 <div className="flex gap-2">
                   {['novo', 'usado', 'reformado'].map((tipo) => (
@@ -740,6 +745,28 @@ const NewInspection = () => {
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Horário de início *
+                </label>
+                <TimePickerField
+                  data-testid="input-horario-inicio"
+                  value={formData.horario_inicio}
+                  onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
+                  className="w-full max-w-xs rounded-lg border border-slate-300"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Horário de término *
+                </label>
+                <TimePickerField
+                  data-testid="input-horario-termino"
+                  value={formData.horario_termino}
+                  onChange={(v) => setFormData({ ...formData, horario_termino: v })}
+                  className="w-full max-w-xs rounded-lg border border-slate-300"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Responsável da Construtora (quem acompanhou a vistoria)
                 </label>
                 <input
@@ -751,17 +778,6 @@ const NewInspection = () => {
                   placeholder="Nome do representante da construtora (opcional)"
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   autoComplete="off"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Horário de início
-                </label>
-                <TimePickerField
-                  data-testid="input-horario-inicio"
-                  value={formData.horario_inicio}
-                  onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
-                  className="w-full max-w-xs rounded-lg border border-slate-300"
                 />
               </div>
               <div className="mb-6">
@@ -792,9 +808,55 @@ const NewInspection = () => {
                   setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
                 }
               />
+              {sectionTitle('Identificação do Responsável Técnico')}
               <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Cliente *
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Nome do Responsável Técnico *
+                </label>
+                <input
+                  data-testid="input-responsavel"
+                  type="text"
+                  name="responsavel_tecnico"
+                  value={formData.responsavel_tecnico}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  CREA *
+                </label>
+                <input
+                  data-testid="input-crea"
+                  type="text"
+                  name="crea"
+                  value={formData.crea}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  CPF *
+                </label>
+                <input
+                  type="text"
+                  name="responsavel_cpf_cnpj"
+                  value={formData.responsavel_cpf_cnpj}
+                  onChange={handleChange}
+                  required
+                  placeholder="CPF do responsável técnico"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
+                />
+              </div>
+
+              {sectionTitle('Identificação do contratante')}
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Nome do contratante *
                 </label>
                 <input
                   data-testid="input-cliente"
@@ -803,25 +865,29 @@ const NewInspection = () => {
                   value={formData.cliente}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Data *
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  CPF/CNPJ *
                 </label>
                 <input
-                  data-testid="input-data"
-                  type="date"
-                  name="data"
-                  value={formData.data}
+                  data-testid="input-contratante-cpf-cnpj"
+                  type="text"
+                  name="contratante_cpf_cnpj"
+                  value={formData.contratante_cpf_cnpj}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="CPF ou CNPJ do contratante"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoComplete="off"
                 />
               </div>
+
+              {sectionTitle('Dados do imóvel')}
               <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Endereço *
                 </label>
                 <input
@@ -831,12 +897,12 @@ const NewInspection = () => {
                   value={formData.endereco}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                     Cidade *
                   </label>
                   <input
@@ -846,11 +912,11 @@ const NewInspection = () => {
                     value={formData.cidade}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold tracking-wider uppercase text-slate-500 mb-2 block">
+                  <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                     UF *
                   </label>
                   <select
@@ -859,7 +925,7 @@ const NewInspection = () => {
                     value={formData.uf}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Selecione</option>
                     {BRASIL_UFS.map(({ uf, nome }) => (
@@ -871,8 +937,8 @@ const NewInspection = () => {
                 </div>
               </div>
               <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Tipo do Imóvel *
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Tipo do imóvel *
                 </label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {[
@@ -924,60 +990,8 @@ const NewInspection = () => {
                 />
               </div>
               <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Responsável Técnico *
-                </label>
-                <input
-                  data-testid="input-responsavel"
-                  type="text"
-                  name="responsavel_tecnico"
-                  value={formData.responsavel_tecnico}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  CREA / CAU *
-                </label>
-                <input
-                  data-testid="input-crea"
-                  type="text"
-                  name="crea"
-                  value={formData.crea}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  CPF / CNPJ
-                </label>
-                <input
-                  type="text"
-                  name="responsavel_cpf_cnpj"
-                  value={formData.responsavel_cpf_cnpj}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  autoComplete="off"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Horário de Início
-                </label>
-                <TimePickerField
-                  data-testid="input-horario-inicio"
-                  value={formData.horario_inicio}
-                  onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
-                  className="w-full max-w-xs border border-slate-300 rounded-lg"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Condição do imóvel
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Condição do imóvel *
                 </label>
                 <div className="flex gap-2">
                   {['novo', 'usado', 'reformado'].map((tipo) => (
@@ -986,7 +1000,7 @@ const NewInspection = () => {
                       type="button"
                       data-testid={`tipo-${tipo}`}
                       onClick={() => setFormData({ ...formData, tipo_imovel: tipo })}
-                      className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
+                      className={`flex-1 rounded-lg py-2 px-4 font-semibold transition-all duration-200 ${
                         formData.tipo_imovel === tipo
                           ? 'bg-slate-900 text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -997,9 +1011,9 @@ const NewInspection = () => {
                   ))}
                 </div>
               </div>
-              <div className="mb-4">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Energia Disponível
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Energia disponível
                 </label>
                 <div className="flex gap-2">
                   {['sim', 'nao'].map((opcao) => (
@@ -1008,7 +1022,7 @@ const NewInspection = () => {
                       type="button"
                       data-testid={`energia-${opcao}`}
                       onClick={() => setFormData({ ...formData, energia_disponivel: opcao })}
-                      className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all duration-200 ${
+                      className={`flex-1 rounded-lg py-2 px-4 font-semibold transition-all duration-200 ${
                         formData.energia_disponivel === opcao
                           ? 'bg-slate-900 text-white'
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -1019,19 +1033,57 @@ const NewInspection = () => {
                   ))}
                 </div>
               </div>
+
+              {sectionTitle('Identificação da vistoria')}
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Data da vistoria *
+                </label>
+                <input
+                  data-testid="input-data"
+                  type="date"
+                  name="data"
+                  value={formData.data}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Horário de início *
+                </label>
+                <TimePickerField
+                  data-testid="input-horario-inicio"
+                  value={formData.horario_inicio}
+                  onChange={(v) => setFormData({ ...formData, horario_inicio: v })}
+                  className="w-full max-w-xs rounded-lg border border-slate-300"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Horário de término *
+                </label>
+                <TimePickerField
+                  data-testid="input-horario-termino"
+                  value={formData.horario_termino}
+                  onChange={(v) => setFormData({ ...formData, horario_termino: v })}
+                  className="w-full max-w-xs rounded-lg border border-slate-300"
+                />
+              </div>
               <div className="mb-6">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
-                  Documentos Recebidos
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Documentos recebidos
                 </label>
                 <div className="space-y-2">
                   {documentosOptions.map((doc) => (
-                    <label key={doc} className="flex items-center gap-2 cursor-pointer">
+                    <label key={doc} className="flex cursor-pointer items-center gap-2">
                       <input
                         type="checkbox"
                         data-testid={`doc-${doc}`}
                         checked={formData.documentos_recebidos.includes(doc)}
                         onChange={() => handleDocumentToggle(doc)}
-                        className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                       />
                       <span className="text-slate-700">{doc}</span>
                     </label>
