@@ -274,9 +274,10 @@ function pdfIdentRowHorarios(horarioInicio, horarioTermino) {
   const hi = horarioInicio == null ? '' : String(horarioInicio).trim();
   const ht = horarioTermino == null ? '' : String(horarioTermino).trim();
   return [
-    pdfIdentLabelCell('Horário de início'),
+    pdfIdentLabelCell('Horário\u00A0de\u00A0início'),
     { content: hi || '—' },
-    pdfIdentLabelCell('Horário de término'),
+    /** NBSP mantém cada rótulo numa linha; coluna direita com largura compatível. */
+    pdfIdentLabelCell('Horário\u00A0de\u00A0término'),
     { content: ht || '—' },
   ];
 }
@@ -1507,7 +1508,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const identificacaoData = buildIdentificacaoTableBody(inspection);
   /** Rótulos coluna esquerda (mais longos); coluna direita mais estreita junto ao fim do texto. */
   const identLabelColLeftW = 48;
-  const identLabelColRightW = 38;
+  /** Largura mínima para «Horário de término:» em uma linha (12 pt negrito). */
+  const identLabelColRightW = 46;
   const identValueColW = Math.max(
     24,
     (contentWidth - identLabelColLeftW - identLabelColRightW) / 2
