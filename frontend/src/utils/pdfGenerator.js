@@ -30,19 +30,19 @@ import { METODOLOGIA_PLACEHOLDER_REG_NC } from '../constants/laudoEntregaTextos'
 import { resolveVerificationTextForLaudo } from '../constants/checklistElementTemplates';
 
 /**
- * Margem inferior útil no laudo: margem 20 mm + faixa do rodapé (~16 mm) + folga.
+ * Margem inferior útil no laudo: margem inferior do rodapé + faixa (~16 mm) + folga.
  * (Helvetica ≈ Arial; Calibri exigiria fonte embutida.)
  */
-const PDF_LAUDO_PAGE_BOTTOM_SAFE_MM = 38;
+const PDF_LAUDO_PAGE_BOTTOM_SAFE_MM = 34;
 const laudoBodyParagraphsOpts = { bottomMarginMm: PDF_LAUDO_PAGE_BOTTOM_SAFE_MM };
 
 /** Rodapé institucional (páginas 2+): faixa ~1,6 cm, linha superior cinza. */
 const PDF_LAUDO_FOOTER_BAND_MM = 16;
-const PDF_LAUDO_FOOTER_BOTTOM_MARGIN_MM = 20;
+const PDF_LAUDO_FOOTER_BOTTOM_MARGIN_MM = 12;
 const PDF_LAUDO_FOOTER_LINE_GRAY = [170, 170, 170];
 const PDF_LAUDO_FOOTER_PT = 8;
-const PDF_LAUDO_FOOTER_LOGO_MAX_H_MM = 9;
-const PDF_LAUDO_FOOTER_LOGO_MAX_W_MM = 28;
+const PDF_LAUDO_FOOTER_LOGO_MAX_H_MM = 12;
+const PDF_LAUDO_FOOTER_LOGO_MAX_W_MM = 34;
 const PDF_LAUDO_FOOTER_CENTER_TITLE = 'OSTI ENGENHARIA – VISTORIAS E PERÍCIAS';
 const PDF_LAUDO_FOOTER_CENTER_CONTACT = 'contato@osti.com.br | (13) 99999-9999';
 const PDF_LAUDO_FOOTER_CENTER_CITY = 'Praia Grande/SP';
@@ -544,8 +544,8 @@ const PDF_COVER_FIELD_LINE_STEP_MM = 15;
 const PDF_COVER_TRACKING_PT = 0.35;
 /** Espaço entre o bloco central e a cidade no rodapé. */
 const PDF_COVER_GAP_ABOVE_FOOTER_MM = 10;
-/** Cidade e data no fim da capa: sem espaço extra entre linhas (só altura da fonte ~12 pt). */
-const PDF_COVER_CITY_DATE_LINE_MM = PDF_COVER_INFO_PT * PDF_PT_TO_MM * 1.05;
+/** Cidade e data no fim da capa: 0,5 cm entre linhas (baseline → baseline). */
+const PDF_COVER_CITY_DATE_LINE_MM = 5;
 
 /**
  * Valor do campo Endereço (sem o rótulo): logradouro, Apartamento/Bloco, Cidade - UF.
