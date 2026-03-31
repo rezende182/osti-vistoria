@@ -13,6 +13,7 @@ import {
   PDF_BODY_PT,
   PDF_BODY_LINE_MM,
   PDF_PAGE_BOTTOM_SAFE_MM,
+  PDF_PAGE_TOP_SAFE_MM,
   PDF_CHAPTER_TITLE_PT,
   PDF_CHAPTER_TITLE_BEFORE_MM,
   PDF_CHAPTER_LINE_MM,
@@ -443,7 +444,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const hasLogo =
     logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/');
 
-  let logoTopY = PDF_PAGE_MARGIN_MM + PDF_COVER_LOGO_TOP_PAD_MM;
+  let logoTopY = PDF_PAGE_TOP_SAFE_MM + PDF_COVER_LOGO_TOP_PAD_MM;
 
   if (hasLogo) {
     try {
@@ -493,7 +494,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     inspection.data_final || inspection.data
   );
 
-  const yDate = pageHeight - PDF_PAGE_MARGIN_MM - 10;
+  const yDate = pageHeight - PDF_PAGE_BOTTOM_SAFE_MM - 10;
   const yCity = yDate - PDF_BODY_LINE_MM;
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
@@ -799,9 +800,9 @@ const PDF_NC_HEADER_PAD_H = 1.6;
 const PDF_NC_LINE_W = 0.12;
 const PDF_NC_LINE_W_OUTER = 0.18;
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Área da imagem no registo fotográfico: 12 cm × 9 cm (largura × altura). */
-const PDF_NC_IMG_W_MM = 120;
-const PDF_NC_IMG_H_MM = 90;
+/** Área da imagem no registo fotográfico: 8,2 cm × 5,2 cm (largura × altura). */
+const PDF_NC_IMG_W_MM = 82;
+const PDF_NC_IMG_H_MM = 52;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
@@ -874,7 +875,7 @@ function drawPdfNaoConformidadeTable(
   let y = yStart;
   if (y + totalH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
     doc.addPage();
-    y = margin;
+    y = PDF_PAGE_TOP_SAFE_MM;
   }
 
   const yAfterHead = y + headH;
@@ -944,13 +945,13 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const margin = PDF_PAGE_MARGIN_MM;
   const contentWidth = pageWidth - margin * 2;
   const listX = margin + PDF_LIST_INDENT_MM;
-  let yPos = margin;
+  let yPos = PDF_PAGE_TOP_SAFE_MM;
 
   // Verificar nova página
   const checkNewPage = (neededSpace = 30) => {
     if (yPos + neededSpace > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
       doc.addPage();
-      yPos = margin;
+      yPos = PDF_PAGE_TOP_SAFE_MM;
       return true;
     }
     return false;
@@ -1032,7 +1033,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   }
 
   doc.addPage();
-  yPos = margin;
+  yPos = PDF_PAGE_TOP_SAFE_MM;
 
   const checklistChapterNum = entregaLaudoExt ? 6 : 4;
   const ncChapterNum = entregaLaudoExt ? 7 : 5;
@@ -1366,53 +1367,16 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   doc.setPage(totalPagesLaudo);
 
   // ============================================================
-  // CABEÇALHO (logo à direita) + RODAPÉ em todas as páginas (capa = p. 1 sem logo/rodapé)
+  // RODAPÉ em todas as páginas (capa = p. 1 sem rodapé/numerar)
   // ============================================================
   const footerLeftText = buildPdfFooterLeftLine();
   const totalPages = doc.internal.getNumberOfPages();
-  const footerBottomY = pageHeight - PDF_PAGE_MARGIN_MM;
+  const footerBottomY = pageHeight - PDF_PAGE_BOTTOM_SAFE_MM;
   const footerLineStep = PDF_BODY_LINE_MM * 0.72;
-
-  let headerLogoDraw = null;
-  const headerLogoUrl = inspection.pdf_logo_data_url;
-  if (
-    headerLogoUrl &&
-    typeof headerLogoUrl === 'string' &&
-    headerLogoUrl.startsWith('data:image/')
-  ) {
-    try {
-      const { width: ihw, height: ihh } = await getDataUrlImageDimensions(headerLogoUrl);
-      const maxHeaderLogoW = 42;
-      const maxHeaderLogoH = 14;
-      const { w: hlw, h: hlh } = fitLogoSizeMm(ihw, ihh, maxHeaderLogoW, maxHeaderLogoH);
-      headerLogoDraw = {
-        url: headerLogoUrl,
-        fmt: getJsPdfFormatFromDataUrl(headerLogoUrl),
-        w: hlw,
-        h: hlh,
-      };
-    } catch (e) {
-      console.log('Cabeçalho: logo não incluído.', e);
-    }
-  }
 
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1) continue;
     doc.setPage(i);
-    if (headerLogoDraw) {
-      try {
-        doc.addImage(
-          headerLogoDraw.url,
-          headerLogoDraw.fmt,
-          pageWidth - PDF_PAGE_MARGIN_MM - headerLogoDraw.w,
-          PDF_PAGE_MARGIN_MM,
-          headerLogoDraw.w,
-          headerLogoDraw.h
-        );
-      } catch (e) {
-        console.log('Cabeçalho: erro ao desenhar logo.', e);
-      }
-    }
     doc.setFontSize(PDF_BODY_PT);
     doc.setFont(PDF_FONT, 'normal');
     doc.setTextColor(100, 100, 100);
