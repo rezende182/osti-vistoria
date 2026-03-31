@@ -421,28 +421,36 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
   return 'JPEG';
 }
 
-/** Logo no topo da capa: proporção mantida, cor normal (sem transparência). */
-const PDF_COVER_LOGO_MAX_W_MM = 72;
-const PDF_COVER_LOGO_MAX_H_MM = 24;
+/** Logo na capa: altura alvo 5 cm; largura proporcional (limitada à largura útil). */
+const PDF_COVER_LOGO_TARGET_H_MM = 50;
+const PDF_COVER_LOGO_TOP_PAD_MM = 4;
+/** ~25 px entre logo e título (20–30 px). */
+const PDF_COVER_LOGO_GAP_BELOW_MM = 25 * (25.4 / 96);
 
 const PDF_COVER_MARGIN_MM = 20;
 const PDF_COVER_TITLE_MAIN_PT = 20;
-const PDF_COVER_TITLE_SUB_PT = 14;
-/** Espaço entre título principal e subtítulo (mm) — próximos visualmente. */
-const PDF_COVER_TITLE_MAIN_SUB_GAP_MM = 2.8;
-const PDF_COVER_FOOTER_PT = 14;
-const PDF_COVER_FOOTER_LINE_MM = PDF_COVER_FOOTER_PT * PDF_PT_TO_MM * 1.45;
+/** Subtítulo 12–14 pt, regular (contraste com o título em negrito). */
+const PDF_COVER_TITLE_SUB_PT = 13;
+/** Espaço entre título principal e subtítulo (mm). */
+const PDF_COVER_TITLE_MAIN_SUB_GAP_MM = 3.2;
+const PDF_COVER_BOTTOM_CITY_PT = 14;
+const PDF_COVER_BOTTOM_DATE_PT = 14;
+const PDF_COVER_BOTTOM_LINE_MM = PDF_COVER_BOTTOM_CITY_PT * PDF_PT_TO_MM * 1.45;
 
 /**
- * Primeira página: capa (logo opcional no topo, títulos ao centro, rodapé).
+ * Primeira página: capa (logo opcional no topo, títulos, cidade/data em baixo).
  * Helvetica no jsPDF equivale a Arial nos laudos.
  */
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const cx = pageWidth / 2;
   const textMaxW = pageWidth - PDF_COVER_MARGIN_MM * 2;
+  const maxLogoW = textMaxW;
   const logoUrl = inspection.pdf_logo_data_url;
   const hasLogo =
     logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/');
+
+  let logoBottomY = PDF_COVER_MARGIN_MM + PDF_COVER_LOGO_TOP_PAD_MM;
+  let logoPlaced = false;
 
   if (hasLogo) {
     try {
@@ -450,32 +458,40 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
       const { w: lw, h: lh } = fitLogoSizeMm(
         iw,
         ih,
-        PDF_COVER_LOGO_MAX_W_MM,
-        PDF_COVER_LOGO_MAX_H_MM
+        maxLogoW,
+        PDF_COVER_LOGO_TARGET_H_MM
       );
       doc.addImage(
         logoUrl,
         getJsPdfFormatFromDataUrl(logoUrl),
         cx - lw / 2,
-        PDF_COVER_MARGIN_MM + 4,
+        logoBottomY,
         lw,
         lh
       );
+      logoBottomY += lh;
+      logoPlaced = true;
     } catch (e) {
       console.log('Capa: não foi possível incluir o logo.', e);
     }
   }
 
   doc.setTextColor(0, 0, 0);
+  const mainLineH = PDF_COVER_TITLE_MAIN_PT * PDF_PT_TO_MM * 1.18;
+  const subLineH = PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * 1.12;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_COVER_TITLE_MAIN_PT);
   const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA TÉCNICA', textMaxW);
-  const mainLineH = PDF_COVER_TITLE_MAIN_PT * PDF_PT_TO_MM * 1.18;
-  const subLineH = PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * 1.12;
   const mainBlockH = mainLines.length * mainLineH;
   const totalTitleH = mainBlockH + PDF_COVER_TITLE_MAIN_SUB_GAP_MM + subLineH;
-  const midY = pageHeight / 2;
-  let y = midY - totalTitleH / 2 + mainLineH * 0.72;
+
+  let y;
+  if (logoPlaced) {
+    y = logoBottomY + PDF_COVER_LOGO_GAP_BELOW_MM + mainLineH * 0.72;
+  } else {
+    const midY = pageHeight / 2;
+    y = midY - totalTitleH / 2 + mainLineH * 0.72;
+  }
 
   mainLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
@@ -483,6 +499,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   });
 
   y += PDF_COVER_TITLE_MAIN_SUB_GAP_MM;
+  doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_COVER_TITLE_SUB_PT);
   doc.text('RECEBIMENTO DE IMÓVEL', cx, y, { align: 'center' });
 
@@ -491,16 +508,20 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     inspection.data_final || inspection.data
   );
 
-  doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_COVER_FOOTER_PT);
   const yDate = pageHeight - PDF_COVER_MARGIN_MM - 10;
-  const yCity = yDate - PDF_COVER_FOOTER_LINE_MM;
+  const yCity = yDate - PDF_COVER_BOTTOM_LINE_MM;
+  doc.setFontSize(PDF_COVER_BOTTOM_CITY_PT);
+  doc.setFont(PDF_FONT, 'normal');
   if (cidadeTxt && dataTxt) {
     doc.text(cidadeTxt, cx, yCity, { align: 'center' });
+    doc.setFont(PDF_FONT, 'bold');
+    doc.setFontSize(PDF_COVER_BOTTOM_DATE_PT);
     doc.text(dataTxt, cx, yDate, { align: 'center' });
   } else if (cidadeTxt) {
     doc.text(cidadeTxt, cx, yDate, { align: 'center' });
   } else if (dataTxt) {
+    doc.setFont(PDF_FONT, 'bold');
+    doc.setFontSize(PDF_COVER_BOTTOM_DATE_PT);
     doc.text(dataTxt, cx, yDate, { align: 'center' });
   }
 }
@@ -1361,6 +1382,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const footerLineStep = PDF_BODY_LINE_MM * 0.72;
 
   for (let i = 1; i <= totalPages; i++) {
+    if (i === 1) continue;
     doc.setPage(i);
     doc.setFontSize(PDF_BODY_PT);
     doc.setFont(PDF_FONT, 'normal');
