@@ -837,6 +837,180 @@ const PDF_NC_IMG_H_MM = 58;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
+/** Par no registo: colunas ~8,5 cm, imagem 8,2 cm, espaço 0,5 cm (escala se necessário para caber na margem). */
+const PDF_REG_PAIR_COL_W_MM = 85;
+const PDF_REG_PAIR_GAP_MM = 5;
+const PDF_REG_PAIR_IMG_W_MM = 82;
+const PDF_REG_PAIR_ROW_GAP_MM = 4;
+
+function registroPairLayoutScaled(contentWidth) {
+  const ideal = 2 * PDF_REG_PAIR_COL_W_MM + PDF_REG_PAIR_GAP_MM;
+  const scale = Math.min(1, contentWidth / ideal);
+  const colW = PDF_REG_PAIR_COL_W_MM * scale;
+  const gap = PDF_REG_PAIR_GAP_MM * scale;
+  const imgW = PDF_REG_PAIR_IMG_W_MM * scale;
+  const imgH = PDF_NC_IMG_H_MM * (imgW / PDF_NC_IMG_W_MM);
+  return { colW, gap, imgW, imgH, scale };
+}
+
+/** Junta as descrições das fotos do mesmo item num único texto (segmentos separados por « — »). */
+function mergePhotoDescriptionsSegmented(photos) {
+  const parts = (photos || []).map((p) => pdfTrim(p?.description)).filter(Boolean);
+  if (parts.length === 0) return '\u2014';
+  if (parts.length === 1) return parts[0];
+  return parts.join(' — ');
+}
+
+function measureRegistroPairCellHeight(doc, imgW, imgH, captionFromApp, photoNumber) {
+  const cap = pdfTrim(captionFromApp);
+  const capH = cap
+    ? measureRegistroCaptionHeightFromApp(doc, imgW, cap, photoNumber)
+    : 0;
+  return (
+    PDF_NC_PHOTO_INNER_PAD_MM +
+    imgH +
+    (capH > 0 ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM + capH : 0) +
+    PDF_NC_PHOTO_INNER_PAD_MM
+  );
+}
+
+function measureRegistroPairRowMm(doc, photosInRow, layout) {
+  const { imgW, imgH } = layout;
+  if (photosInRow.length >= 2) {
+    let maxH = 0;
+    for (const photo of photosInRow) {
+      const cap = pdfTrim(photo.caption);
+      const h = measureRegistroPairCellHeight(doc, imgW, imgH, cap, photo.number);
+      maxH = Math.max(maxH, h);
+    }
+    return maxH;
+  }
+  const photo = photosInRow[0];
+  const cap = pdfTrim(photo.caption);
+  return measureRegistroPairCellHeight(doc, imgW, imgH, cap, photo.number);
+}
+
+async function drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPicTop, photo) {
+  const captionFromApp = pdfTrim(photo.caption);
+  if (photo.url) {
+    try {
+      const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
+      const { width: iw, height: ih } = await getDataUrlImageDimensions(photo.url);
+      const { w: dw, h: dh } = fitLogoSizeMm(iw, ih, imgW, imgH);
+      const dx = picX + (imgW - dw) / 2;
+      const dy = yPicTop + (imgH - dh) / 2;
+      doc.addImage(photo.url, imgFmt, dx, dy, dw, dh);
+    } catch (e) {
+      console.error('Erro ao adicionar imagem (NC):', e);
+      doc.setFont(PDF_FONT, 'italic');
+      doc.setFontSize(PDF_BODY_PT);
+      doc.text('[Imagem não disponível]', picX + imgW / 2, yPicTop + imgH / 2, {
+        align: 'center',
+      });
+      doc.setFont(PDF_FONT, 'normal');
+    }
+  }
+  let yBelow = yPicTop + imgH;
+  if (captionFromApp) {
+    yBelow = drawPdfRegistroFotoCaptionFromApp(
+      doc,
+      picX,
+      imgW,
+      yPicTop + imgH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
+      captionFromApp,
+      photo.number
+    );
+  }
+  return yBelow + PDF_NC_PHOTO_INNER_PAD_MM;
+}
+
+/**
+ * Linha do «quadro» 1×2 (bordas invisíveis): duas colunas ~8,5 cm, imagem 8,2 cm centrada na coluna;
+ * linha inteira centrada na área útil. Uma foto: uma coluna centrada na página.
+ */
+async function drawPdfRegistroPairRow(doc, yRowTop, tableX, contentWidth, photosInRow, layout) {
+  const { colW, gap, imgW, imgH } = layout;
+  const n = photosInRow.length;
+  const totalRowW = n === 2 ? 2 * colW + gap : colW;
+  const rowLeft = tableX + (contentWidth - totalRowW) / 2;
+
+  if (n >= 2) {
+    let maxBottom = yRowTop;
+    for (let i = 0; i < 2; i++) {
+      const colLeft = rowLeft + i * (colW + gap);
+      const picX = colLeft + (colW - imgW) / 2;
+      const yPic = yRowTop + PDF_NC_PHOTO_INNER_PAD_MM;
+      const bottom = await drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPic, photosInRow[i]);
+      maxBottom = Math.max(maxBottom, bottom);
+    }
+    return maxBottom;
+  }
+
+  const colLeft = rowLeft;
+  const picX = colLeft + (colW - imgW) / 2;
+  const yPic = yRowTop + PDF_NC_PHOTO_INNER_PAD_MM;
+  return drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPic, photosInRow[0]);
+}
+
+/**
+ * Várias fotos do mesmo item: 2 por linha; LOCALIZAÇÃO única; PROBLEMÁTICA com descrições fundidas.
+ */
+async function drawPdfRegistroItemGroup(
+  doc,
+  yStart,
+  margin,
+  contentWidth,
+  roomNameUpper,
+  photos
+) {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const tableX = margin;
+  const lineH = PDF_BODY_LINE_MM;
+  const descPad = PDF_NC_DESC_PAD_MM;
+  const layout = registroPairLayoutScaled(contentWidth);
+  const locText = String(roomNameUpper || '').trim() || '\u2014';
+  const mergedProb = mergePhotoDescriptionsSegmented(photos);
+
+  const rows = [];
+  for (let i = 0; i < photos.length; i += 2) {
+    rows.push(photos.slice(i, i + 2));
+  }
+
+  const rowHeights = rows.map((row) => measureRegistroPairRowMm(doc, row, layout));
+  const textBlockH =
+    PDF_NC_AFTER_PHOTO_GAP_MM +
+    measureLocProbCombinedMm(doc, contentWidth, descPad, locText, mergedProb, lineH);
+
+  function remainingHeightFromRow(ri) {
+    let s = 0;
+    for (let j = ri; j < rows.length; j++) {
+      s += rowHeights[j];
+      if (j < rows.length - 1) s += PDF_REG_PAIR_ROW_GAP_MM;
+    }
+    s += textBlockH;
+    return s;
+  }
+
+  let y = yStart;
+  for (let ri = 0; ri < rows.length; ri++) {
+    if (y + remainingHeightFromRow(ri) > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
+      doc.addPage();
+      y = PDF_PAGE_TOP_SAFE_MM;
+    }
+    y = await drawPdfRegistroPairRow(doc, y, tableX, contentWidth, rows[ri], layout);
+    if (ri < rows.length - 1) y += PDF_REG_PAIR_ROW_GAP_MM;
+  }
+
+  if (y + textBlockH > pageHeight - PDF_PAGE_BOTTOM_SAFE_MM) {
+    doc.addPage();
+    y = PDF_PAGE_TOP_SAFE_MM;
+  }
+  y += PDF_NC_AFTER_PHOTO_GAP_MM;
+  y = drawPdfLocProbCombined(doc, tableX, y, contentWidth, descPad, locText, mergedProb, lineH);
+
+  return y + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
+}
+
 /** Texto completo do capítulo ENCERRAMENTO (n.º de folhas só após fecho do documento). */
 function buildEncerramentoCompletoPdf(nFolhas) {
   const p1 = `Sendo signatário, encerro o presente documento, constando ${nFolhas} folhas, digitadas de um só lado, datado e assinado.`;
@@ -1169,7 +1343,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   yPos += PDF_PARAGRAPH_GAP_MM;
 
   const checklistTextWidth = contentWidth - PDF_LIST_INDENT_MM;
-  const ncPhotoEntries = [];
+  const ncPhotoGroups = [];
 
   if (inspection.rooms_checklist && inspection.rooms_checklist.length > 0) {
     let roomNumber = 1;
@@ -1212,10 +1386,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         yPos = drawBodyParagraphs(doc, block, listX, checklistTextWidth, yPos, checkNewPage);
         yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
 
-        for (const p of item.photos || []) {
-          if (p && p.url) {
-            ncPhotoEntries.push({ room, photo: p });
-          }
+        const photosWithUrl = (item.photos || []).filter((p) => p && p.url);
+        if (photosWithUrl.length > 0) {
+          ncPhotoGroups.push({ room, photos: photosWithUrl });
         }
       }
 
@@ -1241,7 +1414,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     `${ncChapterNum}. REGISTRO FOTOGRÁFICO`,
     { minFollowingMm: 52 }
   );
-  if (ncPhotoEntries.length === 0) {
+  if (ncPhotoGroups.length === 0) {
     yPos = drawBodyParagraphs(
       doc,
       PDF_REGISTRO_SEM_FOTOS_TEXTO,
@@ -1262,17 +1435,29 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
     let ncIdx = 0;
-    for (const { room, photo } of ncPhotoEntries) {
+    for (const { room, photos } of ncPhotoGroups) {
       ncIdx += 1;
-      yPos = await drawPdfNaoConformidadeTable(
-        doc,
-        yPos,
-        margin,
-        contentWidth,
-        ncIdx,
-        String(room.room_name || '').toUpperCase(),
-        photo
-      );
+      const roomUpper = String(room.room_name || '').toUpperCase();
+      if (photos.length === 1) {
+        yPos = await drawPdfNaoConformidadeTable(
+          doc,
+          yPos,
+          margin,
+          contentWidth,
+          ncIdx,
+          roomUpper,
+          photos[0]
+        );
+      } else {
+        yPos = await drawPdfRegistroItemGroup(
+          doc,
+          yPos,
+          margin,
+          contentWidth,
+          roomUpper,
+          photos
+        );
+      }
     }
   }
 
