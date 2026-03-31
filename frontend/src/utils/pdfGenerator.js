@@ -1318,19 +1318,19 @@ async function drawPdfRegistroItemGroup(
     PDF_NC_AFTER_PHOTO_GAP_MM +
     measureLocProbCombinedMm(doc, contentWidth, descPad, locText, mergedProb, lineH);
 
-  function remainingHeightFromRow(ri) {
+  /** Altura só das linhas de fotos (sem localização/problemática no fim). */
+  function remainingPhotoHeightFromRow(ri) {
     let s = 0;
     for (let j = ri; j < rows.length; j++) {
       s += rowHeights[j];
       if (j < rows.length - 1) s += PDF_REG_PAIR_ROW_GAP_MM;
     }
-    s += textBlockH;
     return s;
   }
 
   let y = yStart;
   for (let ri = 0; ri < rows.length; ri++) {
-    if (y + remainingHeightFromRow(ri) > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
+    if (y + remainingPhotoHeightFromRow(ri) > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
       doc.addPage();
       y = PDF_PAGE_TOP_SAFE_MM;
     }
@@ -1405,10 +1405,10 @@ async function drawPdfNaoConformidadeTable(
     picH +
     (capH > 0 ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM + capH : 0) +
     PDF_NC_PHOTO_INNER_PAD_MM;
-  const totalH = photoH + PDF_NC_AFTER_PHOTO_GAP_MM + locProbH;
 
   let y = yStart;
-  if (y + totalH > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
+  /** Só foto + legenda precisam ficar juntos; localização/problemática podem ir à página seguinte. */
+  if (y + photoH > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
     doc.addPage();
     y = PDF_PAGE_TOP_SAFE_MM;
   }
@@ -1447,6 +1447,10 @@ async function drawPdfNaoConformidadeTable(
   const yAfterPhotoBlock = yBelowCaption + PDF_NC_PHOTO_INNER_PAD_MM;
 
   let yText = yAfterPhotoBlock + PDF_NC_AFTER_PHOTO_GAP_MM;
+  if (yText + locProbH > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
+    doc.addPage();
+    yText = PDF_PAGE_TOP_SAFE_MM;
+  }
   yText = drawPdfLocProbCombined(doc, tableX, yText, contentWidth, descPad, locText, ncBody, lineH);
 
   return yText + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
