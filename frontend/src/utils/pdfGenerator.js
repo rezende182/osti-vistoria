@@ -90,29 +90,6 @@ function fitLogoSizeMm(naturalW, naturalH, maxW, maxH) {
   return { w, h };
 }
 
-/** Foto no registo NC: largura útil máx., altura entre 6,5 e 7 cm, proporção mantida. */
-function fitNcPhotoSizeMm(naturalW, naturalH, maxW, minH, maxH) {
-  if (!naturalW || !naturalH) {
-    const h = Math.min(maxH, Math.max(minH, (maxW * 3) / 4));
-    return { w: maxW, h };
-  }
-  const aspect = naturalW / naturalH;
-  let w = maxW;
-  let h = w / aspect;
-  if (h > maxH) {
-    h = maxH;
-    w = h * aspect;
-  } else if (h < minH) {
-    h = minH;
-    w = h * aspect;
-    if (w > maxW) {
-      w = maxW;
-      h = w / aspect;
-    }
-  }
-  return { w, h };
-}
-
 /** Endereço, cidade e UF para a secção 3. Introdução (identificação da vistoria). */
 function formatPdfIntroLocalizacao(inspection) {
   const e = (inspection.endereco || '').trim();
@@ -652,9 +629,9 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
   return lastBaseline + belowBaselineMm;
 }
 
-/** Legenda: Helvetica/Arial 10 pt (corpo do PDF = 12 pt). */
-const PDF_NC_CAPTION_PT = 12;
-const PDF_NC_CAPTION_LINE_MM = (PDF_NC_CAPTION_PT / PDF_BODY_PT) * PDF_BODY_LINE_MM;
+/** Legenda «Foto NN.»: Arial/Helvetica 10 pt, entrelinha 1,5. */
+const PDF_NC_CAPTION_PT = 10;
+const PDF_NC_CAPTION_LINE_MM = PDF_NC_CAPTION_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
 
 function parseRegistroCaptionPrefixBody(caption, photoNumber) {
   const raw = pdfTrim(caption);
@@ -789,7 +766,7 @@ function drawPdfDescricaoBlock(doc, tableX, yTop, contentWidth, pad, ncBody, lin
  */
 function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
   doc.setFont(PDF_FONT, 'normal');
-  doc.setFontSize(PDF_BODY_PT);
+  doc.setFontSize(PDF_NC_CAPTION_PT);
   const maxW = Math.max(20, maxWidthMm);
   let parts = doc.splitTextToSize(String(text), maxW);
   const out = [];
@@ -822,8 +799,9 @@ const PDF_NC_HEADER_PAD_H = 1.6;
 const PDF_NC_LINE_W = 0.12;
 const PDF_NC_LINE_W_OUTER = 0.18;
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-const PDF_NC_IMG_H_MIN_MM = 65;
-const PDF_NC_IMG_H_MAX_MM = 70;
+/** Área da imagem no registo fotográfico: 9 cm × 6 cm (largura × altura). */
+const PDF_NC_IMG_W_MM = 90;
+const PDF_NC_IMG_H_MM = 60;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
@@ -847,7 +825,7 @@ function measureEncerramentoCompletoMm(doc, contentWidth, nFolhas) {
  * Registo fotográfico: legenda = campo «Legenda» do app (`photo.caption`);
  * «Descrição da não conformidade» (`photo.description`) — fundo branco, só linhas finas.
  */
-async function drawPdfNaoConformidadeTable(
+function drawPdfNaoConformidadeTable(
   doc,
   yStart,
   margin,
@@ -870,21 +848,14 @@ async function drawPdfNaoConformidadeTable(
     headLines.length * PDF_NC_HEADER_LINE_MM +
     PDF_NC_HEADER_PAD_V;
 
-  const maxPhotoW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-  let iw = 1;
-  let ih = 1;
-  if (photo.url) {
-    const dim = await getDataUrlImageDimensions(photo.url);
-    iw = dim.width;
-    ih = dim.height;
+  const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
+  let picW = PDF_NC_IMG_W_MM;
+  let picH = PDF_NC_IMG_H_MM;
+  if (picW > maxUsableW) {
+    const s = maxUsableW / PDF_NC_IMG_W_MM;
+    picW = maxUsableW;
+    picH = PDF_NC_IMG_H_MM * s;
   }
-  const { w: picW, h: picH } = fitNcPhotoSizeMm(
-    iw,
-    ih,
-    maxPhotoW,
-    PDF_NC_IMG_H_MIN_MM,
-    PDF_NC_IMG_H_MAX_MM
-  );
   const picX = tableX + (contentWidth - picW) / 2;
 
   const captionFromApp = pdfTrim(photo.caption);
@@ -1274,7 +1245,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     let ncIdx = 0;
     for (const { room, photo } of ncPhotoEntries) {
       ncIdx += 1;
-      yPos = await drawPdfNaoConformidadeTable(
+      yPos = drawPdfNaoConformidadeTable(
         doc,
         yPos,
         margin,
