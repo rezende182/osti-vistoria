@@ -441,18 +441,18 @@ const PDF_COVER_MARGIN_MM = 20;
 const PDF_COVER_LOGO_W_MM = 70;
 const PDF_COVER_GAP_BELOW_LOGO_MM = 28;
 const PDF_COVER_TITLE_MAIN_PT = 24;
-/** Espaço reduzido entre título e bloco «Assunto / Contratante / …». */
 const PDF_COVER_GAP_AFTER_TITLE_MM = 8;
 const PDF_COVER_INFO_PT = 12;
-const PDF_COVER_INFO_LINE_FACTOR = 1.3;
+/** Entrelinha do bloco Assunto/Contratante/… (1,5 cm entre baselines). */
+const PDF_COVER_FIELD_LINE_STEP_MM = 15;
 const PDF_COVER_TRACKING_PT = 0.35;
-/** Reserva no rodapé para cidade + data (acima da margem inferior). */
-const PDF_COVER_BOTTOM_BLOCK_MM = 22;
+/** Espaço entre o bloco central e a cidade no rodapé. */
+const PDF_COVER_GAP_ABOVE_FOOTER_MM = 10;
 
 /**
- * Endereço na capa: logradouro, Apartamento/Bloco se houver, Cidade - UF.
+ * Valor do campo Endereço (sem o rótulo): logradouro, Apartamento/Bloco, Cidade - UF.
  */
-function buildPdfCoverEnderecoCompleto(inspection) {
+function buildPdfCoverEnderecoValor(inspection) {
   const parts = [];
   const e = pdfTrim(inspection.endereco);
   if (e) parts.push(e);
@@ -460,8 +460,52 @@ function buildPdfCoverEnderecoCompleto(inspection) {
   if (u) parts.push(`Apartamento/Bloco: ${u}`);
   const loc = pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf);
   if (loc) parts.push(loc);
-  const inner = parts.length ? parts.join(', ') : '\u2014';
-  return `Endereço: ${inner}`;
+  return parts.length ? parts.join(', ') : '\u2014';
+}
+
+function measureCoverFieldsHeightMm(doc, maxW, lineStepMm, fields) {
+  let h = 0;
+  doc.setFontSize(PDF_COVER_INFO_PT);
+  for (const { label, value } of fields) {
+    doc.setFont(PDF_FONT, 'bold');
+    const labelPart = `${label} `;
+    const labelW = doc.getTextWidth(labelPart);
+    doc.setFont(PDF_FONT, 'normal');
+    const v = value != null && String(value).trim() !== '' ? String(value) : '\u2014';
+    const valueLines = doc.splitTextToSize(v, Math.max(8, maxW - labelW));
+    const n = Math.max(1, valueLines.length);
+    h += n * lineStepMm;
+  }
+  return h;
+}
+
+/**
+ * Rótulo em negrito + valor à direita (continuação com indent); alinhado à esquerda em xLeft.
+ */
+function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, lineStepMm, fields) {
+  let y = yStart;
+  doc.setFontSize(PDF_COVER_INFO_PT);
+  for (const { label, value } of fields) {
+    doc.setFont(PDF_FONT, 'bold');
+    const labelPart = `${label} `;
+    const labelW = doc.getTextWidth(labelPart);
+    doc.setFont(PDF_FONT, 'normal');
+    const v = value != null && String(value).trim() !== '' ? String(value) : '\u2014';
+    const valueLines = doc.splitTextToSize(v, Math.max(8, maxW - labelW));
+    const lines = valueLines.length ? valueLines : [''];
+    lines.forEach((vl, i) => {
+      if (i === 0) {
+        doc.setFont(PDF_FONT, 'bold');
+        doc.text(labelPart, xLeft, y);
+        doc.setFont(PDF_FONT, 'normal');
+        doc.text(vl, xLeft + labelW, y);
+      } else {
+        doc.text(vl, xLeft + labelW, y);
+      }
+      y += lineStepMm;
+    });
+  }
+  return y;
 }
 
 /**
@@ -470,19 +514,19 @@ function buildPdfCoverEnderecoCompleto(inspection) {
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const cx = pageWidth / 2;
   const textMaxW = pageWidth - 2 * PDF_COVER_MARGIN_MM;
+  const xLeft = PDF_COVER_MARGIN_MM;
   const logoUrl = inspection.pdf_logo_data_url;
   const hasLogo =
     logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/');
 
-  const infoLineH = PDF_COVER_INFO_PT * PDF_PT_TO_MM * PDF_COVER_INFO_LINE_FACTOR;
   const cidadeRodape = pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf);
   const dataRodape = formatPdfLaudoCoverDateDdMmYyyy(
     inspection.data_final || inspection.data
   );
 
   const yDataRodape = pageHeight - PDF_COVER_MARGIN_MM - 2;
-  const yCidadeRodape = yDataRodape - infoLineH * 1.05;
-  const yMaxCorpo = yCidadeRodape - PDF_COVER_BOTTOM_BLOCK_MM;
+  const yCidadeRodape = yDataRodape - PDF_COVER_FIELD_LINE_STEP_MM;
+  const yLimiteBlocoCentral = yCidadeRodape - PDF_COVER_GAP_ABOVE_FOOTER_MM;
 
   let y = PDF_COVER_MARGIN_MM;
 
@@ -524,30 +568,49 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     doc.setCharSpace(0);
   }
 
-  y += PDF_COVER_GAP_AFTER_TITLE_MM;
+  const yAposTitulo = y + PDF_COVER_GAP_AFTER_TITLE_MM;
+
+  const creaTxt = pdfTrim(inspection.crea) || '\u2014';
+  const camposCapa = [
+    {
+      label: 'Assunto:',
+      value: 'Vistoria Técnica para Recebimento de Imóvel',
+    },
+    {
+      label: 'Contratante:',
+      value: pdfTrim(inspection.cliente) || '\u2014',
+    },
+    {
+      label: 'Endereço:',
+      value: buildPdfCoverEnderecoValor(inspection),
+    },
+    {
+      label: 'Responsável Técnico:',
+      value: `${formatPdfResponsavelTecnicoNome(inspection.responsavel_tecnico)} — CREA ${creaTxt}`,
+    },
+  ];
+
+  const alturaBloco = measureCoverFieldsHeightMm(
+    doc,
+    textMaxW,
+    PDF_COVER_FIELD_LINE_STEP_MM,
+    camposCapa
+  );
+  const zonaVertical =
+    Math.max(0, yLimiteBlocoCentral - yAposTitulo);
+  const yBloco =
+    yAposTitulo + Math.max(0, (zonaVertical - alturaBloco) / 2);
 
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_COVER_INFO_PT);
-
-  const creaTxt = pdfTrim(inspection.crea) || '\u2014';
-  const linhasInfo = [
-    'Assunto: Vistoria Técnica para Recebimento de Imóvel',
-    `Contratante: ${pdfTrim(inspection.cliente) || '\u2014'}`,
-    buildPdfCoverEnderecoCompleto(inspection),
-    `Responsável Técnico: ${formatPdfResponsavelTecnicoNome(
-      inspection.responsavel_tecnico
-    )} — CREA ${creaTxt}`,
-  ];
-
-  for (const texto of linhasInfo) {
-    const partes = doc.splitTextToSize(texto, textMaxW);
-    for (const ln of partes) {
-      if (y > yMaxCorpo) break;
-      doc.text(ln, cx, y, { align: 'center' });
-      y += infoLineH;
-    }
-    if (y > yMaxCorpo) break;
-  }
+  drawCoverFieldsLeft(
+    doc,
+    xLeft,
+    yBloco,
+    textMaxW,
+    PDF_COVER_FIELD_LINE_STEP_MM,
+    camposCapa
+  );
 
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_COVER_INFO_PT);
