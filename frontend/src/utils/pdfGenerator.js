@@ -139,9 +139,15 @@ const PDF_IDENT_LABEL_FILL = [245, 245, 245];
 const PDF_IDENT_TABLE_PT = 12;
 const PDF_IDENT_TABLE_CELL_PAD = 1.6;
 
+function pdfIdentLabelComDoisPontos(text) {
+  const s = String(text ?? '').trim();
+  if (!s) return s;
+  return /:\s*$/.test(s) ? s : `${s}:`;
+}
+
 function pdfIdentLabelCell(text) {
   return {
-    content: text,
+    content: pdfIdentLabelComDoisPontos(text),
     styles: { fontStyle: 'bold', fillColor: PDF_IDENT_LABEL_FILL },
   };
 }
@@ -196,6 +202,31 @@ function pdfCidadeUfCapaHyphenUpper(cidade, uf) {
   if (c && u) return `${c} - ${u}`;
   if (c) return c;
   if (u) return u;
+  return '';
+}
+
+/** Cidade em formato título (ex.: «Praia Grande») para a identificação no PDF. */
+function pdfCidadeTituloLaudo(cidade) {
+  const c = pdfTrim(cidade);
+  if (!c) return '';
+  return c
+    .toLocaleLowerCase('pt-BR')
+    .split(/(\s+)/)
+    .map((part) => {
+      if (/^\s+$/.test(part)) return part;
+      if (!part) return '';
+      return part.charAt(0).toLocaleUpperCase('pt-BR') + part.slice(1);
+    })
+    .join('');
+}
+
+/** Identificação do laudo: ex. «Praia Grande - MG» (cidade em título; UF em maiúsculas). */
+function pdfCidadeUfLaudoIdentificacao(cidade, uf) {
+  const cityFmt = pdfCidadeTituloLaudo(cidade);
+  const u = pdfUfSomenteSigla(uf);
+  if (cityFmt && u) return `${cityFmt} - ${u.toUpperCase()}`;
+  if (cityFmt) return cityFmt;
+  if (u) return u.toUpperCase();
   return '';
 }
 
@@ -356,7 +387,7 @@ function buildIdentificacaoTableBody(inspection) {
   rows.push(
     pdfIdentRowFull(
       'Cidade/UF',
-      pdfCidadeUfCapaHyphenUpper(inspection.cidade, inspection.uf) || '—',
+      pdfCidadeUfLaudoIdentificacao(inspection.cidade, inspection.uf) || '—',
       true
     )
   );
@@ -451,10 +482,13 @@ function estimateIdentificacaoTableHeightMm(
   doc,
   rows,
   contentWidth,
-  identLabelColW,
-  identValuePairW
+  identLabelColLeftW,
+  identLabelColRightW,
+  identValueColW
 ) {
-  const valueWColSpan3 = identLabelColW + 2 * identValuePairW;
+  /** Largura da célula com colSpan 3 (valor nas colunas 1–3): V | rótulo dir. | V */
+  const valueWColSpan3 =
+    identValueColW + identLabelColRightW + identValueColW;
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_IDENT_TABLE_PT);
   const lh = PDF_IDENT_TABLE_PT * PDF_PT_TO_MM * 1.45;
@@ -479,8 +513,8 @@ function estimateIdentificacaoTableHeightMm(
       const t3 = String(row[3]?.content ?? row[3] ?? '');
       const n = Math.max(
         1,
-        doc.splitTextToSize(t1, identValuePairW - 2).length,
-        doc.splitTextToSize(t3, identValuePairW - 2).length
+        doc.splitTextToSize(t1, identValueColW - 2).length,
+        doc.splitTextToSize(t3, identValueColW - 2).length
       );
       h += n * lh + PDF_IDENT_TABLE_CELL_PAD * 2 + 1;
     }
@@ -1471,8 +1505,13 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // 1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA
   // ============================================================
   const identificacaoData = buildIdentificacaoTableBody(inspection);
-  const identLabelColW = 48;
-  const identValuePairW = Math.max(24, (contentWidth - identLabelColW * 2) / 2);
+  /** Rótulos coluna esquerda (mais longos); coluna direita mais estreita junto ao fim do texto. */
+  const identLabelColLeftW = 48;
+  const identLabelColRightW = 38;
+  const identValueColW = Math.max(
+    24,
+    (contentWidth - identLabelColLeftW - identLabelColRightW) / 2
+  );
 
   const titleIdentificacao = pdfChapterTitleUpperCase('1. IDENTIFICAÇÃO DA VISTORIA TÉCNICA');
   /** Espaçamento do título «Identificação»: 1 linha acima/abaixo (como antes do 1,5× nos outros capítulos). */
@@ -1491,8 +1530,9 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     doc,
     identificacaoData,
     contentWidth,
-    identLabelColW,
-    identValuePairW
+    identLabelColLeftW,
+    identLabelColRightW,
+    identValueColW
   );
   if (
     yPos + hIdentTitle + hIdentTable >
@@ -1524,16 +1564,16 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     columnStyles: {
       0: {
         fontStyle: 'bold',
-        cellWidth: identLabelColW,
+        cellWidth: identLabelColLeftW,
         fillColor: PDF_IDENT_LABEL_FILL,
       },
-      1: { cellWidth: identValuePairW },
+      1: { cellWidth: identValueColW },
       2: {
         fontStyle: 'bold',
-        cellWidth: identLabelColW,
+        cellWidth: identLabelColRightW,
         fillColor: PDF_IDENT_LABEL_FILL,
       },
-      3: { cellWidth: identValuePairW },
+      3: { cellWidth: identValueColW },
     },
     margin: { left: margin, right: margin },
   });
