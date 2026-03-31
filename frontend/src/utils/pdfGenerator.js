@@ -800,9 +800,14 @@ const PDF_NC_HEADER_PAD_H = 1.6;
 const PDF_NC_LINE_W = 0.12;
 const PDF_NC_LINE_W_OUTER = 0.18;
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Área da imagem no registo fotográfico: 8,2 cm × 5,2 cm (largura × altura). */
-const PDF_NC_IMG_W_MM = 82;
-const PDF_NC_IMG_H_MM = 52;
+/**
+ * Caixa única para todas as fotos do registo (largura × altura).
+ * Dimensão pensada para laudo técnico: boa leitura, ~2 itens por página A4 com
+ * descrição típica de 3–4 linhas; textos muito longos podem quebrar para a página seguinte.
+ * A imagem é desenhada com proporção preservada (centrada na caixa).
+ */
+const PDF_NC_IMG_W_MM = 120;
+const PDF_NC_IMG_H_MM = 58;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
@@ -826,7 +831,7 @@ function measureEncerramentoCompletoMm(doc, contentWidth, nFolhas) {
  * Registo fotográfico: legenda = campo «Legenda» do app (`photo.caption`);
  * «Descrição da não conformidade» (`photo.description`) — fundo branco, só linhas finas.
  */
-function drawPdfNaoConformidadeTable(
+async function drawPdfNaoConformidadeTable(
   doc,
   yStart,
   margin,
@@ -905,7 +910,11 @@ function drawPdfNaoConformidadeTable(
   if (photo.url) {
     try {
       const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
-      doc.addImage(photo.url, imgFmt, picX, yPic, picW, picH);
+      const { width: iw, height: ih } = await getDataUrlImageDimensions(photo.url);
+      const { w: dw, h: dh } = fitLogoSizeMm(iw, ih, picW, picH);
+      const dx = picX + (picW - dw) / 2;
+      const dy = yPic + (picH - dh) / 2;
+      doc.addImage(photo.url, imgFmt, dx, dy, dw, dh);
     } catch (e) {
       console.error('Erro ao adicionar imagem (NC):', e);
       doc.setFont(PDF_FONT, 'italic');
@@ -1246,7 +1255,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     let ncIdx = 0;
     for (const { room, photo } of ncPhotoEntries) {
       ncIdx += 1;
-      yPos = drawPdfNaoConformidadeTable(
+      yPos = await drawPdfNaoConformidadeTable(
         doc,
         yPos,
         margin,
