@@ -1227,15 +1227,15 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (foto + legenda; texto sem moldura) ---------- */
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Caixa padrão do registo fotográfico: 8,65 cm × 6,5 cm (largura × altura). */
-const PDF_NC_IMG_W_MM = 86.5;
-const PDF_NC_IMG_H_MM = 65;
+/** Caixa padrão do registo fotográfico: 8,6 cm × 8,5 cm (largura × altura). */
+const PDF_NC_IMG_W_MM = 86;
+const PDF_NC_IMG_H_MM = 85;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
 /**
  * Duas fotos na mesma linha: vão mínimo. Se 2× largura + vão exceder a área útil (ex.: A4),
- * a caixa 8,65×6,5 escala uniformemente para caber.
+ * a caixa 8,6×8,5 escala uniformemente para caber.
  */
 const PDF_REG_PAIR_GAP_MM = 0;
 const PDF_REG_PAIR_ROW_GAP_MM = 4;
@@ -1336,7 +1336,7 @@ async function drawPdfRegistroPairCell(doc, picX, imgW, imgH, yPicTop, photo) {
 }
 
 /**
- * Linha 1×2: duas caixas 8,65×6,5 cm (ou a mesma caixa escalada se a página for estreita).
+ * Linha 1×2: duas caixas 8,6×8,5 cm (ou a mesma caixa escalada se a página for estreita).
  * Uma foto na linha: mesma caixa, centrada (ex.: terceira foto de um grupo de 3).
  */
 async function drawPdfRegistroPairRow(doc, yRowTop, tableX, contentWidth, photosInRow, layout) {
