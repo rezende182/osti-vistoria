@@ -6,6 +6,9 @@ import {
   ensureVerticalSpace,
   PDF_PAGE_BOTTOM_SAFE_MM,
   PDF_PAGE_TOP_SAFE_MM,
+  PDF_BODY_PT,
+  PDF_PT_TO_MM,
+  PDF_LINE_HEIGHT_FACTOR,
 } from './pdfLayout';
 
 /** Largura padrão da foto 10 cm */
@@ -13,8 +16,9 @@ export const PDF_LAUDO_PHOTO_WIDTH_MM = 100;
 /** Altura padrão da foto 15 cm (formato 10×15) */
 export const PDF_LAUDO_PHOTO_HEIGHT_MM = 150;
 
-export const PDF_LAUDO_PHOTO_CAPTION_PT = 10;
-export const PDF_LAUDO_PHOTO_CAPTION_LINE_MM = 4.2;
+export const PDF_LAUDO_PHOTO_CAPTION_PT = PDF_BODY_PT;
+export const PDF_LAUDO_PHOTO_CAPTION_LINE_MM =
+  PDF_LAUDO_PHOTO_CAPTION_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
 /** Espaço entre a base da foto e a legenda (mínimo, “colado” ao registo visual) */
 export const PDF_LAUDO_PHOTO_CAPTION_GAP_MM = 2;
 /** Margem inferior entre blocos de fotos */

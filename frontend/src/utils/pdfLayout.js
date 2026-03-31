@@ -1,12 +1,17 @@
 /**
  * Layout comum dos PDFs. No motor embutido do jsPDF, Helvetica equivale visualmente a Arial.
- * Corpo 12 pt, justificado em drawBodyParagraphs; hierarquia de títulos conforme laudos de vistoria.
+ * Corpo 12 pt, entrelinha 1,5, justificado em drawBodyParagraphs; hierarquia de títulos conforme laudos de vistoria.
  */
 export const PDF_FONT = 'helvetica';
 export const PDF_BODY_PT = 12;
-export const PDF_BODY_LINE_MM = 7.5;
 /** pt → mm (coordenadas jsPDF em mm) */
 export const PDF_PT_TO_MM = 25.4 / 72;
+/** Entrelinha 1,5 (corpo e medidas derivadas). */
+export const PDF_LINE_HEIGHT_FACTOR = 1.5;
+export const PDF_BODY_LINE_MM = PDF_BODY_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
+
+/** Margens laterais e zona segura vertical (2,5 cm). */
+export const PDF_PAGE_MARGIN_MM = 25;
 
 /** Títulos de capítulo (1., 2., …): negrito 14 pt; antes 12 pt / depois 6 pt */
 export const PDF_CHAPTER_TITLE_PT = 14;
@@ -33,10 +38,10 @@ export const PDF_LIST_ITEM_EXTRA_GAP_MM = 5 * PDF_PT_TO_MM;
 export const PDF_BODY_FIRST_LINE_INDENT_MM = 12.5;
 /** Espaço vertical após cada parágrafo (6 pt) */
 export const PDF_PARAGRAPH_GAP_MM = 6 * PDF_PT_TO_MM;
-/** ~60px — zona segura para não invadir o rodapé (jsPDF em mm) */
-export const PDF_PAGE_BOTTOM_SAFE_MM = 20;
-/** ~60px — margem superior ao continuar após quebra de página */
-export const PDF_PAGE_TOP_SAFE_MM = 20;
+/** Zona segura inferior (alinhada à margem do documento). */
+export const PDF_PAGE_BOTTOM_SAFE_MM = PDF_PAGE_MARGIN_MM;
+/** Margem superior ao continuar após quebra de página */
+export const PDF_PAGE_TOP_SAFE_MM = PDF_PAGE_MARGIN_MM;
 
 /**
  * Garante espaço vertical; se não couber, nova página e y reiniciado.

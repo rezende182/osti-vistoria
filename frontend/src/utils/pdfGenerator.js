@@ -22,6 +22,8 @@ import {
   PDF_CHAPTER_KEEP_WITH_NEXT_MM,
   PDF_CHAPTER_KEEP_WITH_SIGNATURE_BLOCK_MM,
   PDF_PT_TO_MM,
+  PDF_PAGE_MARGIN_MM,
+  PDF_LINE_HEIGHT_FACTOR,
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 import { METODOLOGIA_PLACEHOLDER_REG_NC } from '../constants/laudoEntregaTextos';
@@ -424,15 +426,10 @@ function getJsPdfFormatFromDataUrl(dataUrl) {
 /** Logo na capa: altura alvo 5 cm; largura proporcional (limitada à largura útil). */
 const PDF_COVER_LOGO_TARGET_H_MM = 50;
 const PDF_COVER_LOGO_TOP_PAD_MM = 4;
-const PDF_COVER_MARGIN_MM = 20;
-const PDF_COVER_TITLE_MAIN_PT = 20;
-/** Subtítulo 12–14 pt, regular (contraste com o título em negrito). */
-const PDF_COVER_TITLE_SUB_PT = 13;
-/** Espaço entre título principal e subtítulo (mm). */
+/** Capa: título 14 pt negrito, subtítulo e rodapé 12 pt (Arial/Helvetica). */
+const PDF_COVER_TITLE_MAIN_PT = PDF_CHAPTER_TITLE_PT;
+const PDF_COVER_TITLE_SUB_PT = PDF_BODY_PT;
 const PDF_COVER_TITLE_MAIN_SUB_GAP_MM = 3.2;
-const PDF_COVER_BOTTOM_CITY_PT = 14;
-const PDF_COVER_BOTTOM_DATE_PT = 14;
-const PDF_COVER_BOTTOM_LINE_MM = PDF_COVER_BOTTOM_CITY_PT * PDF_PT_TO_MM * 1.45;
 
 /**
  * Primeira página: capa (logo opcional no topo; título e subtítulo ao centro da página).
@@ -440,13 +437,13 @@ const PDF_COVER_BOTTOM_LINE_MM = PDF_COVER_BOTTOM_CITY_PT * PDF_PT_TO_MM * 1.45;
  */
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const cx = pageWidth / 2;
-  const textMaxW = pageWidth - PDF_COVER_MARGIN_MM * 2;
+  const textMaxW = pageWidth - PDF_PAGE_MARGIN_MM * 2;
   const maxLogoW = textMaxW;
   const logoUrl = inspection.pdf_logo_data_url;
   const hasLogo =
     logoUrl && typeof logoUrl === 'string' && logoUrl.startsWith('data:image/');
 
-  let logoTopY = PDF_COVER_MARGIN_MM + PDF_COVER_LOGO_TOP_PAD_MM;
+  let logoTopY = PDF_PAGE_MARGIN_MM + PDF_COVER_LOGO_TOP_PAD_MM;
 
   if (hasLogo) {
     try {
@@ -471,8 +468,8 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   }
 
   doc.setTextColor(0, 0, 0);
-  const mainLineH = PDF_COVER_TITLE_MAIN_PT * PDF_PT_TO_MM * 1.18;
-  const subLineH = PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * 1.12;
+  const mainLineH = PDF_COVER_TITLE_MAIN_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
+  const subLineH = PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_COVER_TITLE_MAIN_PT);
   const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA TÉCNICA', textMaxW);
@@ -496,20 +493,16 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     inspection.data_final || inspection.data
   );
 
-  const yDate = pageHeight - PDF_COVER_MARGIN_MM - 10;
-  const yCity = yDate - PDF_COVER_BOTTOM_LINE_MM;
-  doc.setFontSize(PDF_COVER_BOTTOM_CITY_PT);
+  const yDate = pageHeight - PDF_PAGE_MARGIN_MM - 10;
+  const yCity = yDate - PDF_BODY_LINE_MM;
   doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_BODY_PT);
   if (cidadeTxt && dataTxt) {
     doc.text(cidadeTxt, cx, yCity, { align: 'center' });
-    doc.setFont(PDF_FONT, 'bold');
-    doc.setFontSize(PDF_COVER_BOTTOM_DATE_PT);
     doc.text(dataTxt, cx, yDate, { align: 'center' });
   } else if (cidadeTxt) {
     doc.text(cidadeTxt, cx, yDate, { align: 'center' });
   } else if (dataTxt) {
-    doc.setFont(PDF_FONT, 'bold');
-    doc.setFontSize(PDF_COVER_BOTTOM_DATE_PT);
     doc.text(dataTxt, cx, yDate, { align: 'center' });
   }
 }
@@ -637,7 +630,7 @@ function drawPdfPhotoCaptionBoldPrefix(doc, imgX, imgWidth, yStart, parts) {
 }
 
 /** Legenda: Helvetica/Arial 10 pt (corpo do PDF = 12 pt). */
-const PDF_NC_CAPTION_PT = 10;
+const PDF_NC_CAPTION_PT = 12;
 const PDF_NC_CAPTION_LINE_MM = (PDF_NC_CAPTION_PT / PDF_BODY_PT) * PDF_BODY_LINE_MM;
 
 function parseRegistroCaptionPrefixBody(caption, photoNumber) {
@@ -940,7 +933,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
+  const margin = PDF_PAGE_MARGIN_MM;
   const contentWidth = pageWidth - margin * 2;
   const listX = margin + PDF_LIST_INDENT_MM;
   let yPos = margin;
@@ -1369,7 +1362,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
   // ============================================================
   const footerLeftText = buildPdfFooterLeftLine();
   const totalPages = doc.internal.getNumberOfPages();
-  const footerBottomY = pageHeight - 10;
+  const footerBottomY = pageHeight - PDF_PAGE_MARGIN_MM;
   const footerLineStep = PDF_BODY_LINE_MM * 0.72;
 
   for (let i = 1; i <= totalPages; i++) {
