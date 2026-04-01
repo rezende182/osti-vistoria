@@ -1178,16 +1178,31 @@ function measureRegistroLocalNcBlockMm(doc, contentWidth, pad, localizacaoText, 
   return pad + PDF_BODY_LINE_MM * 0.35 + lineCount * PDF_BODY_LINE_MM + pad;
 }
 
-function drawPdfRegistroLocalNcBlock(doc, tableX, yTop, contentWidth, pad, localizacaoText, ncBody, lineH) {
-  void lineH;
+/**
+ * Desenha Local | Não Conformidade com quebras de página no texto (foto+legenda já foram desenhados antes).
+ */
+function drawPdfRegistroLocalNcBlockPaged(doc, yContainerTop, margin, contentWidth, localizacaoText, ncBody, compact) {
+  const tableX = margin;
+  const lh = PDF_BODY_LINE_MM;
+  const pad = registroLocPadMm(compact);
   const innerX = tableX + pad;
   const innerW = Math.max(20, contentWidth - 2 * pad);
   const room = pdfRegistroDisplayValue(localizacaoText);
   const descNorm = (formatPdfProblematicaParagraph(ncBody) || '').trim() || '\u2014';
-  const lh = PDF_BODY_LINE_MM;
-  let y = yTop + pad + lh * 0.35;
   doc.setFontSize(PDF_BODY_PT);
   doc.setTextColor(0, 0, 0);
+
+  const bottomLimit = () => doc.internal.pageSize.getHeight() - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
+
+  let yBlockTop = yContainerTop;
+
+  let y = yBlockTop + pad + lh * 0.35;
+  if (y + lh > bottomLimit()) {
+    doc.addPage();
+    yBlockTop = PDF_PAGE_TOP_SAFE_MM;
+    y = yBlockTop + pad + lh * 0.35;
+  }
+
   let x = innerX;
   doc.setFont(PDF_FONT, 'bold');
   doc.text(`${PDF_REG_LOCAL_LABEL} `, x, y);
@@ -1208,13 +1223,16 @@ function drawPdfRegistroLocalNcBlock(doc, tableX, yTop, contentWidth, pad, local
     doc.text(firstLine, x, y);
   }
   const rest = descNorm.substring(firstLine.length).replace(/^\s+/, '');
-  if (rest) {
+  const restLineArr = rest ? doc.splitTextToSize(rest, innerW) : [];
+  restLineArr.forEach((ln) => {
     y += lh;
-    doc.splitTextToSize(rest, innerW).forEach((ln) => {
-      doc.text(ln, innerX, y);
-      y += lh;
-    });
-  }
+    if (y + lh > bottomLimit()) {
+      doc.addPage();
+      y = PDF_PAGE_TOP_SAFE_MM + lh * 0.5;
+    }
+    doc.text(ln, innerX, y);
+  });
+
   return y + pad;
 }
 
@@ -1283,19 +1301,64 @@ function registroAfterPhotoGapLayoutMm(compact) {
   return compact ? PDF_REG_COMPACT_AFTER_PHOTO_GAP_MM : PDF_NC_AFTER_PHOTO_GAP_MM;
 }
 
-function registroBlockTailGapsMm(compact, isLastPhoto) {
-  if (isLastPhoto) {
-    return { beforeSep: 0, afterSep: PDF_REG_AFTER_LAST_PHOTO_MM };
-  }
+/** Espaço vertical ocupado pela linha divisória entre duas fotos na mesma página (margens + linha). */
+function registroSeparatorBlockMm(compact) {
   return compact
-    ? {
-        beforeSep: PDF_REG_COMPACT_BLOCK_GAP_BEFORE_LINE_MM,
-        afterSep: PDF_REG_COMPACT_BLOCK_GAP_AFTER_LINE_MM,
-      }
-    : {
-        beforeSep: PDF_REG_BLOCK_GAP_BEFORE_LINE_MM,
-        afterSep: PDF_REG_BLOCK_GAP_AFTER_LINE_MM,
-      };
+    ? PDF_REG_COMPACT_BLOCK_GAP_BEFORE_LINE_MM + PDF_REG_COMPACT_BLOCK_GAP_AFTER_LINE_MM
+    : PDF_REG_BLOCK_GAP_BEFORE_LINE_MM + PDF_REG_BLOCK_GAP_AFTER_LINE_MM;
+}
+
+/** Separador + respiro antes da foto seguinte (só quando as duas fotos ficam na mesma página). */
+function registroInterFotoBlockMm(compact) {
+  return registroSeparatorBlockMm(compact) + (compact ? PDF_REG_COMPACT_PAIR_GAP_MM : PDF_REG_TWO_PER_PAGE_GAP_MM);
+}
+
+/** Altura só de legenda (se houver) + caixa da imagem — não quebra página no meio. */
+function measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo, picW, picH) {
+  const captionFromApp = pdfTrim(photo.caption);
+  const capH = measureRegistroCaptionHeightFromApp(doc, picW, captionFromApp, photo.number);
+  const captionGap = captionFromApp ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM : 0;
+  return PDF_NC_PHOTO_INNER_PAD_MM + capH + captionGap + picH;
+}
+
+function measureRegistroLocalNcSectionMm(doc, contentWidth, roomName, ncBody, compact) {
+  const locGap = registroLocPadMm(compact);
+  const lh = PDF_BODY_LINE_MM;
+  return (
+    locGap +
+    registroAfterPhotoGapLayoutMm(compact) +
+    measureRegistroLocalNcBlockMm(doc, contentWidth, locGap, roomName, ncBody, lh)
+  );
+}
+
+function measureRegistroSingleFullStackMm(doc, contentWidth, photo, roomName, isLast, picW, picH, compact) {
+  const u = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo, picW, picH);
+  const loc = measureRegistroLocalNcSectionMm(doc, contentWidth, roomName, pdfTrim(photo.description), compact);
+  let t = u + loc;
+  if (isLast) t += PDF_REG_AFTER_LAST_PHOTO_MM;
+  return t;
+}
+
+function measureRegistroPairFullStackMm(
+  doc,
+  contentWidth,
+  photo1,
+  room1,
+  photo2,
+  room2,
+  isLast2,
+  picW,
+  picH,
+  compact
+) {
+  const u1 = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo1, picW, picH);
+  const loc1 = measureRegistroLocalNcSectionMm(doc, contentWidth, room1, pdfTrim(photo1.description), compact);
+  const u2 = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo2, picW, picH);
+  const loc2 = measureRegistroLocalNcSectionMm(doc, contentWidth, room2, pdfTrim(photo2.description), compact);
+  const mid = registroInterFotoBlockMm(compact);
+  let t = u1 + loc1 + mid + u2 + loc2;
+  if (isLast2) t += PDF_REG_AFTER_LAST_PHOTO_MM;
+  return t;
 }
 
 function drawPdfRegistroBlockSeparator(doc, xLeft, contentWidth, yMm) {
@@ -1334,81 +1397,35 @@ function defaultRegistroPicSizeMm(contentWidth) {
   return { picW, picH };
 }
 
-/**
- * Altura total do bloco com dimensões explícitas da caixa da foto (deve coincidir com o desenho).
- * `opts.compact`: proporção 12×7 cm e espaçamentos reduzidos.
- */
-function measureRegistroBlockTotalMm(doc, contentWidth, photo, roomName, isLastPhoto, picW, picH, opts = {}) {
-  const compact = opts.compact === true;
-  const captionFromApp = pdfTrim(photo.caption);
-  const capH = measureRegistroCaptionHeightFromApp(doc, picW, captionFromApp, photo.number);
-  const locText = String(roomName || '').trim() || '\u2014';
-  const ncBody = pdfTrim(photo.description) || '\u2014';
-  const lineH = PDF_BODY_LINE_MM;
-  const locGap = registroLocPadMm(compact);
-  const afterPh = registroAfterPhotoGapLayoutMm(compact);
-  const locProbH = measureRegistroLocalNcBlockMm(doc, contentWidth, locGap, locText, ncBody, lineH);
-  const captionGap = captionFromApp ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM : 0;
-  const core =
-    PDF_NC_PHOTO_INNER_PAD_MM +
-    capH +
-    captionGap +
-    picH +
-    locGap +
-    afterPh +
-    locProbH;
-  const tail = registroBlockTailGapsMm(compact, isLastPhoto);
-  if (isLastPhoto) return core + tail.afterSep;
-  return core + tail.beforeSep + tail.afterSep;
-}
-
-function measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastPhoto) {
-  const { picW, picH } = defaultRegistroPicSizeMm(contentWidth);
-  return measureRegistroBlockTotalMm(doc, contentWidth, photo, roomName, isLastPhoto, picW, picH);
-}
-
-/**
- * Maior largura (proporção normal ou compacta) para um bloco caber em `usableH` (mm).
- * Tenta primeiro proporção normal (12×9), depois compacta (12×7).
- */
-function maxRegistroPhotoSizeForUsableMm(
-  doc,
-  contentWidth,
-  photo,
-  roomName,
-  isLastPhoto,
-  usableH
-) {
+function maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, isLast, usableH) {
   const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-  const minW = 32;
+  const minW = 28;
 
   const search = (compact) => {
     const ar = registroPhotoAspectRatio(compact);
     const tryW = (picW) => {
       const w = Math.min(maxUsableW, picW);
       const h = w * ar;
-      const t = measureRegistroBlockTotalMm(doc, contentWidth, photo, roomName, isLastPhoto, w, h, {
-        compact,
-      });
-      return { picW: w, picH: h, blockH: t, compact };
+      const t = measureRegistroSingleFullStackMm(doc, contentWidth, photo, roomName, isLast, w, h, compact);
+      return { picW: w, picH: h, stackH: t, compact };
     };
 
     let best = tryW(minW);
-    if (best.blockH > usableH) {
+    if (best.stackH > usableH) {
       return null;
     }
 
     let lo = minW;
     let hi = maxUsableW;
     const tHi = tryW(hi);
-    if (tHi.blockH <= usableH) {
+    if (tHi.stackH <= usableH) {
       return tHi;
     }
 
     for (let k = 0; k < 55; k++) {
       const mid = (lo + hi) / 2;
       const cand = tryW(mid);
-      if (cand.blockH <= usableH) {
+      if (cand.stackH <= usableH) {
         best = cand;
         lo = mid;
       } else {
@@ -1422,31 +1439,16 @@ function maxRegistroPhotoSizeForUsableMm(
   return search(false) || search(true);
 }
 
-/** Duas fotos empilhadas: mesma largura/altura; tenta normal e depois compacto. */
-function maxRegistroPairStackedMm(
-  doc,
-  contentWidth,
-  photo1,
-  room1,
-  photo2,
-  room2,
-  isLast2,
-  usableH
-) {
+function maxRegistroPairForUsableMm(doc, contentWidth, photo1, room1, photo2, room2, isLast2, usableH) {
   const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-  const minW = 32;
+  const minW = 28;
 
   const search = (compact) => {
     const ar = registroPhotoAspectRatio(compact);
-    const between = compact ? PDF_REG_COMPACT_PAIR_GAP_MM : PDF_REG_TWO_PER_PAGE_GAP_MM;
     const totalAt = (picW) => {
       const w = Math.min(maxUsableW, picW);
       const h = w * ar;
-      return (
-        measureRegistroBlockTotalMm(doc, contentWidth, photo1, room1, false, w, h, { compact }) +
-        between +
-        measureRegistroBlockTotalMm(doc, contentWidth, photo2, room2, isLast2, w, h, { compact })
-      );
+      return measureRegistroPairFullStackMm(doc, contentWidth, photo1, room1, photo2, room2, isLast2, w, h, compact);
     };
 
     if (totalAt(minW) > usableH) {
@@ -1457,7 +1459,7 @@ function maxRegistroPairStackedMm(
     let hi = maxUsableW;
     if (totalAt(hi) <= usableH) {
       const w = hi;
-      return { picW: w, picH: w * ar, compact, between };
+      return { picW: w, picH: w * ar, compact };
     }
 
     let bestW = minW;
@@ -1472,17 +1474,16 @@ function maxRegistroPairStackedMm(
       if (hi - lo < 0.25) break;
     }
     const w = Math.min(maxUsableW, bestW);
-    return { picW: w, picH: w * ar, compact, between };
+    return { picW: w, picH: w * ar, compact };
   };
 
   return search(false) || search(true);
 }
 
 /**
- * Registo: legenda acima da foto; abaixo «Local: … | Não Conformidade: …»; bloco íntegro.
- * `layoutOpts`: `picW`/`picH`, `compact` (12×7 + gaps menores), `skipBlockPageBreak`.
+ * Foto + legenda sempre na mesma página; Local/Não Conformidade pode continuar noutra.
  */
-async function drawPdfNaoConformidadeTable(
+async function drawRegistroFotograficoItem(
   doc,
   yStart,
   margin,
@@ -1490,63 +1491,35 @@ async function drawPdfNaoConformidadeTable(
   ncIdx,
   roomName,
   photo,
-  isLastPhoto,
-  layoutOpts = {}
+  {
+    picW,
+    picH,
+    compact = false,
+    allowNewPageBeforeFoto = true,
+    isLastInChapter = false,
+  }
 ) {
   void ncIdx;
-  const {
-    picW: optW,
-    picH: optH,
-    skipBlockPageBreak = false,
-    compact: layoutCompact = false,
-  } = layoutOpts;
-  const compact = layoutCompact === true;
   const pageHeight = doc.internal.pageSize.getHeight();
   const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
   const tableX = margin;
-  const lineH = PDF_BODY_LINE_MM;
-  const locGap = registroLocPadMm(compact);
+  const unitH = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo, picW, picH);
+  let y = yStart;
 
-  let picW;
-  let picH;
-  if (optW != null && optH != null) {
-    picW = optW;
-    picH = optH;
-  } else {
-    const d = defaultRegistroPicSizeMm(contentWidth);
-    picW = d.picW;
-    picH = d.picH;
+  if (allowNewPageBeforeFoto && y + unitH > bottomLimit) {
+    if (!(y <= PDF_PAGE_TOP_SAFE_MM + 0.5 && unitH > bottomLimit - PDF_PAGE_TOP_SAFE_MM)) {
+      doc.addPage();
+      y = PDF_PAGE_TOP_SAFE_MM;
+    }
+  } else if (!allowNewPageBeforeFoto && y + unitH > bottomLimit) {
+    doc.addPage();
+    y = PDF_PAGE_TOP_SAFE_MM;
   }
-  const picX = tableX + (contentWidth - picW) / 2;
 
+  const picX = tableX + (contentWidth - picW) / 2;
   const captionFromApp = pdfTrim(photo.caption);
   const locText = String(roomName || '').trim() || '\u2014';
   const ncBody = pdfTrim(photo.description) || '\u2014';
-  const totalBlockH = measureRegistroBlockTotalMm(
-    doc,
-    contentWidth,
-    photo,
-    roomName,
-    isLastPhoto,
-    picW,
-    picH,
-    { compact }
-  );
-
-  let y = yStart;
-  if (!skipBlockPageBreak) {
-    const maxUsablePageH = bottomLimit - PDF_PAGE_TOP_SAFE_MM;
-    while (y + totalBlockH > bottomLimit) {
-      if (y <= PDF_PAGE_TOP_SAFE_MM + 0.5 && totalBlockH > maxUsablePageH) {
-        break;
-      }
-      doc.addPage();
-      y = PDF_PAGE_TOP_SAFE_MM;
-      if (y + totalBlockH > bottomLimit && totalBlockH > maxUsablePageH) {
-        break;
-      }
-    }
-  }
 
   y += PDF_NC_PHOTO_INNER_PAD_MM;
   if (captionFromApp) {
@@ -1576,26 +1549,36 @@ async function drawPdfNaoConformidadeTable(
     }
   }
 
-  let yText = yPic + picH + locGap + registroAfterPhotoGapLayoutMm(compact);
-  yText = drawPdfRegistroLocalNcBlock(doc, tableX, yText, contentWidth, locGap, locText, ncBody, lineH);
+  const locGap = registroLocPadMm(compact);
+  const yContainer = yPic + picH + locGap + registroAfterPhotoGapLayoutMm(compact);
+  y = drawPdfRegistroLocalNcBlockPaged(doc, yContainer, margin, contentWidth, locText, ncBody, compact);
 
-  const tail = registroBlockTailGapsMm(compact, isLastPhoto);
-  if (isLastPhoto) {
-    return yText + tail.afterSep;
+  if (isLastInChapter) {
+    y += PDF_REG_AFTER_LAST_PHOTO_MM;
   }
+  return y;
+}
 
-  const ySep = yText + tail.beforeSep;
-  if (ySep + tail.afterSep > bottomLimit) {
+/** Linha divisória antes da foto seguinte; só quando as duas fotos ficam na mesma página. */
+function drawRegistroSeparatorBeforeNextFotoOnSamePage(doc, yAfterPrev, margin, contentWidth, compact) {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
+  const before = compact ? PDF_REG_COMPACT_BLOCK_GAP_BEFORE_LINE_MM : PDF_REG_BLOCK_GAP_BEFORE_LINE_MM;
+  const after = compact ? PDF_REG_COMPACT_BLOCK_GAP_AFTER_LINE_MM : PDF_REG_BLOCK_GAP_AFTER_LINE_MM;
+  const inter = compact ? PDF_REG_COMPACT_PAIR_GAP_MM : PDF_REG_TWO_PER_PAGE_GAP_MM;
+  const need = before + after + inter;
+  if (yAfterPrev + need > bottomLimit) {
     doc.addPage();
-    return PDF_PAGE_TOP_SAFE_MM;
+    return { y: PDF_PAGE_TOP_SAFE_MM, drewSeparator: false };
   }
-  drawPdfRegistroBlockSeparator(doc, tableX, contentWidth, ySep);
-  return ySep + tail.afterSep;
+  const ySep = yAfterPrev + before;
+  drawPdfRegistroBlockSeparator(doc, margin, contentWidth, ySep);
+  return { y: ySep + after + inter, drewSeparator: true };
 }
 
 /**
- * Registo: começa abaixo do texto introdutório; 2 fotos por página empilhadas, largura maximizada em conjunto;
- * modo compacto (12×7) quando o par não cabe em proporção normal (12×9).
+ * Registo: 2 fotos por página quando possível; foto+legenda sempre juntos; Local/Não Conformidade pode quebrar página;
+ * linha divisória só entre duas fotos na mesma página; imagem pode reduzir (12×9 ou compacto 12×7) para evitar quebras.
  */
 async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, ncPhotoGroups) {
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -1616,7 +1599,7 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
       const roomName2 = String(room2.room_name || '').trim();
       const isLast2 = i + 2 >= n;
 
-      let pair = maxRegistroPairStackedMm(
+      let pair = maxRegistroPairForUsableMm(
         doc,
         contentWidth,
         photo,
@@ -1630,7 +1613,7 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
         doc.addPage();
         yPageTop = PDF_PAGE_TOP_SAFE_MM;
         usable = bottomLimit - yPageTop;
-        pair = maxRegistroPairStackedMm(
+        pair = maxRegistroPairForUsableMm(
           doc,
           contentWidth,
           photo,
@@ -1644,67 +1627,51 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
       if (!pair) {
         const ar = registroPhotoAspectRatio(true);
         const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-        const w = Math.min(maxUsableW, 32);
-        pair = {
-          picW: w,
-          picH: w * ar,
-          compact: true,
-          between: PDF_REG_COMPACT_PAIR_GAP_MM,
-        };
+        const w = Math.min(maxUsableW, 28);
+        pair = { picW: w, picH: w * ar, compact: true };
       }
 
-      const totalPair =
-        measureRegistroBlockTotalMm(doc, contentWidth, photo, roomName, false, pair.picW, pair.picH, {
-          compact: pair.compact,
-        }) +
-        pair.between +
-        measureRegistroBlockTotalMm(doc, contentWidth, photo2, roomName2, isLast2, pair.picW, pair.picH, {
-          compact: pair.compact,
-        });
-      const yStartPair = yPageTop + Math.max(0, (usable - totalPair) / 2);
-
-      ncIdx += 1;
-      const yAfterFirst = await drawPdfNaoConformidadeTable(
+      const totalStack = measureRegistroPairFullStackMm(
         doc,
-        yStartPair,
-        margin,
         contentWidth,
-        ncIdx,
-        roomName,
         photo,
-        false,
-        {
-          picW: pair.picW,
-          picH: pair.picH,
-          skipBlockPageBreak: true,
-          compact: pair.compact,
-        }
+        roomName,
+        photo2,
+        roomName2,
+        isLast2,
+        pair.picW,
+        pair.picH,
+        pair.compact
       );
+      const yStartPair = yPageTop + Math.max(0, (usable - totalStack) / 2);
 
       ncIdx += 1;
-      const yAfter = await drawPdfNaoConformidadeTable(
-        doc,
-        yAfterFirst + pair.between,
-        margin,
-        contentWidth,
-        ncIdx,
-        roomName2,
-        photo2,
-        isLast2,
-        {
-          picW: pair.picW,
-          picH: pair.picH,
-          skipBlockPageBreak: true,
-          compact: pair.compact,
-        }
-      );
+      let yCur = await drawRegistroFotograficoItem(doc, yStartPair, margin, contentWidth, ncIdx, roomName, photo, {
+        picW: pair.picW,
+        picH: pair.picH,
+        compact: pair.compact,
+        allowNewPageBeforeFoto: false,
+        isLastInChapter: false,
+      });
+
+      const sep = drawRegistroSeparatorBeforeNextFotoOnSamePage(doc, yCur, margin, contentWidth, pair.compact);
+      yCur = sep.y;
+
+      ncIdx += 1;
+      yCur = await drawRegistroFotograficoItem(doc, yCur, margin, contentWidth, ncIdx, roomName2, photo2, {
+        picW: pair.picW,
+        picH: pair.picH,
+        compact: pair.compact,
+        allowNewPageBeforeFoto: !sep.drewSeparator,
+        isLastInChapter: isLast2,
+      });
 
       i += 2;
       if (i < n) {
         doc.addPage();
         yPageTop = PDF_PAGE_TOP_SAFE_MM;
       } else {
-        yPageTop = yAfter;
+        yPageTop = yCur;
       }
     } else {
       let usableSingle = usable;
@@ -1715,33 +1682,32 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
       }
       const { room, photo } = ncPhotoGroups[i];
       const roomName = String(room.room_name || '').trim();
-      let s1 = maxRegistroPhotoSizeForUsableMm(doc, contentWidth, photo, roomName, true, usableSingle);
+      let s1 = maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, true, usableSingle);
       if (!s1) {
         doc.addPage();
         yPageTop = PDF_PAGE_TOP_SAFE_MM;
         usableSingle = bottomLimit - yPageTop;
-        s1 = maxRegistroPhotoSizeForUsableMm(doc, contentWidth, photo, roomName, true, usableSingle);
+        s1 = maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, true, usableSingle);
       }
       if (!s1) {
         const ar = registroPhotoAspectRatio(true);
         const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-        const w = Math.min(maxUsableW, 32);
+        const w = Math.min(maxUsableW, 28);
         s1 = {
           picW: w,
           picH: w * ar,
           compact: true,
-          blockH: measureRegistroBlockTotalMm(doc, contentWidth, photo, roomName, true, w, w * ar, {
-            compact: true,
-          }),
+          stackH: measureRegistroSingleFullStackMm(doc, contentWidth, photo, roomName, true, w, w * ar, true),
         };
       }
-      const y1 = yPageTop + Math.max(0, (usableSingle - s1.blockH) / 2);
+      const y1 = yPageTop + Math.max(0, (usableSingle - s1.stackH) / 2);
       ncIdx += 1;
-      yPageTop = await drawPdfNaoConformidadeTable(doc, y1, margin, contentWidth, ncIdx, roomName, photo, true, {
+      yPageTop = await drawRegistroFotograficoItem(doc, y1, margin, contentWidth, ncIdx, roomName, photo, {
         picW: s1.picW,
         picH: s1.picH,
-        skipBlockPageBreak: true,
         compact: s1.compact,
+        allowNewPageBeforeFoto: false,
+        isLastInChapter: true,
       });
       i += 1;
     }
