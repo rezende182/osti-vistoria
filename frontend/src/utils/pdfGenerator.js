@@ -1168,17 +1168,14 @@ function mergeRegistroNcDescriptionsRaw(photos) {
     .join(' ');
 }
 
-/** Uma foto no item: caixa 12 cm × 9 cm (reduz só se a página for mais estreita). */
+/**
+ * Uma foto no item: mesma célula da grelha 2 col. (≈8,2 cm × proporcional 12×9).
+ * Alinha o registo com itens de várias fotos e deixa espaço para **dois itens de uma foto**
+ * na mesma página quando o texto não for longo demais.
+ */
 function registroSingleItemPicSizeMm(contentWidth) {
-  const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-  let picW = PDF_NC_IMG_W_MM;
-  let picH = PDF_NC_IMG_H_MM;
-  if (picW > maxUsableW) {
-    const s = maxUsableW / PDF_NC_IMG_W_MM;
-    picW = maxUsableW;
-    picH = PDF_NC_IMG_H_MM * s;
-  }
-  return { picW, picH };
+  const { cellW, cellH } = registroGridCellSizeMm(contentWidth);
+  return { picW: cellW, picH: cellH };
 }
 
 /** Células da grelha 2 col.: largura até 8,2 cm ou metade da área útil. */
@@ -1410,7 +1407,7 @@ function measureRegistroLocalNcSectionMm(doc, contentWidth, elementoText, roomNa
   );
 }
 
-/** Altura do bloco completo do item: grelha de fotos (1× 12×9 ou 2 col.) + Elemento|Local + NC fundida. */
+/** Altura do bloco completo do item: grelha de fotos (1× célula 8,2 cm ou 2 col.) + Elemento|Local + NC fundida. */
 function measureRegistroItemPhotosGridMm(
   doc,
   contentWidth,
@@ -1619,7 +1616,7 @@ async function drawRegistroFotoColumnOnly(doc, yStart, picX, picW, picH, photo) 
 }
 
 /**
- * Todas as fotos do mesmo item: 1 foto em 12×9; 2+ em grelha 2 col. (3 = 2+1 centrado; 4 = 2×2).
+ * Todas as fotos do mesmo item: 1 foto no tamanho de célula (igual à grelha); 2+ em grelha 2 col.
  * Um único texto Elemento | Local e NC fundidas no fim — sem quebra de página entre fotos do item.
  */
 async function drawRegistroItemPhotosGrid(
