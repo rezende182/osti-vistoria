@@ -1215,9 +1215,9 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (foto + legenda; texto sem moldura) ---------- */
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Caixa padrão das fotos no registo: 11 cm de largura × 9 cm de altura. */
-const PDF_NC_IMG_W_MM = 110;
-const PDF_NC_IMG_H_MM = 90;
+/** Caixa de referência do registo: 12 cm × 9,5 cm (largura × altura); o layout escala para caber no espaço útil. */
+const PDF_NC_IMG_W_MM = 120;
+const PDF_NC_IMG_H_MM = 95;
 /** Pequeno respiro colado ao fim da foto, antes de `PDF_NC_AFTER_PHOTO_GAP_MM`. */
 const PDF_NC_REG_LOC_PROB_PAD_MM = 1.5;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
@@ -1227,6 +1227,10 @@ const PDF_REG_BLOCK_GAP_AFTER_LINE_MM = 6;
 const PDF_REG_AFTER_LAST_PHOTO_MM = 4;
 /** Espaço vertical entre os dois blocos quando há 2 fotos na mesma página. */
 const PDF_REG_TWO_PER_PAGE_GAP_MM = 6;
+/** Altura mínima de cada faixa (mm) para manter 2 fotos legíveis na mesma página; abaixo disso abre página nova. */
+const PDF_REG_MIN_SLOT_FOR_PAIR_MM = 72;
+/** Altura útil mínima (mm) para uma foto isolada abaixo do texto; se menor, nova página. */
+const PDF_REG_MIN_USABLE_SINGLE_MM = 52;
 
 function drawPdfRegistroBlockSeparator(doc, xLeft, contentWidth, yMm) {
   doc.setDrawColor(...PDF_LAUDO_FOOTER_LINE_GRAY);
@@ -1294,7 +1298,7 @@ function measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastP
   return measureRegistroBlockTotalMm(doc, contentWidth, photo, roomName, isLastPhoto, picW, picH);
 }
 
-/** Maior caixa da foto (proporção 11:9) que ainda cabe na altura de slot `slotH` (mm). */
+/** Maior caixa da foto (proporção 12:9,5) que ainda cabe na altura de slot `slotH` (mm). */
 function maxRegistroPhotoSizeForSlotMm(
   doc,
   contentWidth,
@@ -1448,26 +1452,30 @@ async function drawPdfNaoConformidadeTable(
 }
 
 /**
- * Registo: 2 fotos por página (altura útil repartida em duas faixas), com tamanho de imagem maximizado em cada faixa;
- * página nova antes do 1.º registo; cada par em página própria; última ímpar ocupa a página inteira.
+ * Registo: começa abaixo do texto introdutório (quando há espaço); 2 fotos por página com faixas iguais e imagem
+ * maximizada; escala automaticamente para caber na altura útil. Pares seguintes em páginas novas.
  */
 async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, ncPhotoGroups) {
-  void yPos;
   const pageHeight = doc.internal.pageSize.getHeight();
   const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
   const n = ncPhotoGroups.length;
   let ncIdx = 0;
   let i = 0;
 
-  doc.addPage();
-  let yPageTop = PDF_PAGE_TOP_SAFE_MM;
+  let yPageTop = yPos;
 
   while (i < n) {
-    const usable = bottomLimit - yPageTop;
+    let usable = bottomLimit - yPageTop;
 
     if (i + 1 < n) {
       const between = PDF_REG_TWO_PER_PAGE_GAP_MM;
-      const slot = (usable - between) / 2;
+      let slot = (usable - between) / 2;
+      if (slot < PDF_REG_MIN_SLOT_FOR_PAIR_MM) {
+        doc.addPage();
+        yPageTop = PDF_PAGE_TOP_SAFE_MM;
+        usable = bottomLimit - yPageTop;
+        slot = (usable - between) / 2;
+      }
       const { room, photo } = ncPhotoGroups[i];
       const { room: room2, photo: photo2 } = ncPhotoGroups[i + 1];
       const roomName = String(room.room_name || '').trim();
@@ -1511,10 +1519,16 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
         yPageTop = yAfter;
       }
     } else {
+      let usableSingle = bottomLimit - yPageTop;
+      if (usableSingle < PDF_REG_MIN_USABLE_SINGLE_MM) {
+        doc.addPage();
+        yPageTop = PDF_PAGE_TOP_SAFE_MM;
+        usableSingle = bottomLimit - yPageTop;
+      }
       const { room, photo } = ncPhotoGroups[i];
       const roomName = String(room.room_name || '').trim();
-      const s1 = maxRegistroPhotoSizeForSlotMm(doc, contentWidth, photo, roomName, true, usable);
-      const y1 = yPageTop + Math.max(0, (usable - s1.blockH) / 2);
+      const s1 = maxRegistroPhotoSizeForSlotMm(doc, contentWidth, photo, roomName, true, usableSingle);
+      const y1 = yPageTop + Math.max(0, (usableSingle - s1.blockH) / 2);
       ncIdx += 1;
       yPageTop = await drawPdfNaoConformidadeTable(doc, y1, margin, contentWidth, ncIdx, roomName, photo, true, {
         picW: s1.picW,
