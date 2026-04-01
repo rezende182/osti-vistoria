@@ -781,7 +781,7 @@ function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, lineStepMm, fields, gapBe
 }
 
 /**
- * Primeira página: logo → título → assunto/contratante/endereço/RT; rodapé: Cidade - UF e data.
+ * Primeira página: logo → título → assunto/contratante/endereço/RT+CREA (mesmo bloco); rodapé: Cidade - UF e data.
  */
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const cx = pageWidth / 2;
@@ -843,6 +843,8 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const yAposTitulo = y + PDF_COVER_GAP_AFTER_TITLE_MM;
 
   const creaVal = pdfTrim(inspection.crea);
+  const rtNome = formatPdfResponsavelTecnicoNome(inspection.responsavel_tecnico);
+  const creaTexto = creaVal ? `nº ${creaVal}` : '\u2014';
   const camposCapa = [
     {
       label: 'Assunto:',
@@ -858,11 +860,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     },
     {
       label: 'Responsável Técnico:',
-      value: formatPdfResponsavelTecnicoNome(inspection.responsavel_tecnico),
-    },
-    {
-      label: 'CREA:',
-      value: creaVal ? `nº ${creaVal}` : '\u2014',
+      value: `${rtNome} CREA: ${creaTexto}`,
     },
   ];
 
