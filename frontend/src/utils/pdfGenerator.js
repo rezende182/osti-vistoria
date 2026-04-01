@@ -1126,7 +1126,7 @@ function drawPdfRegistroFotoCaptionFromApp(
 
 const PDF_NC_PROBLEMATICA_LABEL = 'Problemática:';
 const PDF_NC_LOCALIZACAO_LABEL = 'Localização:';
-/** Espaço entre o fim da legenda e o bloco «Localização» / «Problemática». */
+/** Espaço entre o fim da foto e o bloco «Localização» / «Problemática». */
 const PDF_NC_AFTER_PHOTO_GAP_MM = 1.5;
 
 /** Valores do registo fotográfico: só a primeira letra em maiúscula (resto em minúsculas). */
@@ -1251,7 +1251,41 @@ function measureEncerramentoCompletoMm(doc, contentWidth, nFolhas) {
 }
 
 /**
- * Registo fotográfico: foto (10×7 cm), legenda; abaixo «Localização:» e «Problemática:» (negrito).
+ * Altura total de um bloco do registo (legenda + foto + localização/problemática + separador se houver).
+ * Deve coincidir com o que `drawPdfNaoConformidadeTable` consome em Y.
+ */
+function measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastPhoto) {
+  const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
+  let picW = PDF_NC_IMG_W_MM;
+  let picH = PDF_NC_IMG_H_MM;
+  if (picW > maxUsableW) {
+    const s = maxUsableW / PDF_NC_IMG_W_MM;
+    picW = maxUsableW;
+    picH = PDF_NC_IMG_H_MM * s;
+  }
+  const captionFromApp = pdfTrim(photo.caption);
+  const capH = measureRegistroCaptionHeightFromApp(doc, picW, captionFromApp, photo.number);
+  const locText = String(roomName || '').trim() || '\u2014';
+  const ncBody = pdfTrim(photo.description) || '\u2014';
+  const lineH = PDF_BODY_LINE_MM;
+  const locProbPad = PDF_NC_REG_LOC_PROB_PAD_MM;
+  const locProbH =
+    lineH * 0.35 + measureLocProbCombinedMm(doc, contentWidth, locProbPad, locText, ncBody, lineH);
+  const captionGap = captionFromApp ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM : 0;
+  const core =
+    PDF_NC_PHOTO_INNER_PAD_MM +
+    capH +
+    captionGap +
+    picH +
+    PDF_NC_REG_LOC_PROB_PAD_MM +
+    PDF_NC_AFTER_PHOTO_GAP_MM +
+    locProbH;
+  if (isLastPhoto) return core + PDF_REG_AFTER_LAST_PHOTO_MM;
+  return core + PDF_REG_BLOCK_GAP_BEFORE_LINE_MM + PDF_REG_BLOCK_GAP_AFTER_LINE_MM;
+}
+
+/**
+ * Registo: legenda acima da foto (10×7 cm); abaixo «Localização:» e «Problemática:»; bloco sempre íntegro.
  */
 async function drawPdfNaoConformidadeTable(
   doc,
@@ -1265,6 +1299,7 @@ async function drawPdfNaoConformidadeTable(
 ) {
   void ncIdx;
   const pageHeight = doc.internal.pageSize.getHeight();
+  const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
   const tableX = margin;
   const lineH = PDF_BODY_LINE_MM;
   const locProbPad = PDF_NC_REG_LOC_PROB_PAD_MM;
@@ -1280,28 +1315,33 @@ async function drawPdfNaoConformidadeTable(
   const picX = tableX + (contentWidth - picW) / 2;
 
   const captionFromApp = pdfTrim(photo.caption);
-  const capH = measureRegistroCaptionHeightFromApp(doc, picW, captionFromApp, photo.number);
-
   const locText = String(roomName || '').trim() || '\u2014';
   const ncBody = pdfTrim(photo.description) || '\u2014';
-  const locProbH =
-    lineH * 0.35 +
-    measureLocProbCombinedMm(doc, contentWidth, locProbPad, locText, ncBody, lineH);
-
-  const photoH =
-    PDF_NC_PHOTO_INNER_PAD_MM +
-    picH +
-    (capH > 0 ? PDF_NC_IMAGE_TO_CAPTION_GAP_MM + capH : 0) +
-    PDF_NC_PHOTO_INNER_PAD_MM;
+  const totalBlockH = measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastPhoto);
 
   let y = yStart;
-  /** Só foto + legenda precisam ficar juntos; localização/problemática podem ir à página seguinte. */
-  if (y + photoH > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
+  /** Bloco completo na mesma página (quebra antes se necessário). */
+  const maxUsablePageH = bottomLimit - PDF_PAGE_TOP_SAFE_MM;
+  while (y + totalBlockH > bottomLimit) {
+    if (y <= PDF_PAGE_TOP_SAFE_MM + 0.5 && totalBlockH > maxUsablePageH) {
+      break;
+    }
     doc.addPage();
     y = PDF_PAGE_TOP_SAFE_MM;
+    if (y + totalBlockH > bottomLimit && totalBlockH > maxUsablePageH) {
+      break;
+    }
   }
 
-  const yPic = y + PDF_NC_PHOTO_INNER_PAD_MM;
+  y += PDF_NC_PHOTO_INNER_PAD_MM;
+  if (captionFromApp) {
+    y = drawPdfRegistroFotoCaptionFromApp(doc, picX, picW, y, captionFromApp, photo.number);
+  }
+  if (captionFromApp) {
+    y += PDF_NC_IMAGE_TO_CAPTION_GAP_MM;
+  }
+
+  const yPic = y;
   if (photo.url) {
     try {
       const imgFmt = getJsPdfFormatFromDataUrl(photo.url);
@@ -1321,24 +1361,7 @@ async function drawPdfNaoConformidadeTable(
     }
   }
 
-  let yBelowCaption = yPic + picH;
-  if (captionFromApp) {
-    yBelowCaption = drawPdfRegistroFotoCaptionFromApp(
-      doc,
-      picX,
-      picW,
-      yPic + picH + PDF_NC_IMAGE_TO_CAPTION_GAP_MM,
-      captionFromApp,
-      photo.number
-    );
-  }
-  const yAfterPhotoBlock = yBelowCaption + PDF_NC_REG_LOC_PROB_PAD_MM;
-
-  let yText = yAfterPhotoBlock + PDF_NC_AFTER_PHOTO_GAP_MM;
-  if (yText + locProbH > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
-    doc.addPage();
-    yText = PDF_PAGE_TOP_SAFE_MM;
-  }
+  let yText = yPic + picH + PDF_NC_REG_LOC_PROB_PAD_MM + PDF_NC_AFTER_PHOTO_GAP_MM;
   yText = drawPdfLocProbCombined(doc, tableX, yText, contentWidth, locProbPad, locText, ncBody, lineH);
 
   if (isLastPhoto) {
@@ -1346,13 +1369,92 @@ async function drawPdfNaoConformidadeTable(
   }
 
   const ySep = yText + PDF_REG_BLOCK_GAP_BEFORE_LINE_MM;
-  const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
   if (ySep + PDF_REG_BLOCK_GAP_AFTER_LINE_MM > bottomLimit) {
     doc.addPage();
     return PDF_PAGE_TOP_SAFE_MM;
   }
   drawPdfRegistroBlockSeparator(doc, tableX, contentWidth, ySep);
   return ySep + PDF_REG_BLOCK_GAP_AFTER_LINE_MM;
+}
+
+/**
+ * Distribui os registos: idealmente 2 blocos por página, com terços de espaço livre (topo / meio / fundo).
+ */
+async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, ncPhotoGroups) {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
+  const n = ncPhotoGroups.length;
+  let i = 0;
+  let ncIdx = 0;
+
+  while (i < n) {
+    const { room, photo } = ncPhotoGroups[i];
+    const roomName = String(room.room_name || '').trim();
+    const isLast1 = i === n - 1;
+    const h1 = measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLast1);
+    const spaceAvail = bottomLimit - yPos;
+
+    if (i + 1 < n && !isLast1) {
+      const { room: room2, photo: photo2 } = ncPhotoGroups[i + 1];
+      const roomName2 = String(room2.room_name || '').trim();
+      const isLast2 = i + 1 === n - 1;
+      const h2 = measureRegistroPhotoBlockMm(doc, contentWidth, photo2, roomName2, isLast2);
+      if (h1 + h2 <= spaceAvail) {
+        const slack = spaceAvail - h1 - h2;
+        const g = slack / 3;
+        yPos += g;
+        ncIdx += 1;
+        yPos = await drawPdfNaoConformidadeTable(
+          doc,
+          yPos,
+          margin,
+          contentWidth,
+          ncIdx,
+          roomName,
+          photo,
+          false
+        );
+        yPos += g;
+        ncIdx += 1;
+        yPos = await drawPdfNaoConformidadeTable(
+          doc,
+          yPos,
+          margin,
+          contentWidth,
+          ncIdx,
+          roomName2,
+          photo2,
+          isLast2
+        );
+        yPos += g;
+        i += 2;
+        continue;
+      }
+    }
+
+    while (yPos + h1 > bottomLimit) {
+      if (yPos <= PDF_PAGE_TOP_SAFE_MM + 0.5) {
+        break;
+      }
+      doc.addPage();
+      yPos = PDF_PAGE_TOP_SAFE_MM;
+    }
+
+    ncIdx += 1;
+    yPos = await drawPdfNaoConformidadeTable(
+      doc,
+      yPos,
+      margin,
+      contentWidth,
+      ncIdx,
+      roomName,
+      photo,
+      isLast1
+    );
+    i += 1;
+  }
+
+  return yPos;
 }
 
 // Gerar PDF
@@ -1728,22 +1830,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
       laudoBodyParagraphsOpts
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
-    let ncIdx = 0;
-    const nReg = ncPhotoGroups.length;
-    for (const { room, photo } of ncPhotoGroups) {
-      ncIdx += 1;
-      const roomName = String(room.room_name || '').trim();
-      yPos = await drawPdfNaoConformidadeTable(
-        doc,
-        yPos,
-        margin,
-        contentWidth,
-        ncIdx,
-        roomName,
-        photo,
-        ncIdx === nReg
-      );
-    }
+    yPos = await drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, ncPhotoGroups);
   }
 
   // ============================================================
