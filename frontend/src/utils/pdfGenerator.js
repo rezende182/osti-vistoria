@@ -1168,8 +1168,26 @@ function mergeRegistroNcDescriptionsRaw(photos) {
     .join(' ');
 }
 
-function registroItemBlockPicHMm() {
-  return (PDF_REG_ITEM_BLOCK_PIC_W_MM * PDF_NC_IMG_H_MM) / PDF_NC_IMG_W_MM;
+/** Uma foto no item: caixa 12 cm × 9 cm (reduz só se a página for mais estreita). */
+function registroSingleItemPicSizeMm(contentWidth) {
+  const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
+  let picW = PDF_NC_IMG_W_MM;
+  let picH = PDF_NC_IMG_H_MM;
+  if (picW > maxUsableW) {
+    const s = maxUsableW / PDF_NC_IMG_W_MM;
+    picW = maxUsableW;
+    picH = PDF_NC_IMG_H_MM * s;
+  }
+  return { picW, picH };
+}
+
+/** Células da grelha 2 col.: largura até 8,2 cm ou metade da área útil. */
+function registroGridCellSizeMm(contentWidth) {
+  const gap = PDF_REG_ITEM_PAIR_COL_GAP_MM;
+  const half = (contentWidth - gap) / 2;
+  const cellW = Math.min(PDF_REG_ITEM_BLOCK_PIC_W_MM, half);
+  const cellH = (cellW * PDF_NC_IMG_H_MM) / PDF_NC_IMG_W_MM;
+  return { cellW, cellH, gap };
 }
 
 /**
@@ -1343,9 +1361,13 @@ const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
 const PDF_NC_IMG_W_MM = 120;
 const PDF_NC_IMG_H_MM = 90;
 const PDF_NC_IMG_COMPACT_H_MM = 70;
-/** Bloco por item: duas fotos lado a lado com largura 8,2 cm; altura mantém proporção 12×9. */
+/** Célula da grelha (2 por linha): largura de referência 8,2 cm; altura proporcional 12×9. */
 const PDF_REG_ITEM_BLOCK_PIC_W_MM = 82;
 const PDF_REG_ITEM_PAIR_COL_GAP_MM = 4;
+/** Espaço vertical entre linhas de fotos do mesmo item. */
+const PDF_REG_ITEM_ROW_GAP_MM = 6;
+/** Espaço após o bloco de fotos de um item, antes do item seguinte (outro elemento). */
+const PDF_REG_GAP_AFTER_ITEM_BLOCK_MM = 6;
 /** Pequeno respiro colado ao fim da foto, antes de `PDF_NC_AFTER_PHOTO_GAP_MM`. */
 const PDF_NC_REG_LOC_PROB_PAD_MM = 1.5;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
@@ -1388,8 +1410,8 @@ function measureRegistroLocalNcSectionMm(doc, contentWidth, elementoText, roomNa
   );
 }
 
-/** Altura de um bloco do registo (1 ou 2 fotos do mesmo item): fila de fotos + Elemento|Local + NC fundida. */
-function measureRegistroItemBlockStackMm(
+/** Altura do bloco completo do item: grelha de fotos (1× 12×9 ou 2 col.) + Elemento|Local + NC fundida. */
+function measureRegistroItemPhotosGridMm(
   doc,
   contentWidth,
   photos,
@@ -1398,21 +1420,33 @@ function measureRegistroItemBlockStackMm(
   compact,
   isLastInChapter
 ) {
-  const picW = PDF_REG_ITEM_BLOCK_PIC_W_MM;
-  const picH = registroItemBlockPicHMm();
+  const n = photos.length;
   const mergedRaw = mergeRegistroNcDescriptionsRaw(photos);
-  let photoRowH;
-  if (photos.length >= 2) {
-    photoRowH = Math.max(
-      measureRegistroFotoCaptionUnitMm(doc, contentWidth, photos[0], picW, picH),
-      measureRegistroFotoCaptionUnitMm(doc, contentWidth, photos[1], picW, picH)
-    );
-  } else {
-    photoRowH = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photos[0], picW, picH);
-  }
   const el = String(elementoItem ?? '').trim() || '\u2014';
   const loc = measureRegistroLocalNcSectionMm(doc, contentWidth, el, roomName, mergedRaw || '\u2014', compact);
-  let t = photoRowH + loc;
+  if (n === 0) {
+    let t = loc;
+    if (isLastInChapter) t += PDF_REG_AFTER_LAST_PHOTO_MM;
+    return t;
+  }
+
+  let photoH = 0;
+  if (n === 1) {
+    const { picW, picH } = registroSingleItemPicSizeMm(contentWidth);
+    photoH = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photos[0], picW, picH);
+  } else {
+    const { cellW, cellH } = registroGridCellSizeMm(contentWidth);
+    const rows = Math.ceil(n / 2);
+    for (let r = 0; r < rows; r++) {
+      const slice = photos.slice(r * 2, r * 2 + 2);
+      const rowH = Math.max(
+        ...slice.map((ph) => measureRegistroFotoCaptionUnitMm(doc, contentWidth, ph, cellW, cellH))
+      );
+      photoH += rowH + (r < rows - 1 ? PDF_REG_ITEM_ROW_GAP_MM : 0);
+    }
+  }
+
+  let t = photoH + loc;
   if (isLastInChapter) t += PDF_REG_AFTER_LAST_PHOTO_MM;
   return t;
 }
@@ -1563,7 +1597,11 @@ async function drawRegistroFotoColumnOnly(doc, yStart, picX, picW, picH, photo) 
   return yPic + picH;
 }
 
-async function drawRegistroItemPairBlock(
+/**
+ * Todas as fotos do mesmo item: 1 foto em 12×9; 2+ em grelha 2 col. (3 = 2+1 centrado; 4 = 2×2).
+ * Um único texto Elemento | Local e NC fundidas no fim — sem quebra de página entre fotos do item.
+ */
+async function drawRegistroItemPhotosGrid(
   doc,
   yStart,
   margin,
@@ -1574,20 +1612,48 @@ async function drawRegistroItemPairBlock(
   compact,
   isLastInChapter
 ) {
-  const picW = PDF_REG_ITEM_BLOCK_PIC_W_MM;
-  const picH = registroItemBlockPicHMm();
-  const gap = PDF_REG_ITEM_PAIR_COL_GAP_MM;
-  const totalW = picW * 2 + gap;
   const tableX = margin;
-  const leftX = tableX + (contentWidth - totalW) / 2;
-  const rightX = leftX + picW + gap;
-  const b1 = await drawRegistroFotoColumnOnly(doc, yStart, leftX, picW, picH, photos[0]);
-  const b2 = await drawRegistroFotoColumnOnly(doc, yStart, rightX, picW, picH, photos[1]);
-  const yAfterPics = Math.max(b1, b2);
-  const locGap = registroLocPadMm(compact);
-  const yContainer = yAfterPics + locGap + registroAfterPhotoGapLayoutMm(compact);
   const mergedRaw = mergeRegistroNcDescriptionsRaw(photos);
-  let y = drawPdfRegistroElementoLocalNcBlockPaged(
+  const n = photos.length;
+
+  if (n === 1) {
+    const { picW, picH } = registroSingleItemPicSizeMm(contentWidth);
+    return drawRegistroFotograficoItem(doc, yStart, margin, contentWidth, 0, roomName, photos[0], {
+      picW,
+      picH,
+      compact,
+      allowNewPageBeforeFoto: true,
+      isLastInChapter: isLastInChapter,
+      elementoItem,
+      ncBodyRawOverride: mergedRaw || '\u2014',
+    });
+  }
+
+  const { cellW, cellH, gap } = registroGridCellSizeMm(contentWidth);
+  let y = yStart;
+  const rows = Math.ceil(n / 2);
+
+  for (let r = 0; r < rows; r++) {
+    const slice = photos.slice(r * 2, r * 2 + 2);
+    if (slice.length === 2) {
+      const totalW = cellW * 2 + gap;
+      const leftX = tableX + (contentWidth - totalW) / 2;
+      const rightX = leftX + cellW + gap;
+      const b1 = await drawRegistroFotoColumnOnly(doc, y, leftX, cellW, cellH, slice[0]);
+      const b2 = await drawRegistroFotoColumnOnly(doc, y, rightX, cellW, cellH, slice[1]);
+      y = Math.max(b1, b2);
+    } else {
+      const leftX = tableX + (contentWidth - cellW) / 2;
+      y = await drawRegistroFotoColumnOnly(doc, y, leftX, cellW, cellH, slice[0]);
+    }
+    if (r < rows - 1) {
+      y += PDF_REG_ITEM_ROW_GAP_MM;
+    }
+  }
+
+  const locGap = registroLocPadMm(compact);
+  const yContainer = y + locGap + registroAfterPhotoGapLayoutMm(compact);
+  let y2 = drawPdfRegistroElementoLocalNcBlockPaged(
     doc,
     yContainer,
     margin,
@@ -1597,20 +1663,17 @@ async function drawRegistroItemPairBlock(
     mergedRaw || '\u2014',
     compact
   );
-  if (isLastInChapter) y += PDF_REG_AFTER_LAST_PHOTO_MM;
-  return y;
+  if (isLastInChapter) y2 += PDF_REG_AFTER_LAST_PHOTO_MM;
+  return y2;
 }
 
 /**
- * Por item do checklist: até 2 fotos do mesmo item lado a lado (8,2 cm de largura, altura 12×9);
- * um único bloco Elemento | Local e não conformidades fundidas.
+ * Por item do checklist: todas as fotos em grelha sem quebras entre elas; texto único no fim.
  */
 async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, ncRegistroBlocks) {
   const pageHeight = doc.internal.pageSize.getHeight();
   const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
   const compact = false;
-  const picW = PDF_REG_ITEM_BLOCK_PIC_W_MM;
-  const picH = registroItemBlockPicHMm();
 
   let yPageTop = yPos;
 
@@ -1621,7 +1684,7 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
     const photos = block.photos || [];
     if (photos.length === 0) continue;
 
-    const stackH = measureRegistroItemBlockStackMm(
+    const stackH = measureRegistroItemPhotosGridMm(
       doc,
       contentWidth,
       photos,
@@ -1631,43 +1694,25 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
       isLast
     );
 
-    let usable = bottomLimit - yPageTop;
-    if (stackH > usable) {
+    if (stackH > bottomLimit - yPageTop) {
       doc.addPage();
       yPageTop = PDF_PAGE_TOP_SAFE_MM;
-      usable = bottomLimit - yPageTop;
     }
 
-    const yStart = yPageTop + Math.max(0, (usable - stackH) / 2);
-    const mergedRaw = mergeRegistroNcDescriptionsRaw(photos);
-
-    if (photos.length >= 2) {
-      yPageTop = await drawRegistroItemPairBlock(
-        doc,
-        yStart,
-        margin,
-        contentWidth,
-        roomName,
-        block.elementoItem,
-        photos,
-        compact,
-        isLast
-      );
-    } else {
-      yPageTop = await drawRegistroFotograficoItem(doc, yStart, margin, contentWidth, 0, roomName, photos[0], {
-        picW,
-        picH,
-        compact,
-        allowNewPageBeforeFoto: false,
-        isLastInChapter: isLast,
-        elementoItem: block.elementoItem,
-        ncBodyRawOverride: mergedRaw || '\u2014',
-      });
-    }
+    yPageTop = await drawRegistroItemPhotosGrid(
+      doc,
+      yPageTop,
+      margin,
+      contentWidth,
+      roomName,
+      block.elementoItem,
+      photos,
+      compact,
+      isLast
+    );
 
     if (!isLast) {
-      doc.addPage();
-      yPageTop = PDF_PAGE_TOP_SAFE_MM;
+      yPageTop += PDF_REG_GAP_AFTER_ITEM_BLOCK_MM;
     }
   }
 
@@ -1998,12 +2043,12 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         yPos += PDF_LIST_ITEM_EXTRA_GAP_MM;
 
         const photosWithUrl = (item.photos || []).filter((p) => p && p.url);
-        const elementoItem = String(item.name || '').trim() || '\u2014';
-        for (let k = 0; k < photosWithUrl.length; k += 2) {
+        if (photosWithUrl.length > 0) {
+          const elementoItem = String(item.name || '').trim() || '\u2014';
           ncRegistroBlocks.push({
             room,
             elementoItem,
-            photos: photosWithUrl.slice(k, k + 2),
+            photos: photosWithUrl,
           });
         }
       }
