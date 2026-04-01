@@ -1126,7 +1126,6 @@ function drawPdfRegistroFotoCaptionFromApp(
 
 const PDF_NC_PROBLEMATICA_LABEL = 'Problemática:';
 const PDF_NC_LOCALIZACAO_LABEL = 'Localização:';
-const PDF_NC_ITEM_LABEL = 'Item:';
 /** Espaço entre o fim da legenda e o bloco «Localização» / «Problemática». */
 const PDF_NC_AFTER_PHOTO_GAP_MM = 6;
 
@@ -1152,50 +1151,36 @@ function formatPdfProblematicaParagraph(s) {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-function buildRegistroItemLocLineBody(itemName, roomName) {
-  const item = pdfRegistroDisplayValue(itemName);
-  const room = pdfRegistroDisplayValue(roomName);
-  return `${item} | ${PDF_NC_LOCALIZACAO_LABEL} ${room}`;
-}
-
-/** «Item:» + nome + «| Localização:» + sala; depois «Problemática:». */
-function measureItemLocProbCombinedMm(doc, contentWidth, pad, itemName, roomName, ncBody, lineH) {
+/** «Localização:» e «Problemática:» em sequência (rótulos em negrito via `drawInlineLabelParagraph`). */
+function measureLocProbCombinedMm(doc, contentWidth, pad, localizacaoText, ncBody, lineH) {
   void lineH;
   const innerW = Math.max(20, contentWidth - 2 * pad);
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_BODY_PT);
-  const itemLocBody = buildRegistroItemLocLineBody(itemName, roomName);
-  const hItem = measureInlineLabelParagraphMm(doc, innerW, PDF_NC_ITEM_LABEL, itemLocBody);
+  const loc = pdfRegistroDisplayValue(localizacaoText);
   const prob = formatPdfProblematicaParagraph(ncBody);
+  const hLoc = measureInlineLabelParagraphMm(doc, innerW, PDF_NC_LOCALIZACAO_LABEL, loc);
   const hProb = measureInlineLabelParagraphMm(doc, innerW, PDF_NC_PROBLEMATICA_LABEL, prob);
-  return pad + hItem + hProb + pad;
+  return pad + hLoc + hProb + pad;
 }
 
-function drawPdfItemLocProbCombined(
+function drawPdfLocProbCombined(
   doc,
   tableX,
   yTop,
   contentWidth,
   pad,
-  itemName,
-  roomName,
+  localizacaoText,
   ncBody,
   lineH
 ) {
   const innerX = tableX + pad;
   const innerW = Math.max(20, contentWidth - 2 * pad);
   const y0 = yTop + pad + lineH * 0.85;
-  const itemLocBody = buildRegistroItemLocLineBody(itemName, roomName);
-  let y = drawInlineLabelParagraph(doc, innerX, innerW, y0, PDF_NC_ITEM_LABEL, itemLocBody, {});
-  y = drawInlineLabelParagraph(
-    doc,
-    innerX,
-    innerW,
-    y,
-    PDF_NC_PROBLEMATICA_LABEL,
-    formatPdfProblematicaParagraph(ncBody),
-    {}
-  );
+  const loc = pdfRegistroDisplayValue(localizacaoText);
+  const prob = formatPdfProblematicaParagraph(ncBody);
+  let y = drawInlineLabelParagraph(doc, innerX, innerW, y0, PDF_NC_LOCALIZACAO_LABEL, loc, {});
+  y = drawInlineLabelParagraph(doc, innerX, innerW, y, PDF_NC_PROBLEMATICA_LABEL, prob, {});
   return y + pad;
 }
 
@@ -1230,9 +1215,9 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (foto + legenda; texto sem moldura) ---------- */
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Caixa das fotos no registo: 10 cm de largura × 6 cm de altura. */
-const PDF_NC_IMG_W_MM = 100;
-const PDF_NC_IMG_H_MM = 60;
+/** Caixa padrão das fotos no registo: 12 cm de largura × 9 cm de altura. */
+const PDF_NC_IMG_W_MM = 120;
+const PDF_NC_IMG_H_MM = 90;
 const PDF_NC_DESC_PAD_MM = 2;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
@@ -1253,7 +1238,7 @@ function measureEncerramentoCompletoMm(doc, contentWidth, nFolhas) {
 }
 
 /**
- * Registo fotográfico: uma foto (10×6 cm), legenda; abaixo «Item:» + «Localização:» e «Problemática:».
+ * Registo fotográfico: foto (12×9 cm), legenda; abaixo «Localização:» e «Problemática:» (negrito).
  */
 async function drawPdfNaoConformidadeTable(
   doc,
@@ -1261,7 +1246,6 @@ async function drawPdfNaoConformidadeTable(
   margin,
   contentWidth,
   ncIdx,
-  itemName,
   roomName,
   photo
 ) {
@@ -1284,16 +1268,9 @@ async function drawPdfNaoConformidadeTable(
   const captionFromApp = pdfTrim(photo.caption);
   const capH = measureRegistroCaptionHeightFromApp(doc, picW, captionFromApp, photo.number);
 
+  const locText = String(roomName || '').trim() || '\u2014';
   const ncBody = pdfTrim(photo.description) || '\u2014';
-  const locProbH = measureItemLocProbCombinedMm(
-    doc,
-    contentWidth,
-    descPad,
-    itemName,
-    roomName,
-    ncBody,
-    lineH
-  );
+  const locProbH = measureLocProbCombinedMm(doc, contentWidth, descPad, locText, ncBody, lineH);
 
   const photoH =
     PDF_NC_PHOTO_INNER_PAD_MM +
@@ -1346,17 +1323,7 @@ async function drawPdfNaoConformidadeTable(
     doc.addPage();
     yText = PDF_PAGE_TOP_SAFE_MM;
   }
-  yText = drawPdfItemLocProbCombined(
-    doc,
-    tableX,
-    yText,
-    contentWidth,
-    descPad,
-    itemName,
-    roomName,
-    ncBody,
-    lineH
-  );
+  yText = drawPdfLocProbCombined(doc, tableX, yText, contentWidth, descPad, locText, ncBody, lineH);
 
   return yText + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
 }
@@ -1686,7 +1653,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
         const photosWithUrl = (item.photos || []).filter((p) => p && p.url);
         for (const photo of photosWithUrl) {
-          ncPhotoGroups.push({ room, item, photo });
+          ncPhotoGroups.push({ room, photo });
         }
       }
 
@@ -1735,17 +1702,15 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
     let ncIdx = 0;
-    for (const { room, item, photo } of ncPhotoGroups) {
+    for (const { room, photo } of ncPhotoGroups) {
       ncIdx += 1;
       const roomName = String(room.room_name || '').trim();
-      const itemName = String(item.name || '').trim();
       yPos = await drawPdfNaoConformidadeTable(
         doc,
         yPos,
         margin,
         contentWidth,
         ncIdx,
-        itemName,
         roomName,
         photo
       );
