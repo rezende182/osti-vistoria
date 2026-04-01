@@ -1126,8 +1126,8 @@ function drawPdfRegistroFotoCaptionFromApp(
 
 const PDF_NC_PROBLEMATICA_LABEL = 'Problemática:';
 const PDF_NC_LOCALIZACAO_LABEL = 'Localização:';
-/** Espaço entre o fim da foto e o bloco «Localização» / «Problemática». */
-const PDF_NC_AFTER_PHOTO_GAP_MM = 1.5;
+/** Espaço entre o fim da caixa da foto e o início do bloco «Localização» / «Problemática». */
+const PDF_NC_AFTER_PHOTO_GAP_MM = 6;
 
 /** Valores do registo fotográfico: só a primeira letra em maiúscula (resto em minúsculas). */
 function pdfRegistroDisplayValue(s) {
@@ -1215,11 +1215,11 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (foto + legenda; texto sem moldura) ---------- */
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Caixa padrão das fotos no registo: 10 cm de largura × 7 cm de altura. */
-const PDF_NC_IMG_W_MM = 100;
-const PDF_NC_IMG_H_MM = 70;
-/** Padding interno do bloco «Localização» / «Problemática» (mais junto da foto). */
-const PDF_NC_REG_LOC_PROB_PAD_MM = 0.5;
+/** Caixa padrão das fotos no registo: 11 cm de largura × 9 cm de altura. */
+const PDF_NC_IMG_W_MM = 110;
+const PDF_NC_IMG_H_MM = 90;
+/** Pequeno respiro colado ao fim da foto, antes de `PDF_NC_AFTER_PHOTO_GAP_MM`. */
+const PDF_NC_REG_LOC_PROB_PAD_MM = 1.5;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 /** Separador visual entre cada foto do registo (linha + espaços). */
 const PDF_REG_BLOCK_GAP_BEFORE_LINE_MM = 3;
@@ -1285,7 +1285,7 @@ function measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastP
 }
 
 /**
- * Registo: legenda acima da foto (10×7 cm); abaixo «Localização:» e «Problemática:»; bloco sempre íntegro.
+ * Registo: legenda acima da foto (11×9 cm); abaixo «Localização:» e «Problemática:»; bloco sempre íntegro.
  */
 async function drawPdfNaoConformidadeTable(
   doc,
