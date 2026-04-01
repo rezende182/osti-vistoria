@@ -1451,6 +1451,27 @@ function measureRegistroItemPhotosGridMm(
   return t;
 }
 
+/** Só fotos + legendas (sem Elemento/NC) — para caber no fim da página e deixar o texto continuar depois. */
+function measureRegistroItemPhotosOnlyMm(doc, contentWidth, photos) {
+  const n = photos.length;
+  if (n === 0) return 0;
+  if (n === 1) {
+    const { picW, picH } = registroSingleItemPicSizeMm(contentWidth);
+    return measureRegistroFotoCaptionUnitMm(doc, contentWidth, photos[0], picW, picH);
+  }
+  const { cellW, cellH } = registroGridCellSizeMm(contentWidth);
+  const rows = Math.ceil(n / 2);
+  let photoH = 0;
+  for (let r = 0; r < rows; r++) {
+    const slice = photos.slice(r * 2, r * 2 + 2);
+    const rowH = Math.max(
+      ...slice.map((ph) => measureRegistroFotoCaptionUnitMm(doc, contentWidth, ph, cellW, cellH))
+    );
+    photoH += rowH + (r < rows - 1 ? PDF_REG_ITEM_ROW_GAP_MM : 0);
+  }
+  return photoH;
+}
+
 function drawPdfRegistroBlockSeparator(doc, xLeft, contentWidth, yMm) {
   doc.setDrawColor(...PDF_LAUDO_FOOTER_LINE_GRAY);
   doc.setLineWidth(0.11);
@@ -1622,7 +1643,7 @@ async function drawRegistroItemPhotosGrid(
       picW,
       picH,
       compact,
-      allowNewPageBeforeFoto: true,
+      allowNewPageBeforeFoto: false,
       isLastInChapter: isLastInChapter,
       elementoItem,
       ncBodyRawOverride: mergedRaw || '\u2014',
@@ -1632,9 +1653,17 @@ async function drawRegistroItemPhotosGrid(
   const { cellW, cellH, gap } = registroGridCellSizeMm(contentWidth);
   let y = yStart;
   const rows = Math.ceil(n / 2);
+  const bottomLimit = () => doc.internal.pageSize.getHeight() - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
 
   for (let r = 0; r < rows; r++) {
     const slice = photos.slice(r * 2, r * 2 + 2);
+    const rowH = Math.max(
+      ...slice.map((ph) => measureRegistroFotoCaptionUnitMm(doc, contentWidth, ph, cellW, cellH))
+    );
+    if (y + rowH > bottomLimit()) {
+      doc.addPage();
+      y = PDF_PAGE_TOP_SAFE_MM;
+    }
     if (slice.length === 2) {
       const totalW = cellW * 2 + gap;
       const leftX = tableX + (contentWidth - totalW) / 2;
@@ -1684,17 +1713,9 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
     const photos = block.photos || [];
     if (photos.length === 0) continue;
 
-    const stackH = measureRegistroItemPhotosGridMm(
-      doc,
-      contentWidth,
-      photos,
-      roomName,
-      block.elementoItem,
-      compact,
-      isLast
-    );
+    const photosOnlyH = measureRegistroItemPhotosOnlyMm(doc, contentWidth, photos);
 
-    if (stackH > bottomLimit - yPageTop) {
+    if (photosOnlyH > bottomLimit - yPageTop) {
       doc.addPage();
       yPageTop = PDF_PAGE_TOP_SAFE_MM;
     }
