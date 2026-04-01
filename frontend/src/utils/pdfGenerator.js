@@ -705,9 +705,10 @@ const PDF_COVER_LOGO_W_MM = 70;
 const PDF_COVER_GAP_BELOW_LOGO_MM = 28;
 const PDF_COVER_TITLE_MAIN_PT = 24;
 const PDF_COVER_GAP_AFTER_TITLE_MM = 8;
-const PDF_COVER_INFO_PT = 12;
-/** Entrelinha dentro do mesmo campo quando o valor quebra em várias linhas (entre baselines). */
-const PDF_COVER_FIELD_LINE_STEP_MM = 15;
+/** Assunto, Contratante, Endereço, Responsável Técnico na capa. */
+const PDF_COVER_INFO_PT = 14;
+/** Entrelinha (entre baselines) para o texto a 14 pt quando o valor quebra em várias linhas. */
+const PDF_COVER_FIELD_LINE_STEP_MM = 17.5;
 /** Espaço entre um bloco de campo e o seguinte na capa (Assunto, Contratante, …). */
 const PDF_COVER_GAP_BETWEEN_FIELDS_MM = 1;
 const PDF_COVER_TRACKING_PT = 0.35;
@@ -781,7 +782,7 @@ function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, lineStepMm, fields, gapBe
 }
 
 /**
- * Primeira página: logo → título → assunto/contratante/endereço/RT+CREA (mesmo bloco); rodapé: Cidade - UF e data.
+ * Primeira página: logo → título → assunto/contratante/endereço/RT; rodapé: Cidade - UF e data.
  */
 async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const cx = pageWidth / 2;
@@ -842,9 +843,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
 
   const yAposTitulo = y + PDF_COVER_GAP_AFTER_TITLE_MM;
 
-  const creaVal = pdfTrim(inspection.crea);
   const rtNome = formatPdfResponsavelTecnicoNome(inspection.responsavel_tecnico);
-  const creaTexto = creaVal ? `nº ${creaVal}` : '\u2014';
   const camposCapa = [
     {
       label: 'Assunto:',
@@ -860,7 +859,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     },
     {
       label: 'Responsável Técnico:',
-      value: `${rtNome} CREA: ${creaTexto}`,
+      value: rtNome,
     },
   ];
 
