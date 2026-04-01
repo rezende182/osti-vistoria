@@ -1127,7 +1127,7 @@ function drawPdfRegistroFotoCaptionFromApp(
 const PDF_NC_PROBLEMATICA_LABEL = 'Problemática:';
 const PDF_NC_LOCALIZACAO_LABEL = 'Localização:';
 /** Espaço entre o fim da legenda e o bloco «Localização» / «Problemática». */
-const PDF_NC_AFTER_PHOTO_GAP_MM = 6;
+const PDF_NC_AFTER_PHOTO_GAP_MM = 1.5;
 
 /** Valores do registo fotográfico: só a primeira letra em maiúscula (resto em minúsculas). */
 function pdfRegistroDisplayValue(s) {
@@ -1176,7 +1176,7 @@ function drawPdfLocProbCombined(
 ) {
   const innerX = tableX + pad;
   const innerW = Math.max(20, contentWidth - 2 * pad);
-  const y0 = yTop + pad + lineH * 0.85;
+  const y0 = yTop + pad + lineH * 0.35;
   const loc = pdfRegistroDisplayValue(localizacaoText);
   const prob = formatPdfProblematicaParagraph(ncBody);
   let y = drawInlineLabelParagraph(doc, innerX, innerW, y0, PDF_NC_LOCALIZACAO_LABEL, loc, {});
@@ -1215,10 +1215,11 @@ function wrapPdfCaptionToImageWidth(doc, text, maxWidthMm) {
 
 /* ---------- Registo fotográfico (foto + legenda; texto sem moldura) ---------- */
 const PDF_NC_PHOTO_INNER_PAD_MM = 1.5;
-/** Caixa padrão das fotos no registo: 12 cm de largura × 9 cm de altura. */
-const PDF_NC_IMG_W_MM = 120;
-const PDF_NC_IMG_H_MM = 90;
-const PDF_NC_DESC_PAD_MM = 2;
+/** Caixa padrão das fotos no registo: 10 cm de largura × 7 cm de altura. */
+const PDF_NC_IMG_W_MM = 100;
+const PDF_NC_IMG_H_MM = 70;
+/** Padding interno do bloco «Localização» / «Problemática» (mais junto da foto). */
+const PDF_NC_REG_LOC_PROB_PAD_MM = 0.5;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 
 /** Texto completo do capítulo ENCERRAMENTO (n.º de folhas só após fecho do documento). */
@@ -1238,7 +1239,7 @@ function measureEncerramentoCompletoMm(doc, contentWidth, nFolhas) {
 }
 
 /**
- * Registo fotográfico: foto (12×9 cm), legenda; abaixo «Localização:» e «Problemática:» (negrito).
+ * Registo fotográfico: foto (10×7 cm), legenda; abaixo «Localização:» e «Problemática:» (negrito).
  */
 async function drawPdfNaoConformidadeTable(
   doc,
@@ -1253,7 +1254,7 @@ async function drawPdfNaoConformidadeTable(
   const pageHeight = doc.internal.pageSize.getHeight();
   const tableX = margin;
   const lineH = PDF_BODY_LINE_MM;
-  const descPad = PDF_NC_DESC_PAD_MM;
+  const locProbPad = PDF_NC_REG_LOC_PROB_PAD_MM;
 
   const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
   let picW = PDF_NC_IMG_W_MM;
@@ -1270,7 +1271,9 @@ async function drawPdfNaoConformidadeTable(
 
   const locText = String(roomName || '').trim() || '\u2014';
   const ncBody = pdfTrim(photo.description) || '\u2014';
-  const locProbH = measureLocProbCombinedMm(doc, contentWidth, descPad, locText, ncBody, lineH);
+  const locProbH =
+    lineH * 0.35 +
+    measureLocProbCombinedMm(doc, contentWidth, locProbPad, locText, ncBody, lineH);
 
   const photoH =
     PDF_NC_PHOTO_INNER_PAD_MM +
@@ -1316,14 +1319,14 @@ async function drawPdfNaoConformidadeTable(
       photo.number
     );
   }
-  const yAfterPhotoBlock = yBelowCaption + PDF_NC_PHOTO_INNER_PAD_MM;
+  const yAfterPhotoBlock = yBelowCaption + PDF_NC_REG_LOC_PROB_PAD_MM;
 
   let yText = yAfterPhotoBlock + PDF_NC_AFTER_PHOTO_GAP_MM;
   if (yText + locProbH > pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM) {
     doc.addPage();
     yText = PDF_PAGE_TOP_SAFE_MM;
   }
-  yText = drawPdfLocProbCombined(doc, tableX, yText, contentWidth, descPad, locText, ncBody, lineH);
+  yText = drawPdfLocProbCombined(doc, tableX, yText, contentWidth, locProbPad, locText, ncBody, lineH);
 
   return yText + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
 }
