@@ -1154,7 +1154,7 @@ function formatPdfProblematicaParagraph(s) {
 
 /**
  * Altura do bloco: «Elemento: … | Local: …» (várias linhas se preciso) + «Não conformidade:» + texto.
- * Elemento = legenda da foto (ex.: tomadas e interruptores).
+ * Elemento = item do checklist onde a foto está (ex.: pia, bancada, escada, guarda-corpo, piso).
  */
 function measureRegistroElementoLocalNcBlockMm(
   doc,
@@ -1383,9 +1383,19 @@ function measureRegistroLocalNcSectionMm(doc, contentWidth, elementoText, roomNa
   );
 }
 
-function measureRegistroSingleFullStackMm(doc, contentWidth, photo, roomName, isLast, picW, picH, compact) {
+function measureRegistroSingleFullStackMm(
+  doc,
+  contentWidth,
+  photo,
+  roomName,
+  elementoItem,
+  isLast,
+  picW,
+  picH,
+  compact
+) {
   const u = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo, picW, picH);
-  const el = pdfTrim(photo.caption) || '\u2014';
+  const el = String(elementoItem ?? '').trim() || '\u2014';
   const loc = measureRegistroLocalNcSectionMm(doc, contentWidth, el, roomName, pdfTrim(photo.description), compact);
   let t = u + loc;
   if (isLast) t += PDF_REG_AFTER_LAST_PHOTO_MM;
@@ -1397,16 +1407,18 @@ function measureRegistroPairFullStackMm(
   contentWidth,
   photo1,
   room1,
+  elementoItem1,
   photo2,
   room2,
+  elementoItem2,
   isLast2,
   picW,
   picH,
   compact
 ) {
   const u1 = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo1, picW, picH);
-  const el1 = pdfTrim(photo1.caption) || '\u2014';
-  const el2 = pdfTrim(photo2.caption) || '\u2014';
+  const el1 = String(elementoItem1 ?? '').trim() || '\u2014';
+  const el2 = String(elementoItem2 ?? '').trim() || '\u2014';
   const loc1 = measureRegistroLocalNcSectionMm(doc, contentWidth, el1, room1, pdfTrim(photo1.description), compact);
   const u2 = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo2, picW, picH);
   const loc2 = measureRegistroLocalNcSectionMm(doc, contentWidth, el2, room2, pdfTrim(photo2.description), compact);
@@ -1452,7 +1464,7 @@ function defaultRegistroPicSizeMm(contentWidth) {
   return { picW, picH };
 }
 
-function maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, isLast, usableH) {
+function maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, elementoItem, isLast, usableH) {
   const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
   const minW = 28;
 
@@ -1461,7 +1473,17 @@ function maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, isLast
     const tryW = (picW) => {
       const w = Math.min(maxUsableW, picW);
       const h = w * ar;
-      const t = measureRegistroSingleFullStackMm(doc, contentWidth, photo, roomName, isLast, w, h, compact);
+      const t = measureRegistroSingleFullStackMm(
+        doc,
+        contentWidth,
+        photo,
+        roomName,
+        elementoItem,
+        isLast,
+        w,
+        h,
+        compact
+      );
       return { picW: w, picH: h, stackH: t, compact };
     };
 
@@ -1494,7 +1516,18 @@ function maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, isLast
   return search(false) || search(true);
 }
 
-function maxRegistroPairForUsableMm(doc, contentWidth, photo1, room1, photo2, room2, isLast2, usableH) {
+function maxRegistroPairForUsableMm(
+  doc,
+  contentWidth,
+  photo1,
+  room1,
+  elementoItem1,
+  photo2,
+  room2,
+  elementoItem2,
+  isLast2,
+  usableH
+) {
   const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
   const minW = 28;
 
@@ -1503,7 +1536,20 @@ function maxRegistroPairForUsableMm(doc, contentWidth, photo1, room1, photo2, ro
     const totalAt = (picW) => {
       const w = Math.min(maxUsableW, picW);
       const h = w * ar;
-      return measureRegistroPairFullStackMm(doc, contentWidth, photo1, room1, photo2, room2, isLast2, w, h, compact);
+      return measureRegistroPairFullStackMm(
+        doc,
+        contentWidth,
+        photo1,
+        room1,
+        elementoItem1,
+        photo2,
+        room2,
+        elementoItem2,
+        isLast2,
+        w,
+        h,
+        compact
+      );
     };
 
     if (totalAt(minW) > usableH) {
@@ -1552,6 +1598,7 @@ async function drawRegistroFotograficoItem(
     compact = false,
     allowNewPageBeforeFoto = true,
     isLastInChapter = false,
+    elementoItem,
   }
 ) {
   void ncIdx;
@@ -1575,7 +1622,7 @@ async function drawRegistroFotograficoItem(
   const captionFromApp = pdfTrim(photo.caption);
   const locText = String(roomName || '').trim() || '\u2014';
   const ncBody = pdfTrim(photo.description) || '\u2014';
-  const elementoText = captionFromApp || '\u2014';
+  const elementoText = String(elementoItem ?? '').trim() || '\u2014';
 
   y += PDF_NC_PHOTO_INNER_PAD_MM;
   if (captionFromApp) {
@@ -1658,8 +1705,8 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
     let usable = bottomLimit - yPageTop;
 
     if (i + 1 < n) {
-      const { room, photo } = ncPhotoGroups[i];
-      const { room: room2, photo: photo2 } = ncPhotoGroups[i + 1];
+      const { room, photo, elementoItem: el1 } = ncPhotoGroups[i];
+      const { room: room2, photo: photo2, elementoItem: el2 } = ncPhotoGroups[i + 1];
       const roomName = String(room.room_name || '').trim();
       const roomName2 = String(room2.room_name || '').trim();
       const isLast2 = i + 2 >= n;
@@ -1669,8 +1716,10 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
         contentWidth,
         photo,
         roomName,
+        el1,
         photo2,
         roomName2,
+        el2,
         isLast2,
         usable
       );
@@ -1683,8 +1732,10 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
           contentWidth,
           photo,
           roomName,
+          el1,
           photo2,
           roomName2,
+          el2,
           isLast2,
           usable
         );
@@ -1701,8 +1752,10 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
         contentWidth,
         photo,
         roomName,
+        el1,
         photo2,
         roomName2,
+        el2,
         isLast2,
         pair.picW,
         pair.picH,
@@ -1717,6 +1770,7 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
         compact: pair.compact,
         allowNewPageBeforeFoto: false,
         isLastInChapter: false,
+        elementoItem: el1,
       });
 
       const sep = drawRegistroSeparatorBeforeNextFotoOnSamePage(doc, yCur, margin, contentWidth, pair.compact);
@@ -1729,6 +1783,7 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
         compact: pair.compact,
         allowNewPageBeforeFoto: !sep.drewSeparator,
         isLastInChapter: isLast2,
+        elementoItem: el2,
       });
 
       i += 2;
@@ -1745,14 +1800,14 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
         yPageTop = PDF_PAGE_TOP_SAFE_MM;
         usableSingle = bottomLimit - yPageTop;
       }
-      const { room, photo } = ncPhotoGroups[i];
+      const { room, photo, elementoItem: elSingle } = ncPhotoGroups[i];
       const roomName = String(room.room_name || '').trim();
-      let s1 = maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, true, usableSingle);
+      let s1 = maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, elSingle, true, usableSingle);
       if (!s1) {
         doc.addPage();
         yPageTop = PDF_PAGE_TOP_SAFE_MM;
         usableSingle = bottomLimit - yPageTop;
-        s1 = maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, true, usableSingle);
+        s1 = maxRegistroSingleForUsableMm(doc, contentWidth, photo, roomName, elSingle, true, usableSingle);
       }
       if (!s1) {
         const ar = registroPhotoAspectRatio(true);
@@ -1762,7 +1817,17 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
           picW: w,
           picH: w * ar,
           compact: true,
-          stackH: measureRegistroSingleFullStackMm(doc, contentWidth, photo, roomName, true, w, w * ar, true),
+          stackH: measureRegistroSingleFullStackMm(
+            doc,
+            contentWidth,
+            photo,
+            roomName,
+            elSingle,
+            true,
+            w,
+            w * ar,
+            true
+          ),
         };
       }
       const y1 = yPageTop + Math.max(0, (usableSingle - s1.stackH) / 2);
@@ -1773,6 +1838,7 @@ async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, nc
         compact: s1.compact,
         allowNewPageBeforeFoto: false,
         isLastInChapter: true,
+        elementoItem: elSingle,
       });
       i += 1;
     }
@@ -2106,7 +2172,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
 
         const photosWithUrl = (item.photos || []).filter((p) => p && p.url);
         for (const photo of photosWithUrl) {
-          ncPhotoGroups.push({ room, photo });
+          const elementoItem = String(item.name || '').trim() || '\u2014';
+          ncPhotoGroups.push({ room, photo, elementoItem });
         }
       }
 
