@@ -1221,6 +1221,18 @@ const PDF_NC_IMG_H_MM = 70;
 /** Padding interno do bloco «Localização» / «Problemática» (mais junto da foto). */
 const PDF_NC_REG_LOC_PROB_PAD_MM = 0.5;
 const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
+/** Separador visual entre cada foto do registo (linha + espaços). */
+const PDF_REG_BLOCK_GAP_BEFORE_LINE_MM = 3;
+const PDF_REG_BLOCK_GAP_AFTER_LINE_MM = 6;
+const PDF_REG_AFTER_LAST_PHOTO_MM = 4;
+
+function drawPdfRegistroBlockSeparator(doc, xLeft, contentWidth, yMm) {
+  doc.setDrawColor(...PDF_LAUDO_FOOTER_LINE_GRAY);
+  doc.setLineWidth(0.11);
+  doc.line(xLeft, yMm, xLeft + contentWidth, yMm);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.2);
+}
 
 /** Texto completo do capítulo ENCERRAMENTO (n.º de folhas só após fecho do documento). */
 function buildEncerramentoCompletoPdf(nFolhas) {
@@ -1248,7 +1260,8 @@ async function drawPdfNaoConformidadeTable(
   contentWidth,
   ncIdx,
   roomName,
-  photo
+  photo,
+  isLastPhoto
 ) {
   void ncIdx;
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -1328,7 +1341,18 @@ async function drawPdfNaoConformidadeTable(
   }
   yText = drawPdfLocProbCombined(doc, tableX, yText, contentWidth, locProbPad, locText, ncBody, lineH);
 
-  return yText + PDF_LIST_ITEM_EXTRA_GAP_MM * 1.5;
+  if (isLastPhoto) {
+    return yText + PDF_REG_AFTER_LAST_PHOTO_MM;
+  }
+
+  const ySep = yText + PDF_REG_BLOCK_GAP_BEFORE_LINE_MM;
+  const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
+  if (ySep + PDF_REG_BLOCK_GAP_AFTER_LINE_MM > bottomLimit) {
+    doc.addPage();
+    return PDF_PAGE_TOP_SAFE_MM;
+  }
+  drawPdfRegistroBlockSeparator(doc, tableX, contentWidth, ySep);
+  return ySep + PDF_REG_BLOCK_GAP_AFTER_LINE_MM;
 }
 
 // Gerar PDF
@@ -1705,6 +1729,7 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
     );
     yPos += PDF_PARAGRAPH_GAP_MM;
     let ncIdx = 0;
+    const nReg = ncPhotoGroups.length;
     for (const { room, photo } of ncPhotoGroups) {
       ncIdx += 1;
       const roomName = String(room.room_name || '').trim();
@@ -1715,7 +1740,8 @@ export const generateInspectionPDF = async (inspection, forPreview = false) => {
         contentWidth,
         ncIdx,
         roomName,
-        photo
+        photo,
+        ncIdx === nReg
       );
     }
   }
