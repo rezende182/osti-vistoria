@@ -1225,6 +1225,8 @@ const PDF_NC_IMAGE_TO_CAPTION_GAP_MM = 1;
 const PDF_REG_BLOCK_GAP_BEFORE_LINE_MM = 3;
 const PDF_REG_BLOCK_GAP_AFTER_LINE_MM = 6;
 const PDF_REG_AFTER_LAST_PHOTO_MM = 4;
+/** Espaço vertical entre os dois blocos quando há 2 fotos na mesma página. */
+const PDF_REG_TWO_PER_PAGE_GAP_MM = 6;
 
 function drawPdfRegistroBlockSeparator(doc, xLeft, contentWidth, yMm) {
   doc.setDrawColor(...PDF_LAUDO_FOOTER_LINE_GRAY);
@@ -1250,11 +1252,7 @@ function measureEncerramentoCompletoMm(doc, contentWidth, nFolhas) {
   return measureBodyParagraphsHeightMm(doc, buildEncerramentoCompletoPdf(nFolhas), contentWidth);
 }
 
-/**
- * Altura total de um bloco do registo (legenda + foto + localização/problemática + separador se houver).
- * Deve coincidir com o que `drawPdfNaoConformidadeTable` consome em Y.
- */
-function measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastPhoto) {
+function defaultRegistroPicSizeMm(contentWidth) {
   const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
   let picW = PDF_NC_IMG_W_MM;
   let picH = PDF_NC_IMG_H_MM;
@@ -1263,6 +1261,13 @@ function measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastP
     picW = maxUsableW;
     picH = PDF_NC_IMG_H_MM * s;
   }
+  return { picW, picH };
+}
+
+/**
+ * Altura total do bloco com dimensões explícitas da caixa da foto (deve coincidir com o desenho).
+ */
+function measureRegistroBlockTotalMm(doc, contentWidth, photo, roomName, isLastPhoto, picW, picH) {
   const captionFromApp = pdfTrim(photo.caption);
   const capH = measureRegistroCaptionHeightFromApp(doc, picW, captionFromApp, photo.number);
   const locText = String(roomName || '').trim() || '\u2014';
@@ -1284,8 +1289,60 @@ function measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastP
   return core + PDF_REG_BLOCK_GAP_BEFORE_LINE_MM + PDF_REG_BLOCK_GAP_AFTER_LINE_MM;
 }
 
+function measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastPhoto) {
+  const { picW, picH } = defaultRegistroPicSizeMm(contentWidth);
+  return measureRegistroBlockTotalMm(doc, contentWidth, photo, roomName, isLastPhoto, picW, picH);
+}
+
+/** Maior caixa da foto (proporção 11:9) que ainda cabe na altura de slot `slotH` (mm). */
+function maxRegistroPhotoSizeForSlotMm(
+  doc,
+  contentWidth,
+  photo,
+  roomName,
+  isLastPhoto,
+  slotH
+) {
+  const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
+  const ar = PDF_NC_IMG_H_MM / PDF_NC_IMG_W_MM;
+  const minW = 32;
+
+  const tryW = (picW) => {
+    const w = Math.min(maxUsableW, picW);
+    const h = w * ar;
+    const t = measureRegistroBlockTotalMm(doc, contentWidth, photo, roomName, isLastPhoto, w, h);
+    return { picW: w, picH: h, blockH: t };
+  };
+
+  let best = tryW(minW);
+  if (best.blockH > slotH) {
+    return best;
+  }
+
+  let lo = minW;
+  let hi = maxUsableW;
+  let tHi = tryW(hi);
+  if (tHi.blockH <= slotH) {
+    return tHi;
+  }
+
+  for (let k = 0; k < 55; k++) {
+    const mid = (lo + hi) / 2;
+    const cand = tryW(mid);
+    if (cand.blockH <= slotH) {
+      best = cand;
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+    if (hi - lo < 0.25) break;
+  }
+  return best;
+}
+
 /**
- * Registo: legenda acima da foto (11×9 cm); abaixo «Localização:» e «Problemática:»; bloco sempre íntegro.
+ * Registo: legenda acima da foto; abaixo «Localização:» e «Problemática:»; bloco íntegro.
+ * `layoutOpts.picW` / `picH`: tamanho da caixa (ex.: 2 fotos/página); `skipBlockPageBreak`: não quebrar antes do bloco.
  */
 async function drawPdfNaoConformidadeTable(
   doc,
@@ -1295,41 +1352,54 @@ async function drawPdfNaoConformidadeTable(
   ncIdx,
   roomName,
   photo,
-  isLastPhoto
+  isLastPhoto,
+  layoutOpts = {}
 ) {
   void ncIdx;
+  const { picW: optW, picH: optH, skipBlockPageBreak = false } = layoutOpts;
   const pageHeight = doc.internal.pageSize.getHeight();
   const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
   const tableX = margin;
   const lineH = PDF_BODY_LINE_MM;
   const locProbPad = PDF_NC_REG_LOC_PROB_PAD_MM;
 
-  const maxUsableW = contentWidth - 2 * PDF_NC_PHOTO_INNER_PAD_MM;
-  let picW = PDF_NC_IMG_W_MM;
-  let picH = PDF_NC_IMG_H_MM;
-  if (picW > maxUsableW) {
-    const s = maxUsableW / PDF_NC_IMG_W_MM;
-    picW = maxUsableW;
-    picH = PDF_NC_IMG_H_MM * s;
+  let picW;
+  let picH;
+  if (optW != null && optH != null) {
+    picW = optW;
+    picH = optH;
+  } else {
+    const d = defaultRegistroPicSizeMm(contentWidth);
+    picW = d.picW;
+    picH = d.picH;
   }
   const picX = tableX + (contentWidth - picW) / 2;
 
   const captionFromApp = pdfTrim(photo.caption);
   const locText = String(roomName || '').trim() || '\u2014';
   const ncBody = pdfTrim(photo.description) || '\u2014';
-  const totalBlockH = measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLastPhoto);
+  const totalBlockH = measureRegistroBlockTotalMm(
+    doc,
+    contentWidth,
+    photo,
+    roomName,
+    isLastPhoto,
+    picW,
+    picH
+  );
 
   let y = yStart;
-  /** Bloco completo na mesma página (quebra antes se necessário). */
-  const maxUsablePageH = bottomLimit - PDF_PAGE_TOP_SAFE_MM;
-  while (y + totalBlockH > bottomLimit) {
-    if (y <= PDF_PAGE_TOP_SAFE_MM + 0.5 && totalBlockH > maxUsablePageH) {
-      break;
-    }
-    doc.addPage();
-    y = PDF_PAGE_TOP_SAFE_MM;
-    if (y + totalBlockH > bottomLimit && totalBlockH > maxUsablePageH) {
-      break;
+  if (!skipBlockPageBreak) {
+    const maxUsablePageH = bottomLimit - PDF_PAGE_TOP_SAFE_MM;
+    while (y + totalBlockH > bottomLimit) {
+      if (y <= PDF_PAGE_TOP_SAFE_MM + 0.5 && totalBlockH > maxUsablePageH) {
+        break;
+      }
+      doc.addPage();
+      y = PDF_PAGE_TOP_SAFE_MM;
+      if (y + totalBlockH > bottomLimit && totalBlockH > maxUsablePageH) {
+        break;
+      }
     }
   }
 
@@ -1378,83 +1448,84 @@ async function drawPdfNaoConformidadeTable(
 }
 
 /**
- * Distribui os registos: idealmente 2 blocos por página, com terços de espaço livre (topo / meio / fundo).
+ * Registo: 2 fotos por página (altura útil repartida em duas faixas), com tamanho de imagem maximizado em cada faixa;
+ * página nova antes do 1.º registo; cada par em página própria; última ímpar ocupa a página inteira.
  */
 async function drawRegistroFotograficoBlocks(doc, yPos, margin, contentWidth, ncPhotoGroups) {
+  void yPos;
   const pageHeight = doc.internal.pageSize.getHeight();
   const bottomLimit = pageHeight - PDF_LAUDO_PAGE_BOTTOM_SAFE_MM;
   const n = ncPhotoGroups.length;
-  let i = 0;
   let ncIdx = 0;
+  let i = 0;
+
+  doc.addPage();
+  let yPageTop = PDF_PAGE_TOP_SAFE_MM;
 
   while (i < n) {
-    const { room, photo } = ncPhotoGroups[i];
-    const roomName = String(room.room_name || '').trim();
-    const isLast1 = i === n - 1;
-    const h1 = measureRegistroPhotoBlockMm(doc, contentWidth, photo, roomName, isLast1);
-    const spaceAvail = bottomLimit - yPos;
+    const usable = bottomLimit - yPageTop;
 
-    if (i + 1 < n && !isLast1) {
+    if (i + 1 < n) {
+      const between = PDF_REG_TWO_PER_PAGE_GAP_MM;
+      const slot = (usable - between) / 2;
+      const { room, photo } = ncPhotoGroups[i];
       const { room: room2, photo: photo2 } = ncPhotoGroups[i + 1];
+      const roomName = String(room.room_name || '').trim();
       const roomName2 = String(room2.room_name || '').trim();
-      const isLast2 = i + 1 === n - 1;
-      const h2 = measureRegistroPhotoBlockMm(doc, contentWidth, photo2, roomName2, isLast2);
-      if (h1 + h2 <= spaceAvail) {
-        const slack = spaceAvail - h1 - h2;
-        const g = slack / 3;
-        yPos += g;
-        ncIdx += 1;
-        yPos = await drawPdfNaoConformidadeTable(
-          doc,
-          yPos,
-          margin,
-          contentWidth,
-          ncIdx,
-          roomName,
-          photo,
-          false
-        );
-        yPos += g;
-        ncIdx += 1;
-        yPos = await drawPdfNaoConformidadeTable(
-          doc,
-          yPos,
-          margin,
-          contentWidth,
-          ncIdx,
-          roomName2,
-          photo2,
-          isLast2
-        );
-        yPos += g;
-        i += 2;
-        continue;
-      }
-    }
+      const isLast2 = i + 2 >= n;
 
-    while (yPos + h1 > bottomLimit) {
-      if (yPos <= PDF_PAGE_TOP_SAFE_MM + 0.5) {
-        break;
-      }
-      doc.addPage();
-      yPos = PDF_PAGE_TOP_SAFE_MM;
-    }
+      const s1 = maxRegistroPhotoSizeForSlotMm(doc, contentWidth, photo, roomName, false, slot);
+      const s2 = maxRegistroPhotoSizeForSlotMm(doc, contentWidth, photo2, roomName2, isLast2, slot);
 
-    ncIdx += 1;
-    yPos = await drawPdfNaoConformidadeTable(
-      doc,
-      yPos,
-      margin,
-      contentWidth,
-      ncIdx,
-      roomName,
-      photo,
-      isLast1
-    );
-    i += 1;
+      const y1 = yPageTop + Math.max(0, (slot - s1.blockH) / 2);
+      ncIdx += 1;
+      await drawPdfNaoConformidadeTable(doc, y1, margin, contentWidth, ncIdx, roomName, photo, false, {
+        picW: s1.picW,
+        picH: s1.picH,
+        skipBlockPageBreak: true,
+      });
+
+      const y2 = yPageTop + slot + between + Math.max(0, (slot - s2.blockH) / 2);
+      ncIdx += 1;
+      const yAfter = await drawPdfNaoConformidadeTable(
+        doc,
+        y2,
+        margin,
+        contentWidth,
+        ncIdx,
+        roomName2,
+        photo2,
+        isLast2,
+        {
+          picW: s2.picW,
+          picH: s2.picH,
+          skipBlockPageBreak: true,
+        }
+      );
+
+      i += 2;
+      if (i < n) {
+        doc.addPage();
+        yPageTop = PDF_PAGE_TOP_SAFE_MM;
+      } else {
+        yPageTop = yAfter;
+      }
+    } else {
+      const { room, photo } = ncPhotoGroups[i];
+      const roomName = String(room.room_name || '').trim();
+      const s1 = maxRegistroPhotoSizeForSlotMm(doc, contentWidth, photo, roomName, true, usable);
+      const y1 = yPageTop + Math.max(0, (usable - s1.blockH) / 2);
+      ncIdx += 1;
+      yPageTop = await drawPdfNaoConformidadeTable(doc, y1, margin, contentWidth, ncIdx, roomName, photo, true, {
+        picW: s1.picW,
+        picH: s1.picH,
+        skipBlockPageBreak: true,
+      });
+      i += 1;
+    }
   }
 
-  return yPos;
+  return yPageTop;
 }
 
 // Gerar PDF
