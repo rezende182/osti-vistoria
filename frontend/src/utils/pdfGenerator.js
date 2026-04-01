@@ -1124,9 +1124,10 @@ function drawPdfRegistroFotoCaptionFromApp(
   return y + lh * 0.2;
 }
 
+const PDF_REG_ELEMENTO_LABEL = 'Elemento:';
 const PDF_REG_LOCAL_LABEL = 'Local:';
-const PDF_REG_NC_LABEL = 'Não Conformidade:';
-/** Espaço entre o fim da caixa da foto e o texto Local | Não Conformidade. */
+const PDF_REG_NC_LABEL = 'Não conformidade:';
+/** Espaço entre o fim da caixa da foto e o bloco Elemento | Local | Não conformidade. */
 const PDF_NC_AFTER_PHOTO_GAP_MM = 5;
 
 /** Valores do registo fotográfico: só a primeira letra em maiúscula (resto em minúsculas). */
@@ -1151,42 +1152,62 @@ function formatPdfProblematicaParagraph(s) {
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
 
-/** Uma linha: **Local:** ambiente **| Não Conformidade:** texto (com quebra). */
-function measureRegistroLocalNcBlockMm(doc, contentWidth, pad, localizacaoText, ncBody, lineH) {
+/**
+ * Altura do bloco: «Elemento: … | Local: …» (várias linhas se preciso) + «Não conformidade:» + texto.
+ * Elemento = legenda da foto (ex.: tomadas e interruptores).
+ */
+function measureRegistroElementoLocalNcBlockMm(
+  doc,
+  contentWidth,
+  pad,
+  elementoText,
+  localizacaoText,
+  ncBody,
+  lineH
+) {
   void lineH;
   const innerW = Math.max(20, contentWidth - 2 * pad);
+  const el = pdfRegistroDisplayValue(elementoText);
   const room = pdfRegistroDisplayValue(localizacaoText);
   const descNorm = (formatPdfProblematicaParagraph(ncBody) || '').trim() || '\u2014';
   doc.setFontSize(PDF_BODY_PT);
-  doc.setFont(PDF_FONT, 'bold');
-  const wLoc = doc.getTextWidth(`${PDF_REG_LOCAL_LABEL} `);
   doc.setFont(PDF_FONT, 'normal');
-  const wRoom = doc.getTextWidth(room);
-  const wPipe = doc.getTextWidth(' | ');
+  const row1 = `${PDF_REG_ELEMENTO_LABEL} ${el} | ${PDF_REG_LOCAL_LABEL} ${room}`;
+  const lines1 = doc.splitTextToSize(row1, innerW);
   doc.setFont(PDF_FONT, 'bold');
   const wNc = doc.getTextWidth(`${PDF_REG_NC_LABEL} `);
   doc.setFont(PDF_FONT, 'normal');
-  const prefixW = wLoc + wRoom + wPipe + wNc;
-  const firstW = Math.max(10, innerW - prefixW);
+  const firstW = Math.max(10, innerW - wNc);
   const linesFirst = doc.splitTextToSize(descNorm, firstW);
   const firstLine = linesFirst[0] || '';
-  let lineCount = 1;
+  let lineCountNc = 1;
   const rest = descNorm.substring(firstLine.length).replace(/^\s+/, '');
   if (rest) {
-    lineCount += doc.splitTextToSize(rest, innerW).length;
+    lineCountNc += doc.splitTextToSize(rest, innerW).length;
   }
+  const lineCount = lines1.length + lineCountNc;
   return pad + PDF_BODY_LINE_MM * 0.35 + lineCount * PDF_BODY_LINE_MM + pad;
 }
 
 /**
- * Desenha Local | Não Conformidade com quebras de página no texto (foto+legenda já foram desenhados antes).
+ * Elemento (legenda) | Local; depois Não conformidade — com quebras de página no texto.
  */
-function drawPdfRegistroLocalNcBlockPaged(doc, yContainerTop, margin, contentWidth, localizacaoText, ncBody, compact) {
+function drawPdfRegistroElementoLocalNcBlockPaged(
+  doc,
+  yContainerTop,
+  margin,
+  contentWidth,
+  elementoText,
+  localizacaoText,
+  ncBody,
+  compact
+) {
   const tableX = margin;
   const lh = PDF_BODY_LINE_MM;
   const pad = registroLocPadMm(compact);
   const innerX = tableX + pad;
   const innerW = Math.max(20, contentWidth - 2 * pad);
+  const el = pdfRegistroDisplayValue(elementoText);
   const room = pdfRegistroDisplayValue(localizacaoText);
   const descNorm = (formatPdfProblematicaParagraph(ncBody) || '').trim() || '\u2014';
   doc.setFontSize(PDF_BODY_PT);
@@ -1203,15 +1224,46 @@ function drawPdfRegistroLocalNcBlockPaged(doc, yContainerTop, margin, contentWid
     y = yBlockTop + pad + lh * 0.35;
   }
 
-  let x = innerX;
-  doc.setFont(PDF_FONT, 'bold');
-  doc.text(`${PDF_REG_LOCAL_LABEL} `, x, y);
-  x += doc.getTextWidth(`${PDF_REG_LOCAL_LABEL} `);
+  const row1Plain = `${PDF_REG_ELEMENTO_LABEL} ${el} | ${PDF_REG_LOCAL_LABEL} ${room}`;
   doc.setFont(PDF_FONT, 'normal');
-  doc.text(room, x, y);
-  x += doc.getTextWidth(room);
-  doc.text(' | ', x, y);
-  x += doc.getTextWidth(' | ');
+  const row1FitsOneLine = doc.getTextWidth(row1Plain) <= innerW + 0.5;
+
+  if (row1FitsOneLine) {
+    let x = innerX;
+    doc.setFont(PDF_FONT, 'bold');
+    doc.text(`${PDF_REG_ELEMENTO_LABEL} `, x, y);
+    x += doc.getTextWidth(`${PDF_REG_ELEMENTO_LABEL} `);
+    doc.setFont(PDF_FONT, 'normal');
+    doc.text(el, x, y);
+    x += doc.getTextWidth(el);
+    doc.text(' | ', x, y);
+    x += doc.getTextWidth(' | ');
+    doc.setFont(PDF_FONT, 'bold');
+    doc.text(`${PDF_REG_LOCAL_LABEL} `, x, y);
+    x += doc.getTextWidth(`${PDF_REG_LOCAL_LABEL} `);
+    doc.setFont(PDF_FONT, 'normal');
+    doc.text(room, x, y);
+  } else {
+    const linesEl = doc.splitTextToSize(row1Plain, innerW);
+    linesEl.forEach((ln, idx) => {
+      if (idx > 0) {
+        y += lh;
+        if (y + lh > bottomLimit()) {
+          doc.addPage();
+          y = PDF_PAGE_TOP_SAFE_MM + lh * 0.5;
+        }
+      }
+      doc.text(ln, innerX, y);
+    });
+  }
+
+  y += lh;
+  if (y + lh > bottomLimit()) {
+    doc.addPage();
+    y = PDF_PAGE_TOP_SAFE_MM + lh * 0.5;
+  }
+
+  let x = innerX;
   doc.setFont(PDF_FONT, 'bold');
   doc.text(`${PDF_REG_NC_LABEL} `, x, y);
   x += doc.getTextWidth(`${PDF_REG_NC_LABEL} `);
@@ -1321,19 +1373,20 @@ function measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo, picW, picH) 
   return PDF_NC_PHOTO_INNER_PAD_MM + capH + captionGap + picH;
 }
 
-function measureRegistroLocalNcSectionMm(doc, contentWidth, roomName, ncBody, compact) {
+function measureRegistroLocalNcSectionMm(doc, contentWidth, elementoText, roomName, ncBody, compact) {
   const locGap = registroLocPadMm(compact);
   const lh = PDF_BODY_LINE_MM;
   return (
     locGap +
     registroAfterPhotoGapLayoutMm(compact) +
-    measureRegistroLocalNcBlockMm(doc, contentWidth, locGap, roomName, ncBody, lh)
+    measureRegistroElementoLocalNcBlockMm(doc, contentWidth, locGap, elementoText, roomName, ncBody, lh)
   );
 }
 
 function measureRegistroSingleFullStackMm(doc, contentWidth, photo, roomName, isLast, picW, picH, compact) {
   const u = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo, picW, picH);
-  const loc = measureRegistroLocalNcSectionMm(doc, contentWidth, roomName, pdfTrim(photo.description), compact);
+  const el = pdfTrim(photo.caption) || '\u2014';
+  const loc = measureRegistroLocalNcSectionMm(doc, contentWidth, el, roomName, pdfTrim(photo.description), compact);
   let t = u + loc;
   if (isLast) t += PDF_REG_AFTER_LAST_PHOTO_MM;
   return t;
@@ -1352,9 +1405,11 @@ function measureRegistroPairFullStackMm(
   compact
 ) {
   const u1 = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo1, picW, picH);
-  const loc1 = measureRegistroLocalNcSectionMm(doc, contentWidth, room1, pdfTrim(photo1.description), compact);
+  const el1 = pdfTrim(photo1.caption) || '\u2014';
+  const el2 = pdfTrim(photo2.caption) || '\u2014';
+  const loc1 = measureRegistroLocalNcSectionMm(doc, contentWidth, el1, room1, pdfTrim(photo1.description), compact);
   const u2 = measureRegistroFotoCaptionUnitMm(doc, contentWidth, photo2, picW, picH);
-  const loc2 = measureRegistroLocalNcSectionMm(doc, contentWidth, room2, pdfTrim(photo2.description), compact);
+  const loc2 = measureRegistroLocalNcSectionMm(doc, contentWidth, el2, room2, pdfTrim(photo2.description), compact);
   const mid = registroInterFotoBlockMm(compact);
   let t = u1 + loc1 + mid + u2 + loc2;
   if (isLast2) t += PDF_REG_AFTER_LAST_PHOTO_MM;
@@ -1520,6 +1575,7 @@ async function drawRegistroFotograficoItem(
   const captionFromApp = pdfTrim(photo.caption);
   const locText = String(roomName || '').trim() || '\u2014';
   const ncBody = pdfTrim(photo.description) || '\u2014';
+  const elementoText = captionFromApp || '\u2014';
 
   y += PDF_NC_PHOTO_INNER_PAD_MM;
   if (captionFromApp) {
@@ -1551,7 +1607,16 @@ async function drawRegistroFotograficoItem(
 
   const locGap = registroLocPadMm(compact);
   const yContainer = yPic + picH + locGap + registroAfterPhotoGapLayoutMm(compact);
-  y = drawPdfRegistroLocalNcBlockPaged(doc, yContainer, margin, contentWidth, locText, ncBody, compact);
+  y = drawPdfRegistroElementoLocalNcBlockPaged(
+    doc,
+    yContainer,
+    margin,
+    contentWidth,
+    elementoText,
+    locText,
+    ncBody,
+    compact
+  );
 
   if (isLastInChapter) {
     y += PDF_REG_AFTER_LAST_PHOTO_MM;
