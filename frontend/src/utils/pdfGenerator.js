@@ -706,8 +706,10 @@ const PDF_COVER_GAP_BELOW_LOGO_MM = 28;
 const PDF_COVER_TITLE_MAIN_PT = 24;
 const PDF_COVER_GAP_AFTER_TITLE_MM = 8;
 const PDF_COVER_INFO_PT = 12;
-/** Entrelinha do bloco Assunto/Contratante/… (1,5 cm entre baselines). */
+/** Entrelinha dentro do mesmo campo quando o valor quebra em várias linhas (entre baselines). */
 const PDF_COVER_FIELD_LINE_STEP_MM = 15;
+/** Espaço entre um bloco de campo e o seguinte na capa (Assunto, Contratante, …). */
+const PDF_COVER_GAP_BETWEEN_FIELDS_MM = 5;
 const PDF_COVER_TRACKING_PT = 0.35;
 /** Espaço entre o bloco central e a cidade no rodapé. */
 const PDF_COVER_GAP_ABOVE_FOOTER_MM = 10;
@@ -729,10 +731,11 @@ function buildPdfCoverEnderecoValor(inspection) {
   return parts.length ? parts.join(', ') : '\u2014';
 }
 
-function measureCoverFieldsHeightMm(doc, maxW, lineStepMm, fields) {
+function measureCoverFieldsHeightMm(doc, maxW, lineStepMm, fields, gapBetweenFieldsMm = 0) {
   let h = 0;
   doc.setFontSize(PDF_COVER_INFO_PT);
-  for (const { label, value } of fields) {
+  fields.forEach((field, idx) => {
+    const { label, value } = field;
     doc.setFont(PDF_FONT, 'bold');
     const labelPart = `${label} `;
     const labelW = doc.getTextWidth(labelPart);
@@ -741,17 +744,19 @@ function measureCoverFieldsHeightMm(doc, maxW, lineStepMm, fields) {
     const valueLines = doc.splitTextToSize(v, Math.max(8, maxW - labelW));
     const n = Math.max(1, valueLines.length);
     h += n * lineStepMm;
-  }
+    if (idx < fields.length - 1) h += gapBetweenFieldsMm;
+  });
   return h;
 }
 
 /**
  * Rótulo em negrito + valor à direita (continuação com indent); alinhado à esquerda em xLeft.
  */
-function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, lineStepMm, fields) {
+function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, lineStepMm, fields, gapBetweenFieldsMm = 0) {
   let y = yStart;
   doc.setFontSize(PDF_COVER_INFO_PT);
-  for (const { label, value } of fields) {
+  fields.forEach((field, fieldIdx) => {
+    const { label, value } = field;
     doc.setFont(PDF_FONT, 'bold');
     const labelPart = `${label} `;
     const labelW = doc.getTextWidth(labelPart);
@@ -770,7 +775,8 @@ function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, lineStepMm, fields) {
       }
       y += lineStepMm;
     });
-  }
+    if (fieldIdx < fields.length - 1) y += gapBetweenFieldsMm;
+  });
   return y;
 }
 
@@ -836,7 +842,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
 
   const yAposTitulo = y + PDF_COVER_GAP_AFTER_TITLE_MM;
 
-  const creaTxt = pdfTrim(inspection.crea) || '\u2014';
+  const creaVal = pdfTrim(inspection.crea);
   const camposCapa = [
     {
       label: 'Assunto:',
@@ -852,9 +858,11 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     },
     {
       label: 'Responsável Técnico:',
-      value: `${formatPdfResponsavelTecnicoNome(
-        inspection.responsavel_tecnico
-      )} — CREA: nº ${creaTxt}`,
+      value: formatPdfResponsavelTecnicoNome(inspection.responsavel_tecnico),
+    },
+    {
+      label: 'CREA:',
+      value: creaVal ? `nº ${creaVal}` : '\u2014',
     },
   ];
 
@@ -862,7 +870,8 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     doc,
     textMaxW,
     PDF_COVER_FIELD_LINE_STEP_MM,
-    camposCapa
+    camposCapa,
+    PDF_COVER_GAP_BETWEEN_FIELDS_MM
   );
   const zonaVertical =
     Math.max(0, yLimiteBlocoCentral - yAposTitulo);
@@ -877,7 +886,8 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     yBloco,
     textMaxW,
     PDF_COVER_FIELD_LINE_STEP_MM,
-    camposCapa
+    camposCapa,
+    PDF_COVER_GAP_BETWEEN_FIELDS_MM
   );
 
   doc.setFont(PDF_FONT, 'normal');
