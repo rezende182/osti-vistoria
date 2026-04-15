@@ -15,6 +15,7 @@ import {
   enqueueSyncOperation,
 } from '../utils/offlineStorage';
 import BrandLogo from '@/components/BrandLogo';
+import { compressRoomsChecklistPhotosIfNeeded } from '../utils/imageCompressor';
 import {
   ROOM_TYPE_LABELS,
   ROOM_TYPE_ORDER,
@@ -250,29 +251,31 @@ const InspectionChecklist = () => {
       }
       if (!base) return { ok: false, reason: 'no_base' };
 
+      const optimizedRooms = await compressRoomsChecklistPhotosIfNeeded(roomsSnapshot);
+
       const merged = {
         ...base,
         id: base.id || id,
         userId: uid,
-        rooms_checklist: roomsSnapshot,
+        rooms_checklist: optimizedRooms,
       };
       await saveInspectionLocally(merged);
       inspectionBaseRef.current = {
         ...(inspectionBaseRef.current || base),
         ...merged,
-        rooms_checklist: roomsSnapshot,
+        rooms_checklist: optimizedRooms,
       };
 
       const result = await inspectionsApi.update(
         id,
-        { rooms_checklist: roomsSnapshot },
+        { rooms_checklist: optimizedRooms },
         uid
       );
       if (result.ok && result.data && typeof result.data === 'object') {
         inspectionBaseRef.current = {
           ...inspectionBaseRef.current,
           ...result.data,
-          rooms_checklist: roomsSnapshot,
+          rooms_checklist: optimizedRooms,
           id,
           userId: uid,
         };
@@ -285,13 +288,18 @@ const InspectionChecklist = () => {
         await enqueueSyncOperation({
           method: 'PUT',
           path: `/inspections/${id}`,
-          payload: { rooms_checklist: roomsSnapshot },
+          payload: { rooms_checklist: optimizedRooms },
           dedupKey: `PUT:/inspections/${id}:checklist`,
           inspectionId: id,
           userId: uid,
         });
       }
-      return { ok: true, apiOk: result.ok, apiError: result.error };
+      return {
+        ok: true,
+        apiOk: result.ok,
+        apiError: result.error,
+        roomsOptimized: optimizedRooms,
+      };
     },
     [id, uid]
   );
@@ -309,7 +317,13 @@ const InspectionChecklist = () => {
       if (snap === lastAutosavedRoomsJsonRef.current) return;
       try {
         const outcome = await persistChecklistDraft(roomsDataRef.current);
-        if (outcome?.ok) lastAutosavedRoomsJsonRef.current = snap;
+        if (outcome?.ok && outcome.roomsOptimized) {
+          const after = JSON.stringify(outcome.roomsOptimized);
+          lastAutosavedRoomsJsonRef.current = after;
+          if (after !== snap) {
+            setRoomsData(outcome.roomsOptimized);
+          }
+        }
       } catch (e) {
         console.warn('[Checklist] Autosave:', e);
       }
@@ -675,7 +689,12 @@ const InspectionChecklist = () => {
         );
         return;
       }
-      lastAutosavedRoomsJsonRef.current = JSON.stringify(roomsData);
+      if (outcome.roomsOptimized) {
+        lastAutosavedRoomsJsonRef.current = JSON.stringify(outcome.roomsOptimized);
+        if (JSON.stringify(outcome.roomsOptimized) !== JSON.stringify(roomsData)) {
+          setRoomsData(outcome.roomsOptimized);
+        }
+      }
       if (outcome.apiOk) {
         toast.success('Progresso salvo no servidor.');
       } else {
@@ -717,7 +736,12 @@ const InspectionChecklist = () => {
         );
         return;
       }
-      lastAutosavedRoomsJsonRef.current = JSON.stringify(roomsData);
+      if (outcome.roomsOptimized) {
+        lastAutosavedRoomsJsonRef.current = JSON.stringify(outcome.roomsOptimized);
+        if (JSON.stringify(outcome.roomsOptimized) !== JSON.stringify(roomsData)) {
+          setRoomsData(outcome.roomsOptimized);
+        }
+      }
       if (outcome.apiOk) {
         toast.success('Checklist salvo. A seguir: revisão do laudo.');
       } else {

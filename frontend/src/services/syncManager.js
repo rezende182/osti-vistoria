@@ -87,6 +87,9 @@ export async function syncPendingInspections() {
         ) {
           config.data = item.payload;
         }
+        if (item.method === 'PUT' && /^\/inspections\/[^/]+$/.test(String(path))) {
+          config.timeout = 420000;
+        }
 
         const res = await apiClient.request(config);
 

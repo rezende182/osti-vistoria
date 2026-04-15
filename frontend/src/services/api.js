@@ -8,9 +8,14 @@
 import axios from 'axios';
 import { API_BASE } from '../config/api';
 
+/** Pedidos normais (GET, etc.) */
+const DEFAULT_TIMEOUT_MS = 120000;
+/** PUT do checklist com muitas fotos em base64 pode demorar muito. */
+const INSPECTION_UPDATE_TIMEOUT_MS = 420000;
+
 const client = axios.create({
   baseURL: API_BASE,
-  timeout: 120000,
+  timeout: DEFAULT_TIMEOUT_MS,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -62,10 +67,12 @@ export function getErrorMessage(error) {
     if (Array.isArray(d)) return d.map((x) => x.msg || JSON.stringify(x)).join('; ');
     return String(d);
   }
-  if (error.message === 'Network Error') {
-    return 'Sem conexão ou API indisponível. Verifique a internet.';
+  if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+    return 'Sem ligação ao servidor ou o envio foi interrompido (muitas fotos ou rede instável). Verifique a internet e use «Salvar» de novo; o progresso pode estar guardado neste dispositivo.';
   }
-  if (error.code === 'ECONNABORTED') return 'Tempo esgotado. Tente novamente.';
+  if (error.code === 'ECONNABORTED') {
+    return 'Tempo esgotado ao falar com o servidor. Tente de novo — em laudos com muitas fotos o envio demora mais.';
+  }
   return error.message || 'Erro ao comunicar com o servidor.';
 }
 
@@ -106,7 +113,11 @@ export const inspectionsApi = {
 
   update: (id, payload, userId) => {
     if (!normalizeUserId(userId)) return rejectNoUser();
-    return wrap(client.put(`/inspections/${id}`, payload).then((r) => r.data));
+    return wrap(
+      client
+        .put(`/inspections/${id}`, payload, { timeout: INSPECTION_UPDATE_TIMEOUT_MS })
+        .then((r) => r.data)
+    );
   },
 
   updateIdentification: (id, payload, userId) => {

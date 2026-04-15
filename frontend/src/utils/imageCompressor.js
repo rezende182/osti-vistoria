@@ -142,4 +142,45 @@ export const formatFileSize = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+/** ~350 KB em data URL — acima disto tenta-se comprimir antes de enviar ao servidor. */
+const ROOM_PHOTO_DATA_URL_COMPRESS_THRESHOLD = 350 * 1024;
+
+/**
+ * Reduz data URLs grandes em `rooms_checklist` para o PUT não falhar por tempo/tamanho.
+ * @param {unknown[]} roomsChecklist
+ * @returns {Promise<unknown[]>}
+ */
+export async function compressRoomsChecklistPhotosIfNeeded(roomsChecklist, options = {}) {
+  const settings = {
+    maxWidth: 1024,
+    maxHeight: 1024,
+    quality: 0.62,
+    mimeType: 'image/jpeg',
+    ...options,
+  };
+  let rooms;
+  try {
+    rooms = JSON.parse(JSON.stringify(roomsChecklist || []));
+  } catch {
+    return roomsChecklist || [];
+  }
+  for (const room of rooms) {
+    const items = room.items || [];
+    for (const item of items) {
+      const photos = item.photos || [];
+      for (let i = 0; i < photos.length; i++) {
+        const url = photos[i]?.url;
+        if (typeof url !== 'string' || !url.startsWith('data:image')) continue;
+        if (getDataUrlSize(url) <= ROOM_PHOTO_DATA_URL_COMPRESS_THRESHOLD) continue;
+        try {
+          photos[i] = { ...photos[i], url: await compressDataUrl(url, settings) };
+        } catch (e) {
+          console.warn('[compressRooms] foto não comprimida:', e);
+        }
+      }
+    }
+  }
+  return rooms;
+}
+
 export default compressImage;
