@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import RoomSelector from '../components/RoomSelector';
 import ChecklistItem from '../components/ChecklistItem';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
@@ -650,7 +650,50 @@ const InspectionChecklist = () => {
     setCustomRoomNameInput('');
   };
 
-  const handleSaveAndContinue = async () => {
+  /** Só grava — fica na página (pode ir usando enquanto adiciona cômodos). */
+  const handleSaveChecklist = async () => {
+    if (roomsData.length === 0) {
+      toast.error('⚠️ Adicione pelo menos um ambiente antes de salvar.', { duration: 5000 });
+      return;
+    }
+
+    if (!uid) {
+      toast.error('Sessão inválida. Inicie sessão novamente.');
+      return;
+    }
+
+    if (isSavingChecklist) return;
+
+    try {
+      setIsSavingChecklist(true);
+      const outcome = await persistChecklistDraft(roomsData);
+      if (!outcome.ok) {
+        toast.error(
+          outcome.reason === 'no_base'
+            ? 'Não foi possível salvar o checklist. Recarregue a página e tente de novo.'
+            : 'Não foi possível salvar o checklist. Verifique a ligação e tente de novo.'
+        );
+        return;
+      }
+      lastAutosavedRoomsJsonRef.current = JSON.stringify(roomsData);
+      if (outcome.apiOk) {
+        toast.success('Progresso salvo no servidor.');
+      } else {
+        toast.warning(
+          outcome.apiError ||
+            'Servidor indisponível — o progresso ficou neste dispositivo e será enviado quando a ligação estiver estável.'
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao salvar checklist:', error);
+      toast.error('Erro ao salvar checklist');
+    } finally {
+      setIsSavingChecklist(false);
+    }
+  };
+
+  /** Grava e avança para a revisão do laudo. */
+  const handleContinueToReview = async () => {
     if (roomsData.length === 0) {
       toast.error('⚠️ Adicione pelo menos um ambiente antes de continuar!', { duration: 5000 });
       return;
@@ -669,18 +712,18 @@ const InspectionChecklist = () => {
       if (!outcome.ok) {
         toast.error(
           outcome.reason === 'no_base'
-            ? 'Não foi possível guardar o checklist. Recarregue a página e tente de novo.'
-            : 'Não foi possível guardar o checklist. Verifique a ligação e tente de novo.'
+            ? 'Não foi possível salvar o checklist. Recarregue a página e tente de novo.'
+            : 'Não foi possível salvar antes de continuar. Verifique a ligação e tente de novo.'
         );
         return;
       }
       lastAutosavedRoomsJsonRef.current = JSON.stringify(roomsData);
       if (outcome.apiOk) {
-        toast.success('Checklist salvo com sucesso!');
+        toast.success('Checklist salvo. A seguir: revisão do laudo.');
       } else {
         toast.warning(
           outcome.apiError ||
-            'Servidor indisponível — o checklist ficou neste dispositivo e será enviado quando a ligação estiver estável.'
+            'Servidor indisponível — o checklist ficou neste dispositivo; na revisão confirme se está tudo em ordem.'
         );
       }
       navigate(`/inspection/${id}/review`);
@@ -1185,16 +1228,28 @@ const InspectionChecklist = () => {
               Continuar adicionando ambiente
             </button>
           )}
-          <button
-            type="button"
-            data-testid="save-and-continue-button"
-            disabled={isSavingChecklist}
-            onClick={handleSaveAndContinue}
-            className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 text-base font-bold font-secondary uppercase text-white transition-all duration-200 hover:bg-blue-700 active:scale-[0.99] enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-0 sm:text-lg"
-          >
-            {isSavingChecklist ? 'A guardar…' : 'Salvar e Continuar'}
-            <ArrowRight size={20} />
-          </button>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+            <button
+              type="button"
+              data-testid="save-checklist-button"
+              disabled={isSavingChecklist}
+              onClick={handleSaveChecklist}
+              className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg border-2 border-blue-600 bg-white py-3.5 text-base font-bold font-secondary uppercase tracking-wide text-blue-700 transition-all duration-200 hover:bg-blue-50 active:scale-[0.99] enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-0 sm:py-4 sm:text-lg"
+            >
+              <Save size={20} className="shrink-0" aria-hidden />
+              {isSavingChecklist ? 'A salvar…' : 'Salvar'}
+            </button>
+            <button
+              type="button"
+              data-testid="continue-to-review-button"
+              disabled={isSavingChecklist}
+              onClick={handleContinueToReview}
+              className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-3.5 text-base font-bold font-secondary uppercase text-white transition-all duration-200 hover:bg-blue-700 active:scale-[0.99] enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-0 sm:py-4 sm:text-lg"
+            >
+              {isSavingChecklist ? 'A salvar…' : 'Continuar'}
+              <ArrowRight size={20} className="shrink-0" aria-hidden />
+            </button>
+          </div>
         </div>
       </div>
     </div>
