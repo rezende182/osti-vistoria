@@ -79,6 +79,50 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
   };
 }
 
+/** Heurística para recuperar rascunho local mais completo que o GET da API. */
+function checklistProgressFingerprint(rooms) {
+  if (!Array.isArray(rooms)) return { items: 0, photos: 0, chars: 0 };
+  let items = 0;
+  let photos = 0;
+  let chars = 0;
+  for (const r of rooms) {
+    try {
+      chars += JSON.stringify(r).length;
+    } catch {
+      chars += 1;
+    }
+    const its = r.items || [];
+    items += its.length;
+    for (const it of its) {
+      photos += (it.photos || []).length;
+    }
+  }
+  return { items, photos, chars };
+}
+
+function shouldPreferLocalRoomsChecklist(apiInspection, local, userId) {
+  if (!local || !userId) return false;
+  if (String(local.userId || '').trim() !== String(userId).trim()) return false;
+  if (!Array.isArray(local.rooms_checklist)) return false;
+  const apiRooms = apiInspection?.rooms_checklist || [];
+  const locRooms = local.rooms_checklist;
+  if (JSON.stringify(apiRooms) === JSON.stringify(locRooms)) return false;
+  const tApi = apiInspection?.updated_at ? Date.parse(apiInspection.updated_at) : NaN;
+  const tLoc = local.updatedAt ? Date.parse(local.updatedAt) : NaN;
+  if (!Number.isNaN(tLoc) && !Number.isNaN(tApi) && tLoc > tApi) return true;
+  const fpA = checklistProgressFingerprint(apiRooms);
+  const fpL = checklistProgressFingerprint(locRooms);
+  if (fpL.photos > fpA.photos || fpL.items > fpA.items) return true;
+  if (
+    fpL.photos === fpA.photos &&
+    fpL.items === fpA.items &&
+    fpL.chars !== fpA.chars
+  ) {
+    return fpL.chars >= fpA.chars;
+  }
+  return false;
+}
+
 const InspectionChecklist = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -103,6 +147,11 @@ const InspectionChecklist = () => {
   /** Modal: adicionar item do modelo ao ambiente */
   const [addItemForRoomId, setAddItemForRoomId] = useState(null);
   const contentRef = useRef(null);
+  /** Última vistoria carregada da API — usada para gravar em IndexedDB se o PUT falhar sem cópia local. */
+  const inspectionBaseRef = useRef(null);
+  const lastAutosavedRoomsJsonRef = useRef('');
+  const roomsDataRef = useRef([]);
+  const [isSavingChecklist, setIsSavingChecklist] = useState(false);
 
   const normalizeRoomsChecklist = (roomsChecklist) =>
     (roomsChecklist || []).map((room) => ({
@@ -123,15 +172,33 @@ const InspectionChecklist = () => {
     try {
       const res = await loadInspectionWithFallback(id, uid);
       if (!res.ok) {
+        inspectionBaseRef.current = null;
         toast.error(res.error || 'Erro ao carregar vistoria');
         return;
       }
       if (res.fromLocal) {
         toast.info('Sem servidor — a mostrar dados guardados neste dispositivo.');
       }
-      const inspection = res.data;
+      let inspection = res.data;
+      if (!res.fromLocal) {
+        try {
+          await initDB().catch(() => {});
+          const local = await getInspectionLocally(id);
+          if (shouldPreferLocalRoomsChecklist(inspection, local, uid)) {
+            inspection = { ...inspection, rooms_checklist: local.rooms_checklist };
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      inspectionBaseRef.current = {
+        ...inspection,
+        id: inspection.id || id,
+        userId: inspection.userId || uid,
+      };
       setTipoVistoriaFluxo(inspection.tipo_vistoria_fluxo || '');
       const roomsChecklist = normalizeRoomsChecklist(inspection.rooms_checklist || []);
+      lastAutosavedRoomsJsonRef.current = JSON.stringify(roomsChecklist);
 
       if (roomsChecklist.length === 0) {
         // Sem ambientes padrão — o utilizador adiciona
@@ -161,6 +228,94 @@ const InspectionChecklist = () => {
   useEffect(() => {
     loadInspection();
   }, [loadInspection]);
+
+  /** Grava checklist no dispositivo e tenta enviar ao servidor (autosave + «Salvar e Continuar»). */
+  const persistChecklistDraft = useCallback(
+    async (roomsSnapshot) => {
+      if (!uid || !id) return { ok: false, reason: 'auth' };
+      await initDB().catch(() => {});
+      let base = await getInspectionLocally(id);
+      if (!base && inspectionBaseRef.current) {
+        base = { ...inspectionBaseRef.current };
+      }
+      if (!base) {
+        const reload = await loadInspectionWithFallback(id, uid);
+        if (reload.ok && reload.data) {
+          base = {
+            ...reload.data,
+            id: reload.data.id || id,
+            userId: reload.data.userId || uid,
+          };
+        }
+      }
+      if (!base) return { ok: false, reason: 'no_base' };
+
+      const merged = {
+        ...base,
+        id: base.id || id,
+        userId: uid,
+        rooms_checklist: roomsSnapshot,
+      };
+      await saveInspectionLocally(merged);
+      inspectionBaseRef.current = {
+        ...(inspectionBaseRef.current || base),
+        ...merged,
+        rooms_checklist: roomsSnapshot,
+      };
+
+      const result = await inspectionsApi.update(
+        id,
+        { rooms_checklist: roomsSnapshot },
+        uid
+      );
+      if (result.ok && result.data && typeof result.data === 'object') {
+        inspectionBaseRef.current = {
+          ...inspectionBaseRef.current,
+          ...result.data,
+          rooms_checklist: roomsSnapshot,
+          id,
+          userId: uid,
+        };
+        try {
+          await saveInspectionLocally(inspectionBaseRef.current);
+        } catch (e) {
+          console.warn('[Checklist] Cache local após resposta do servidor:', e);
+        }
+      } else if (!result.ok) {
+        await enqueueSyncOperation({
+          method: 'PUT',
+          path: `/inspections/${id}`,
+          payload: { rooms_checklist: roomsSnapshot },
+          dedupKey: `PUT:/inspections/${id}:checklist`,
+          inspectionId: id,
+          userId: uid,
+        });
+      }
+      return { ok: true, apiOk: result.ok, apiError: result.error };
+    },
+    [id, uid]
+  );
+
+  useEffect(() => {
+    roomsDataRef.current = roomsData;
+  }, [roomsData]);
+
+  const CHECKLIST_AUTOSAVE_DEBOUNCE_MS = 4500;
+
+  useEffect(() => {
+    if (loading || !uid || !id || isSavingChecklist) return;
+    const timer = setTimeout(async () => {
+      const snap = JSON.stringify(roomsDataRef.current);
+      if (snap === lastAutosavedRoomsJsonRef.current) return;
+      try {
+        const outcome = await persistChecklistDraft(roomsDataRef.current);
+        if (outcome?.ok) lastAutosavedRoomsJsonRef.current = snap;
+      } catch (e) {
+        console.warn('[Checklist] Autosave:', e);
+      }
+    }, CHECKLIST_AUTOSAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [roomsData, loading, uid, id, isSavingChecklist, persistChecklistDraft]);
 
   // Função para renumerar TODAS as fotos globalmente
   // Ordem: ambientes da esquerda para direita (ordem das abas), itens de cima para baixo
@@ -496,7 +651,6 @@ const InspectionChecklist = () => {
   };
 
   const handleSaveAndContinue = async () => {
-    // Verificar se há pelo menos um ambiente
     if (roomsData.length === 0) {
       toast.error('⚠️ Adicione pelo menos um ambiente antes de continuar!', { duration: 5000 });
       return;
@@ -507,44 +661,34 @@ const InspectionChecklist = () => {
       return;
     }
 
+    if (isSavingChecklist) return;
+
     try {
-      await initDB().catch(() => {});
-      const result = await inspectionsApi.update(
-        id,
-        {
-          rooms_checklist: roomsData,
-        },
-        uid
-      );
-      if (result.ok) {
-        toast.success('Checklist salvo com sucesso!');
-        navigate(`/inspection/${id}/review`);
-        return;
-      }
-      const local = await getInspectionLocally(id);
-      if (local) {
-        await saveInspectionLocally({
-          ...local,
-          rooms_checklist: roomsData,
-        });
-        await enqueueSyncOperation({
-          method: 'PUT',
-          path: `/inspections/${id}`,
-          payload: { rooms_checklist: roomsData },
-          dedupKey: `PUT:/inspections/${id}:checklist`,
-          inspectionId: id,
-          userId: uid,
-        });
-        toast.warning(
-          'Servidor indisponível — checklist guardado só neste dispositivo.'
+      setIsSavingChecklist(true);
+      const outcome = await persistChecklistDraft(roomsData);
+      if (!outcome.ok) {
+        toast.error(
+          outcome.reason === 'no_base'
+            ? 'Não foi possível guardar o checklist. Recarregue a página e tente de novo.'
+            : 'Não foi possível guardar o checklist. Verifique a ligação e tente de novo.'
         );
-        navigate(`/inspection/${id}/review`);
         return;
       }
-      toast.error(result.error || 'Erro ao salvar checklist');
+      lastAutosavedRoomsJsonRef.current = JSON.stringify(roomsData);
+      if (outcome.apiOk) {
+        toast.success('Checklist salvo com sucesso!');
+      } else {
+        toast.warning(
+          outcome.apiError ||
+            'Servidor indisponível — o checklist ficou neste dispositivo e será enviado quando a ligação estiver estável.'
+        );
+      }
+      navigate(`/inspection/${id}/review`);
     } catch (error) {
       console.error('Erro ao salvar checklist:', error);
       toast.error('Erro ao salvar checklist');
+    } finally {
+      setIsSavingChecklist(false);
     }
   };
 
@@ -1044,10 +1188,11 @@ const InspectionChecklist = () => {
           <button
             type="button"
             data-testid="save-and-continue-button"
+            disabled={isSavingChecklist}
             onClick={handleSaveAndContinue}
-            className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 text-base font-bold font-secondary uppercase text-white transition-all duration-200 hover:bg-blue-700 active:scale-[0.99] sm:min-h-0 sm:text-lg"
+            className="flex min-h-touch w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-4 text-base font-bold font-secondary uppercase text-white transition-all duration-200 hover:bg-blue-700 active:scale-[0.99] enabled:cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 sm:min-h-0 sm:text-lg"
           >
-            Salvar e Continuar
+            {isSavingChecklist ? 'A guardar…' : 'Salvar e Continuar'}
             <ArrowRight size={20} />
           </button>
         </div>

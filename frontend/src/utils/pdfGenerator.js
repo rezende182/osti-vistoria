@@ -710,7 +710,7 @@ const PDF_COVER_INFO_PT = 14;
 /** Entrelinha (entre baselines) para o texto a 14 pt quando o valor quebra em várias linhas. */
 const PDF_COVER_FIELD_LINE_STEP_MM = 17.5;
 /** Espaço entre um bloco de campo e o seguinte na capa (Assunto, Contratante, …). */
-const PDF_COVER_GAP_BETWEEN_FIELDS_MM = 1;
+const PDF_COVER_GAP_BETWEEN_FIELDS_MM = 0.5;
 const PDF_COVER_TRACKING_PT = 0.35;
 /** Espaço entre o bloco central e a cidade no rodapé. */
 const PDF_COVER_GAP_ABOVE_FOOTER_MM = 10;
