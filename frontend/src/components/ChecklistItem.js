@@ -13,6 +13,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { compressImage, formatFileSize, getDataUrlSize } from '../utils/imageCompressor';
+import PhotoAnnotationModal from './PhotoAnnotationModal';
 
 const btnGhost =
   'rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent';
@@ -33,6 +34,8 @@ const ChecklistItem = ({
   const [showMobileWarning, setShowMobileWarning] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [showVerificationsModal, setShowVerificationsModal] = useState(false);
+  /** Índice da foto aberta no editor de marcações (setas / traços) */
+  const [annotatePhotoIndex, setAnnotatePhotoIndex] = useState(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
@@ -124,6 +127,12 @@ const ChecklistItem = ({
   const updatePhotoDescription = (index, description) => {
     const newPhotos = [...(item.photos || [])];
     newPhotos[index] = { ...newPhotos[index], description };
+    onChange({ ...item, photos: newPhotos });
+  };
+
+  const updatePhotoUrl = (index, newUrl) => {
+    const newPhotos = [...(item.photos || [])];
+    newPhotos[index] = { ...newPhotos[index], url: newUrl };
     onChange({ ...item, photos: newPhotos });
   };
 
@@ -326,16 +335,29 @@ const ChecklistItem = ({
               <div className="mt-2 space-y-2">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">
                   {photos.length} foto{photos.length !== 1 ? 's' : ''}
+                  <span className="ml-1 font-normal normal-case text-slate-500">
+                    — toque na miniatura para abrir e marcar (setas / cores)
+                  </span>
                 </p>
                 {photos.map((photo, index) => (
                   <div key={index} className="rounded-lg border border-slate-100 bg-white p-2 shadow-sm">
                     <div className="flex gap-2">
-                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100">
-                        <img src={photo.url} alt="" className="h-full w-full object-cover" />
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100 ring-1 ring-slate-200/80">
                         <button
                           type="button"
-                          onClick={() => handleRemovePhoto(index)}
-                          className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-rose-500 shadow ring-1 ring-slate-200/80 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                          onClick={() => setAnnotatePhotoIndex(index)}
+                          className="absolute inset-0 z-0 block h-full w-full overflow-hidden rounded-md"
+                          aria-label="Abrir foto para marcar setas ou traços"
+                        >
+                          <img src={photo.url} alt="" className="h-full w-full object-cover" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemovePhoto(index);
+                          }}
+                          className="absolute -right-0.5 -top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-rose-500 shadow ring-1 ring-slate-200/80 transition-colors hover:bg-rose-50 hover:text-rose-600"
                           aria-label="Remover foto"
                         >
                           <X size={10} strokeWidth={2.5} />
@@ -376,6 +398,15 @@ const ChecklistItem = ({
           </div>
         )}
       </div>
+
+      {annotatePhotoIndex != null && photos[annotatePhotoIndex]?.url && (
+        <PhotoAnnotationModal
+          key={`annotate-${annotatePhotoIndex}-${photos[annotatePhotoIndex].url?.slice?.(0, 48) || ''}`}
+          imageUrl={photos[annotatePhotoIndex].url}
+          onClose={() => setAnnotatePhotoIndex(null)}
+          onApply={(dataUrl) => updatePhotoUrl(annotatePhotoIndex, dataUrl)}
+        />
+      )}
 
       {showVerificationsModal &&
         createPortal(
