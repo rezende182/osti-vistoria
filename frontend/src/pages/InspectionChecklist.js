@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Download,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
 import RoomSelector from '../components/RoomSelector';
 import ChecklistItem from '../components/ChecklistItem';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
@@ -82,7 +93,8 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
 
 /** Heurística para recuperar rascunho local mais completo que o GET da API. */
 function checklistProgressFingerprint(rooms) {
-  if (!Array.isArray(rooms)) return { items: 0, photos: 0, chars: 0 };
+  if (!Array.isArray(rooms)) return { roomCount: 0, items: 0, photos: 0, chars: 0 };
+  const roomCount = rooms.length;
   let items = 0;
   let photos = 0;
   let chars = 0;
@@ -98,7 +110,7 @@ function checklistProgressFingerprint(rooms) {
       photos += (it.photos || []).length;
     }
   }
-  return { items, photos, chars };
+  return { roomCount, items, photos, chars };
 }
 
 function shouldPreferLocalRoomsChecklist(apiInspection, local, userId) {
@@ -113,8 +125,11 @@ function shouldPreferLocalRoomsChecklist(apiInspection, local, userId) {
   if (!Number.isNaN(tLoc) && !Number.isNaN(tApi) && tLoc > tApi) return true;
   const fpA = checklistProgressFingerprint(apiRooms);
   const fpL = checklistProgressFingerprint(locRooms);
+  /** Cômodos novos sem itens/fotos ainda — antes não entravam na conta e a API antiga “ganhava”. */
+  if (fpL.roomCount > fpA.roomCount) return true;
   if (fpL.photos > fpA.photos || fpL.items > fpA.items) return true;
   if (
+    fpL.roomCount === fpA.roomCount &&
     fpL.photos === fpA.photos &&
     fpL.items === fpA.items &&
     fpL.chars !== fpA.chars
@@ -152,6 +167,7 @@ const InspectionChecklist = () => {
   const inspectionBaseRef = useRef(null);
   const lastAutosavedRoomsJsonRef = useRef('');
   const roomsDataRef = useRef([]);
+  const backupImportInputRef = useRef(null);
   const [isSavingChecklist, setIsSavingChecklist] = useState(false);
 
   const normalizeRoomsChecklist = (roomsChecklist) =>
@@ -652,6 +668,99 @@ const InspectionChecklist = () => {
     toast.success('Nome do ambiente atualizado.');
   };
 
+  /** Descarrega JSON com o checklist atual — útil quando a API falha (outro PC, rede, etc.). */
+  const handleExportChecklistBackup = () => {
+    try {
+      const base = inspectionBaseRef.current || {};
+      const payload = {
+        backupVersion: 1,
+        exportedAt: new Date().toISOString(),
+        inspectionId: id,
+        userId: uid || null,
+        cliente: base.cliente || null,
+        rooms_checklist: roomsData,
+        note:
+          'InSpec360 — importe este ficheiro na mesma vistoria (Verificação dos ambientes) com «Restaurar cópia», depois Salvar.',
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: 'application/json;charset=utf-8',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const slug = String(base.cliente || 'vistoria')
+        .replace(/[^\w\s-]/gi, '')
+        .trim()
+        .slice(0, 36)
+        .replace(/\s+/g, '-');
+      a.download = `copia-checklist-${slug || 'vistoria'}-${String(id).slice(0, 8)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Cópia descarregada — guarde no PC, pen drive ou envie por e-mail/WhatsApp.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Não foi possível exportar a cópia.');
+    }
+  };
+
+  const handlePickImportBackup = () => {
+    backupImportInputRef.current?.click();
+  };
+
+  const handleImportChecklistBackupFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result || ''));
+        const rooms = data.rooms_checklist;
+        if (!Array.isArray(rooms)) {
+          toast.error('Ficheiro inválido: falta a lista de ambientes (rooms_checklist).');
+          return;
+        }
+        if (data.inspectionId && String(data.inspectionId) !== String(id)) {
+          toast.error('Este ficheiro é de outra vistoria. Abra a vistoria certa e tente de novo.');
+          return;
+        }
+        const normalized = normalizeRoomsChecklist(rooms);
+        setRoomsData(normalized);
+        if (normalized.length === 0) {
+          setRoomsList([]);
+          setSelectedRoomId(null);
+        } else {
+          setRoomsList(
+            normalized.map((room) => ({
+              id: room.room_id,
+              name: room.room_name,
+              type: room.room_type || room.room_id,
+            }))
+          );
+          setSelectedRoomId(normalized[0].room_id);
+        }
+        setRoomNameEdit(null);
+        inspectionBaseRef.current = {
+          ...(inspectionBaseRef.current || {}),
+          id,
+          userId: uid,
+          rooms_checklist: normalized,
+        };
+        lastAutosavedRoomsJsonRef.current = '';
+        toast.success(
+          'Cópia restaurada neste ecrã. Toque em «Salvar» com rede boa para enviar ao servidor.'
+        );
+      } catch (err) {
+        console.error(err);
+        toast.error('Não foi possível ler o JSON. Confirme que é uma cópia exportada por esta app.');
+      }
+    };
+    reader.onerror = () => toast.error('Erro ao ler o ficheiro.');
+    reader.readAsText(file, 'utf-8');
+  };
+
   const handleOpenAddRoomModal = () => {
     setAddRoomStep('choose');
     setCustomRoomNameInput('');
@@ -776,7 +885,7 @@ const InspectionChecklist = () => {
     : [];
 
   return (
-    <div className="min-h-dvh bg-slate-50 pb-44 sm:pb-40">
+    <div className="min-h-dvh bg-slate-50 pb-[min(28rem,50vh)] sm:pb-60">
       {/* Header */}
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 px-4 py-5 text-white sm:py-6">
         <div className="mx-auto w-full max-w-app-readable xl:max-w-app-wide">
@@ -1241,6 +1350,40 @@ const InspectionChecklist = () => {
       {/* Fixed Bottom Buttons */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 p-4 pb-bottom-safe backdrop-blur-sm supports-[backdrop-filter]:bg-white/80">
         <div className="mx-auto w-full max-w-app-readable space-y-3 sm:px-2 xl:max-w-app-wide">
+          <input
+            ref={backupImportInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportChecklistBackupFile}
+          />
+          <div className="rounded-lg border border-amber-200/90 bg-amber-50/95 px-3 py-2.5 shadow-sm">
+            <p className="mb-2 text-[11px] font-medium leading-snug text-amber-950/90 sm:text-xs">
+              Se aparecer «sem conexão» ou a API falhar: <strong>exporte uma cópia JSON</strong> no PC
+              onde está o trabalho e guarde o ficheiro. Noutro PC, abra a mesma vistoria e use{' '}
+              <strong>Restaurar cópia</strong>, depois <strong>Salvar</strong>.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <button
+                type="button"
+                data-testid="export-checklist-backup-button"
+                onClick={handleExportChecklistBackup}
+                className="inline-flex min-h-touch flex-1 items-center justify-center gap-2 rounded-lg border border-amber-300/90 bg-white px-3 py-2.5 text-xs font-bold font-secondary uppercase tracking-wide text-amber-900 shadow-sm transition-colors hover:bg-amber-100/80 sm:min-h-0 sm:flex-none sm:px-4 sm:text-sm"
+              >
+                <Download size={16} className="shrink-0" aria-hidden />
+                Exportar cópia (JSON)
+              </button>
+              <button
+                type="button"
+                data-testid="import-checklist-backup-button"
+                onClick={handlePickImportBackup}
+                className="inline-flex min-h-touch flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-xs font-bold font-secondary uppercase tracking-wide text-slate-800 shadow-sm transition-colors hover:bg-slate-50 sm:min-h-0 sm:flex-none sm:px-4 sm:text-sm"
+              >
+                <Upload size={16} className="shrink-0" aria-hidden />
+                Restaurar cópia (JSON)
+              </button>
+            </div>
+          </div>
           {roomsList.length > 0 && (
             <button
               type="button"
