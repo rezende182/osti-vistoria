@@ -847,7 +847,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const camposCapa = [
     {
       label: 'Assunto:',
-      value: 'VISTORIA TÉCNICA DE CONSTATAÇÃO',
+      value: 'Laudo de Vistoria Técnica de Constatação – Imóvel Residencial',
     },
     {
       label: 'Contratante:',
