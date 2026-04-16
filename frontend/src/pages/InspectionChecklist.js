@@ -130,11 +130,64 @@ function extractRoomsChecklistFromImport(data) {
 function getImportInspectionId(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return '';
   return (
+    mongoScalarToString(data.sourceInspectionId) ||
     mongoScalarToString(data.inspectionId) ||
     mongoScalarToString(data._id) ||
     mongoScalarToString(data.id) ||
     ''
   );
+}
+
+/** Cópia JSON só com o que interessa à verificação dos ambientes e NC (fotos em base64 incluídas). */
+function sanitizePhotoForExport(photo) {
+  if (!photo || typeof photo !== 'object') return null;
+  const out = {};
+  for (const pk of ['url', 'caption', 'number', 'description']) {
+    if (photo[pk] !== undefined) out[pk] = photo[pk];
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function sanitizeChecklistItemForExport(item) {
+  if (!item || typeof item !== 'object') return null;
+  const keys = [
+    'id',
+    'name',
+    'verification_text',
+    'photos',
+    'exists',
+    'condition',
+    'observations',
+    'verification_points',
+    'additional_verifications',
+  ];
+  const out = {};
+  for (const k of keys) {
+    if (item[k] !== undefined) out[k] = item[k];
+  }
+  if (Array.isArray(out.photos)) {
+    out.photos = out.photos.map(sanitizePhotoForExport).filter(Boolean);
+  }
+  return out;
+}
+
+function sanitizeRoomsChecklistForExport(rooms) {
+  if (!Array.isArray(rooms)) return [];
+  return rooms.map((room) => {
+    const items = (room.items || [])
+      .map(sanitizeChecklistItemForExport)
+      .filter(Boolean);
+    return {
+      room_id: room.room_id,
+      room_name: room.room_name,
+      room_type: room.room_type != null ? room.room_type : undefined,
+      items,
+    };
+  });
+}
+
+function isAppChecklistBackupFile(data) {
+  return data && typeof data === 'object' && !Array.isArray(data) && Number(data.backupVersion) >= 1;
 }
 
 /** Heurística para recuperar rascunho local mais completo que o GET da API. */
@@ -718,15 +771,19 @@ const InspectionChecklist = () => {
   const handleExportChecklistBackup = () => {
     try {
       const base = inspectionBaseRef.current || {};
+      const roomsOnly = sanitizeRoomsChecklistForExport(roomsData);
       const payload = {
-        backupVersion: 1,
+        backupVersion: 2,
+        backupKind: 'rooms_checklist_verificacao_nc',
         exportedAt: new Date().toISOString(),
         inspectionId: id,
+        sourceInspectionId: id,
         userId: uid || null,
         cliente: base.cliente || null,
-        rooms_checklist: roomsData,
+        endereco: base.endereco || null,
+        rooms_checklist: roomsOnly,
         note:
-          'InSpec360 — importe este ficheiro na mesma vistoria (Verificação dos ambientes) com «Restaurar cópia», depois Salvar.',
+          'InSpec360 — só ambientes (cômodos), itens de verificação, fotos e textos de não conformidade. Use «Restaurar cópia» nesta vistoria ou noutra (confirmação se for outro laudo), depois «Salvar».',
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], {
         type: 'application/json;charset=utf-8',
@@ -739,7 +796,7 @@ const InspectionChecklist = () => {
         .trim()
         .slice(0, 36)
         .replace(/\s+/g, '-');
-      a.download = `copia-checklist-${slug || 'vistoria'}-${String(id).slice(0, 8)}.json`;
+      a.download = `copia-ambientes-nc-${slug || 'vistoria'}-${String(id).slice(0, 8)}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -784,8 +841,23 @@ const InspectionChecklist = () => {
         }
         const fileInspectionId = getImportInspectionId(data);
         if (fileInspectionId && String(fileInspectionId) !== String(id)) {
-          toast.error('Este ficheiro é de outra vistoria. Abra a vistoria certa e tente de novo.');
-          return;
+          if (!isAppChecklistBackupFile(data)) {
+            toast.error(
+              'Este ficheiro parece ser de outro laudo e não é uma cópia JSON gerada por esta app. Exporte pela app ou abra a vistoria correspondente.'
+            );
+            return;
+          }
+          const clienteHint = data.cliente ? ` (${String(data.cliente).slice(0, 48)})` : '';
+          const msg = [
+            'Este ficheiro veio do laudo',
+            String(fileInspectionId).slice(0, 12) + clienteHint + '.',
+            '',
+            'Se continuar, o checklist deste laudo será substituído pelo do ficheiro (cômodos, itens, fotos e descrições de NC).',
+            'Confirma?',
+          ].join('\n');
+          if (typeof window !== 'undefined' && !window.confirm(msg)) {
+            return;
+          }
         }
         const normalized = normalizeRoomsChecklist(rooms);
         setRoomsData(normalized);
@@ -1422,9 +1494,11 @@ const InspectionChecklist = () => {
           />
           <div className="rounded-lg border border-amber-200/90 bg-amber-50/95 px-3 py-2.5 shadow-sm">
             <p className="mb-2 text-[11px] font-medium leading-snug text-amber-950/90 sm:text-xs">
-              Se aparecer «sem conexão» ou a API falhar: <strong>exporte uma cópia JSON</strong> no PC
-              onde está o trabalho e guarde o ficheiro. Noutro PC, abra a mesma vistoria e use{' '}
-              <strong>Restaurar cópia</strong>, depois <strong>Salvar</strong>.
+              Se aparecer «sem conexão» ou a API falhar: <strong>exporte uma cópia JSON</strong> — só
+              verificação dos ambientes e não conformidades (cômodos, itens, fotos em base64, legendas e
+              descrições). Guarde o ficheiro no PC ou na nuvem. Pode{' '}
+              <strong>Restaurar cópia</strong> neste laudo ou noutro (o app pede confirmação se for outro
+              ID), depois <strong>Salvar</strong>.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <button
