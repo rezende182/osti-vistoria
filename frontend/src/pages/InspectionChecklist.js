@@ -91,6 +91,52 @@ function hydrateChecklistItem(item, roomType, roomId, itemIdx) {
   };
 }
 
+/** MongoDB Compass / EJSON: `{ "$oid": "..." }` → string. */
+function mongoScalarToString(v) {
+  if (v == null || v === '') return '';
+  if (typeof v === 'string' || typeof v === 'number') return String(v);
+  if (typeof v === 'object' && v.$oid != null) return String(v.$oid);
+  return String(v);
+}
+
+function isLikelyRoomsChecklistArray(arr) {
+  if (!Array.isArray(arr)) return false;
+  if (arr.length === 0) return true;
+  const x = arr[0];
+  if (!x || typeof x !== 'object') return false;
+  return (
+    x.room_id != null ||
+    typeof x.room_name === 'string' ||
+    x.room_type != null ||
+    Array.isArray(x.items)
+  );
+}
+
+/**
+ * Aceita o JSON exportado pela app, um documento de vistoria (ex. Mongo) com `rooms_checklist`,
+ * ou um array na raiz só com os ambientes.
+ */
+function extractRoomsChecklistFromImport(data) {
+  if (data == null) return null;
+  if (Array.isArray(data) && isLikelyRoomsChecklistArray(data)) {
+    return data;
+  }
+  if (typeof data === 'object' && Array.isArray(data.rooms_checklist)) {
+    return data.rooms_checklist;
+  }
+  return null;
+}
+
+function getImportInspectionId(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return '';
+  return (
+    mongoScalarToString(data.inspectionId) ||
+    mongoScalarToString(data._id) ||
+    mongoScalarToString(data.id) ||
+    ''
+  );
+}
+
 /** Heurística para recuperar rascunho local mais completo que o GET da API. */
 function checklistProgressFingerprint(rooms) {
   if (!Array.isArray(rooms)) return { roomCount: 0, items: 0, photos: 0, chars: 0 };
@@ -715,14 +761,29 @@ const InspectionChecklist = () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
+      const raw = String(reader.result || '');
+      /** BOM UTF-8 (ex.: Notepad no Windows) faz falhar o JSON.parse sem isto. */
+      const text = raw.replace(/^\uFEFF/, '').trim();
+      let data;
       try {
-        const data = JSON.parse(String(reader.result || ''));
-        const rooms = data.rooms_checklist;
-        if (!Array.isArray(rooms)) {
-          toast.error('Ficheiro inválido: falta a lista de ambientes (rooms_checklist).');
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        console.error(parseErr);
+        toast.error(
+          'O ficheiro não é JSON válido. O que se copia do MongoDB muitas vezes traz ObjectId(...) ou ISODate(...) — isso não é JSON. No Compass use «Export» em JSON, ou no ficheiro exportado pela app substitua só o valor de «rooms_checklist» por um array JSON válido (aspas duplas, vírgulas).'
+        );
+        return;
+      }
+      try {
+        const rooms = extractRoomsChecklistFromImport(data);
+        if (!rooms) {
+          toast.error(
+            'Ficheiro inválido: precisa de um array «rooms_checklist» (como no export da app) ou um array na raiz com os ambientes (room_id, room_name, items…).'
+          );
           return;
         }
-        if (data.inspectionId && String(data.inspectionId) !== String(id)) {
+        const fileInspectionId = getImportInspectionId(data);
+        if (fileInspectionId && String(fileInspectionId) !== String(id)) {
           toast.error('Este ficheiro é de outra vistoria. Abra a vistoria certa e tente de novo.');
           return;
         }
@@ -754,7 +815,9 @@ const InspectionChecklist = () => {
         );
       } catch (err) {
         console.error(err);
-        toast.error('Não foi possível ler o JSON. Confirme que é uma cópia exportada por esta app.');
+        toast.error(
+          'Não foi possível aplicar os dados do ficheiro. Confirme que é a cópia JSON exportada por esta app, na mesma versão, sem alterar a estrutura.'
+        );
       }
     };
     reader.onerror = () => toast.error('Erro ao ler o ficheiro.');
