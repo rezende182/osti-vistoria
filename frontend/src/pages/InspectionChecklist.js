@@ -548,6 +548,41 @@ const InspectionChecklist = () => {
     setRoomsData(renumberedData);
   };
 
+  const handleReplacePhoto = (roomIndex, itemIndex, photoIndex, photoData) => {
+    const newRoomsData = [...roomsData];
+    const item = newRoomsData[roomIndex].items[itemIndex];
+    const photos = [...(item.photos || [])];
+    if (!photos[photoIndex]) return;
+    const prev = photos[photoIndex];
+    photos[photoIndex] = {
+      ...prev,
+      url: photoData,
+    };
+    item.photos = photos;
+    const renumberedData = renumberAllPhotos(newRoomsData);
+    setRoomsData(renumberedData);
+  };
+
+  const handleReorderRooms = (fromIndex, toIndex) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= roomsList.length ||
+      toIndex >= roomsList.length
+    ) {
+      return;
+    }
+    const reorder = (arr) => {
+      const next = [...arr];
+      const [removed] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, removed);
+      return next;
+    };
+    setRoomsList(reorder(roomsList));
+    setRoomsData(renumberAllPhotos(reorder(roomsData)));
+  };
+
   const requestDeleteItem = (roomIndex, itemIndex) => {
     const room = roomsData[roomIndex];
     const item = room?.items[itemIndex];
@@ -1095,6 +1130,7 @@ const InspectionChecklist = () => {
         onAddRoom={handleOpenAddRoomModal}
         canAddRoom={canAddAnotherRoom}
         onDeleteRoom={requestDeleteRoom}
+        onReorderRooms={handleReorderRooms}
       />
 
       {/* Add Room Modal */}
@@ -1469,6 +1505,9 @@ const InspectionChecklist = () => {
                     }
                     onRemovePhoto={(photoIndex) =>
                       handleRemovePhoto(selectedRoomIndex, itemIndex, photoIndex)
+                    }
+                    onReplacePhoto={(photoIndex, photoData) =>
+                      handleReplacePhoto(selectedRoomIndex, itemIndex, photoIndex, photoData)
                     }
                     onRemoveItem={() => requestDeleteItem(selectedRoomIndex, itemIndex)}
                     canMoveUp={canReorder && itemIndex > 0}

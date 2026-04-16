@@ -831,7 +831,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   if (typeof doc.setCharSpace === 'function') {
     doc.setCharSpace(PDF_COVER_TRACKING_PT);
   }
-  const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA TÉCNICA', textMaxW);
+  const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA TÉCNICA DE CONSTATAÇÃO', textMaxW);
   y += mainLineH * 0.85;
   mainLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
@@ -847,7 +847,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const camposCapa = [
     {
       label: 'Assunto:',
-      value: 'Vistoria Técnica para Recebimento de Imóvel',
+      value: 'VISTORIA TÉCNICA DE CONSTATAÇÃO',
     },
     {
       label: 'Contratante:',

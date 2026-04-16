@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   X,
   Image,
+  ImageUp,
   FolderOpen,
   Smartphone,
   Trash2,
@@ -29,6 +30,7 @@ const ChecklistItem = ({
   onChange,
   onAddPhoto,
   onRemovePhoto,
+  onReplacePhoto,
   onRemoveItem,
   canMoveUp = false,
   canMoveDown = false,
@@ -48,6 +50,8 @@ const ChecklistItem = ({
   const [annotateDisplayUrl, setAnnotateDisplayUrl] = useState(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const replacePhotoInputRef = useRef(null);
+  const replacePhotoTargetIndexRef = useRef(null);
 
   const legacyMerged = (() => {
     const vps = Array.isArray(item.verification_points) ? item.verification_points : [];
@@ -117,6 +121,39 @@ const ChecklistItem = ({
 
   const handleRemovePhoto = (index) => {
     onRemovePhoto(index);
+  };
+
+  const openReplacePhotoPicker = (photoIndex) => {
+    if (typeof onReplacePhoto !== 'function') return;
+    replacePhotoTargetIndexRef.current = photoIndex;
+    replacePhotoInputRef.current?.click();
+  };
+
+  const handleReplacePhotoFile = async (e) => {
+    const targetIndex = replacePhotoTargetIndexRef.current;
+    replacePhotoTargetIndexRef.current = null;
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (targetIndex == null || !file || typeof onReplacePhoto !== 'function') return;
+
+    setIsCompressing(true);
+    try {
+      const compressedImage = await compressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.7,
+      });
+      onReplacePhoto(targetIndex, compressedImage);
+    } catch (error) {
+      console.error('Erro ao substituir imagem:', error);
+      const reader = new FileReader();
+      const base64 = await new Promise((resolve) => {
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+      onReplacePhoto(targetIndex, base64);
+    }
+    setIsCompressing(false);
   };
 
   const updatePhotoCaption = (index, caption) => {
@@ -337,6 +374,13 @@ const ChecklistItem = ({
               onChange={handleFileUpload}
               className="hidden"
             />
+            <input
+              ref={replacePhotoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleReplacePhotoFile}
+              className="hidden"
+            />
 
             <div className="grid grid-cols-2 gap-1.5">
               <button
@@ -417,17 +461,35 @@ const ChecklistItem = ({
                             <img src={photo.url} alt="" className="h-full w-full object-cover" />
                           )}
                         </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemovePhoto(index);
-                          }}
-                          className="absolute -right-0.5 -top-0.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-rose-500 shadow ring-1 ring-slate-200/80 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                          aria-label="Remover foto"
-                        >
-                          <X size={10} strokeWidth={2.5} />
-                        </button>
+                        <div className="absolute -right-0.5 -top-0.5 z-10 flex items-center gap-0.5">
+                          {typeof onReplacePhoto === 'function' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openReplacePhotoPicker(index);
+                              }}
+                              disabled={isCompressing}
+                              className="flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-sky-600 shadow ring-1 ring-slate-200/80 transition-colors hover:bg-sky-50 hover:text-sky-700 disabled:opacity-40"
+                              aria-label="Substituir foto"
+                              title="Substituir foto"
+                            >
+                              <ImageUp size={10} strokeWidth={2.5} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemovePhoto(index);
+                            }}
+                            className="flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-rose-500 shadow ring-1 ring-slate-200/80 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                            aria-label="Remover foto"
+                            title="Remover foto"
+                          >
+                            <X size={10} strokeWidth={2.5} />
+                          </button>
+                        </div>
                       </div>
                       <div className="min-w-0 flex-1 pt-0.5">
                         <div className="mb-1 flex items-center gap-1">
