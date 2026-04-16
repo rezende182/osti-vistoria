@@ -25,13 +25,14 @@ import { useAuth } from '@/auth';
 import { inspectionsApi } from '../services/api';
 import { getAllInspectionsLocally, initDB } from '../utils/offlineStorage';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
+import { hydrateChecklistGridfsPhotosForPdf } from '../utils/checklistRemotePhotos';
 import { generateInspectionPDF } from '../utils/pdfGenerator';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
 import BrandLogo from '@/components/BrandLogo';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, getIdToken } = useAuth();
   const uid = user?.uid;
   const [inspections, setInspections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +94,8 @@ const Dashboard = () => {
         toast.error(res.error || 'Não foi possível carregar a vistoria.');
         return;
       }
-      const result = await generateInspectionPDF(res.data, false);
+      const forPdf = await hydrateChecklistGridfsPhotosForPdf(res.data, getIdToken);
+      const result = await generateInspectionPDF(forPdf, false);
       if (result) {
         toast.success('PDF baixado com sucesso!');
       }

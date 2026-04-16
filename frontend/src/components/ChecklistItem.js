@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -13,6 +13,12 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { compressImage, formatFileSize, getDataUrlSize } from '../utils/imageCompressor';
+import {
+  fetchChecklistPhotoBlob,
+  isGridFsChecklistPhotoUrl,
+  parseGridFsFileId,
+} from '../utils/checklistRemotePhotos';
+import ChecklistPhotoThumb from './ChecklistPhotoThumb';
 import PhotoAnnotationModal from './PhotoAnnotationModal';
 
 const btnGhost =
@@ -29,6 +35,9 @@ const ChecklistItem = ({
   onMoveUp,
   onMoveDown,
   dragHandleProps,
+  inspectionId = '',
+  getIdToken,
+  storePhotoDataUrl,
 }) => {
   const [showNcPanel, setShowNcPanel] = useState(false);
   const [showMobileWarning, setShowMobileWarning] = useState(false);
@@ -36,6 +45,7 @@ const ChecklistItem = ({
   const [showVerificationsModal, setShowVerificationsModal] = useState(false);
   /** Índice da foto aberta no editor de marcações (setas / traços) */
   const [annotatePhotoIndex, setAnnotatePhotoIndex] = useState(null);
+  const [annotateDisplayUrl, setAnnotateDisplayUrl] = useState(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
@@ -147,6 +157,52 @@ const ChecklistItem = ({
     }
     return { ...photo, description: photo.description ?? '' };
   });
+
+  const photoUrlKey = useMemo(
+    () =>
+      JSON.stringify(
+        (item.photos || []).map((p) => (typeof p === 'string' ? p : p?.url ?? ''))
+      ),
+    [item.photos]
+  );
+
+  useEffect(() => {
+    if (annotatePhotoIndex == null) {
+      setAnnotateDisplayUrl(null);
+      return undefined;
+    }
+    const srcPhotos = item.photos || [];
+    const rawObj = srcPhotos[annotatePhotoIndex];
+    const raw = typeof rawObj === 'string' ? rawObj : rawObj?.url;
+    if (!raw) {
+      setAnnotateDisplayUrl(null);
+      return undefined;
+    }
+    if (!isGridFsChecklistPhotoUrl(raw)) {
+      setAnnotateDisplayUrl(raw);
+      return undefined;
+    }
+    const fid = parseGridFsFileId(raw);
+    if (!fid || !inspectionId || typeof getIdToken !== 'function') {
+      setAnnotateDisplayUrl(null);
+      return undefined;
+    }
+    let cancelled = false;
+    let objectUrl;
+    (async () => {
+      try {
+        const blob = await fetchChecklistPhotoBlob(inspectionId, fid, getIdToken);
+        objectUrl = URL.createObjectURL(blob);
+        if (!cancelled) setAnnotateDisplayUrl(objectUrl);
+      } catch {
+        if (!cancelled) setAnnotateDisplayUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [annotatePhotoIndex, photoUrlKey, item.photos, inspectionId, getIdToken]);
 
   const reorder =
     onMoveUp || onMoveDown || dragHandleProps ? (
@@ -349,7 +405,17 @@ const ChecklistItem = ({
                           className="absolute inset-0 z-0 block h-full w-full overflow-hidden rounded-md"
                           aria-label="Abrir foto para marcar setas ou traços"
                         >
-                          <img src={photo.url} alt="" className="h-full w-full object-cover" />
+                          {inspectionId && typeof getIdToken === 'function' ? (
+                            <ChecklistPhotoThumb
+                              url={photo.url}
+                              inspectionId={inspectionId}
+                              getIdToken={getIdToken}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <img src={photo.url} alt="" className="h-full w-full object-cover" />
+                          )}
                         </button>
                         <button
                           type="button"
@@ -399,12 +465,28 @@ const ChecklistItem = ({
         )}
       </div>
 
-      {annotatePhotoIndex != null && photos[annotatePhotoIndex]?.url && (
+      {annotatePhotoIndex != null &&
+        isGridFsChecklistPhotoUrl(photos[annotatePhotoIndex]?.url) &&
+        !annotateDisplayUrl && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 text-sm text-white">
+            A carregar foto…
+          </div>
+        )}
+
+      {annotatePhotoIndex != null && annotateDisplayUrl && (
         <PhotoAnnotationModal
-          key={`annotate-${annotatePhotoIndex}-${photos[annotatePhotoIndex].url?.slice?.(0, 48) || ''}`}
-          imageUrl={photos[annotatePhotoIndex].url}
+          key={`annotate-${annotatePhotoIndex}-${annotateDisplayUrl?.slice?.(0, 48) || ''}`}
+          imageUrl={annotateDisplayUrl}
           onClose={() => setAnnotatePhotoIndex(null)}
-          onApply={(dataUrl) => updatePhotoUrl(annotatePhotoIndex, dataUrl)}
+          onApply={async (dataUrl) => {
+            const idx = annotatePhotoIndex;
+            const stored =
+              storePhotoDataUrl && typeof storePhotoDataUrl === 'function'
+                ? await storePhotoDataUrl(dataUrl)
+                : dataUrl;
+            updatePhotoUrl(idx, stored);
+            setAnnotatePhotoIndex(null);
+          }}
         />
       )}
 

@@ -61,6 +61,10 @@ function normalizeUserId(userId) {
 /** Mensagem legível a partir de erro Axios ou rede */
 export function getErrorMessage(error) {
   if (!error) return 'Erro desconhecido.';
+  const status = error.response?.status;
+  if (status === 413) {
+    return 'O volume de dados (fotos) excede o limite aceite neste envio. Tente «Salvar» com Wi-Fi estável; se persistir, reduza fotos por item ou duplicadas. O progresso pode estar guardado neste dispositivo.';
+  }
   if (error.response?.data?.detail !== undefined) {
     const d = error.response.data.detail;
     if (typeof d === 'string') return d;
@@ -68,10 +72,10 @@ export function getErrorMessage(error) {
     return String(d);
   }
   if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
-    return 'Sem ligação ao servidor ou o envio foi interrompido (muitas fotos ou rede instável). Verifique a internet e use «Salvar» de novo; o progresso pode estar guardado neste dispositivo.';
+    return 'Sem ligação ao servidor ou o envio foi interrompido. Verifique a internet e use «Salvar» de novo; o progresso pode estar guardado neste dispositivo. Com muitas fotos, prefira Wi-Fi estável e aguarde o envio terminar.';
   }
   if (error.code === 'ECONNABORTED') {
-    return 'Tempo esgotado ao falar com o servidor. Tente de novo — em laudos com muitas fotos o envio demora mais.';
+    return 'Tempo esgotado ao falar com o servidor. Tente de novo — em laudos com muitas fotos o envio demora mais; use Wi-Fi se possível.';
   }
   return error.message || 'Erro ao comunicar com o servidor.';
 }
@@ -138,6 +142,29 @@ export const inspectionsApi = {
     form.append('file', file);
     return wrap(
       client.post(`/inspections/${id}/upload-photo`, form).then((r) => r.data)
+    );
+  },
+
+  /** Upload checklist photo (GridFS) — usado só pelo descarregamento automático ao gravar. */
+  uploadChecklistPhoto: (inspectionId, blob, userId) => {
+    if (!normalizeUserId(userId)) return rejectNoUser();
+    const form = new FormData();
+    const name = blob && blob.type === 'image/png' ? 'photo.png' : 'photo.jpg';
+    form.append('file', blob, name);
+    return wrap(
+      client
+        .post(`/inspections/${inspectionId}/checklist-photo`, form, {
+          timeout: INSPECTION_UPDATE_TIMEOUT_MS,
+          transformRequest: [
+            (data, headers) => {
+              if (typeof FormData !== 'undefined' && data instanceof FormData) {
+                delete headers['Content-Type'];
+              }
+              return data;
+            },
+          ],
+        })
+        .then((r) => r.data)
     );
   },
 };

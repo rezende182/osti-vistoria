@@ -28,6 +28,10 @@ import {
 import BrandLogo from '@/components/BrandLogo';
 import { compressRoomsChecklistPhotosIfNeeded } from '../utils/imageCompressor';
 import {
+  dataUrlToBlob,
+  offloadExcessChecklistPhotos,
+} from '../utils/checklistRemotePhotos';
+import {
   ROOM_TYPE_LABELS,
   ROOM_TYPE_ORDER,
   ROOM_TYPE_CUSTOM,
@@ -241,8 +245,25 @@ function shouldPreferLocalRoomsChecklist(apiInspection, local, userId) {
 const InspectionChecklist = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, getIdToken } = useAuth();
   const uid = user?.uid;
+
+  const storeChecklistPhotoBlob = useCallback(
+    async (dataUrl) => {
+      if (!uid || !id) return dataUrl;
+      try {
+        const blob = dataUrlToBlob(dataUrl);
+        const res = await inspectionsApi.uploadChecklistPhoto(id, blob, uid);
+        if (res.ok && res.data?.url && String(res.data.url).startsWith('gridfs:')) {
+          return res.data.url;
+        }
+      } catch {
+        /* mantém data URL */
+      }
+      return dataUrl;
+    },
+    [id, uid]
+  );
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [roomsData, setRoomsData] = useState([]);
   const [roomsList, setRoomsList] = useState([]);
@@ -367,30 +388,31 @@ const InspectionChecklist = () => {
       if (!base) return { ok: false, reason: 'no_base' };
 
       const optimizedRooms = await compressRoomsChecklistPhotosIfNeeded(roomsSnapshot);
+      const roomsToSave = await offloadExcessChecklistPhotos(optimizedRooms, id, uid);
 
       const merged = {
         ...base,
         id: base.id || id,
         userId: uid,
-        rooms_checklist: optimizedRooms,
+        rooms_checklist: roomsToSave,
       };
       await saveInspectionLocally(merged);
       inspectionBaseRef.current = {
         ...(inspectionBaseRef.current || base),
         ...merged,
-        rooms_checklist: optimizedRooms,
+        rooms_checklist: roomsToSave,
       };
 
       const result = await inspectionsApi.update(
         id,
-        { rooms_checklist: optimizedRooms },
+        { rooms_checklist: roomsToSave },
         uid
       );
       if (result.ok && result.data && typeof result.data === 'object') {
         inspectionBaseRef.current = {
           ...inspectionBaseRef.current,
           ...result.data,
-          rooms_checklist: optimizedRooms,
+          rooms_checklist: roomsToSave,
           id,
           userId: uid,
         };
@@ -403,7 +425,7 @@ const InspectionChecklist = () => {
         await enqueueSyncOperation({
           method: 'PUT',
           path: `/inspections/${id}`,
-          payload: { rooms_checklist: optimizedRooms },
+          payload: { rooms_checklist: roomsToSave },
           dedupKey: `PUT:/inspections/${id}:checklist`,
           inspectionId: id,
           userId: uid,
@@ -413,7 +435,7 @@ const InspectionChecklist = () => {
         ok: true,
         apiOk: result.ok,
         apiError: result.error,
-        roomsOptimized: optimizedRooms,
+        roomsOptimized: roomsToSave,
       };
     },
     [id, uid]
@@ -490,18 +512,16 @@ const InspectionChecklist = () => {
   const handleAddPhoto = (roomIndex, itemIndex, photoData) => {
     const newRoomsData = [...roomsData];
     const item = newRoomsData[roomIndex].items[itemIndex];
-    
-    // Adiciona foto com número temporário (será corrigido pela renumeração)
+
     const newPhoto = {
       url: photoData,
       caption: `Foto 0. `,
       number: 0,
       description: '',
     };
-    
+
     item.photos = [...(item.photos || []), newPhoto];
-    
-    // Renumera TODAS as fotos para garantir ordem correta
+
     const renumberedData = renumberAllPhotos(newRoomsData);
     setRoomsData(renumberedData);
   };
@@ -1427,6 +1447,9 @@ const InspectionChecklist = () => {
                 >
                   <ChecklistItem
                     item={item}
+                    inspectionId={id}
+                    getIdToken={getIdToken}
+                    storePhotoDataUrl={storeChecklistPhotoBlob}
                     onChange={(updatedItem, shouldRenumber) =>
                       handleItemChange(selectedRoomIndex, itemIndex, updatedItem, shouldRenumber)
                     }

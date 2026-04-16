@@ -5,19 +5,27 @@ Configure HOST, PORT, MONGO_URL, CORS_ORIGINS etc. via variáveis de ambiente ou
 
 from contextlib import asynccontextmanager
 import base64
+import io
 import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from checklist_gridfs import (
+    MAX_CHECKLIST_PHOTO_BYTES,
+    delete_all_checklist_photos_for_inspection,
+    delete_orphaned_after_checklist_update,
+    read_checklist_photo_for_owner,
+    upload_checklist_photo,
+)
 from database import (
     close_mongodb,
     connect_mongodb,
@@ -517,6 +525,9 @@ async def update_inspection(
     _assert_inspection_owner(inspection, uid)
 
     update_dict = update_data.model_dump(exclude_unset=True)
+    old_rooms_for_gridfs = (
+        inspection.get("rooms_checklist") if "rooms_checklist" in update_dict else None
+    )
 
     if update_dict:
         if "classificacao_final" in update_dict and update_dict["classificacao_final"]:
@@ -525,6 +536,15 @@ async def update_inspection(
         await database.inspections.update_one(
             {"id": inspection_id},
             {"$set": update_dict},
+        )
+
+    if old_rooms_for_gridfs is not None and "rooms_checklist" in update_dict:
+        await delete_orphaned_after_checklist_update(
+            database,
+            inspection_id=inspection_id,
+            owner_uid=uid,
+            old_rooms=old_rooms_for_gridfs,
+            new_rooms=update_dict["rooms_checklist"],
         )
 
     updated_inspection = await database.inspections.find_one(
@@ -586,9 +606,77 @@ async def delete_inspection(
 
     _assert_inspection_owner(inspection, uid)
 
+    await delete_all_checklist_photos_for_inspection(database, inspection_id)
     await database.inspections.delete_one({"id": inspection_id})
 
     return {"message": "Vistoria excluída com sucesso"}
+
+
+@api_router.post("/inspections/{inspection_id}/checklist-photo")
+async def post_checklist_photo(
+    inspection_id: str,
+    file: UploadFile = File(...),
+    uid: str = Depends(get_current_uid),
+):
+    database = require_database()
+    inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
+
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Vistoria não encontrada")
+
+    _assert_inspection_owner(inspection, uid)
+
+    contents = await file.read()
+    if len(contents) > MAX_CHECKLIST_PHOTO_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Foto demasiado grande (máx. 12 MB).",
+        )
+    try:
+        url = await upload_checklist_photo(
+            database,
+            inspection_id=inspection_id,
+            owner_uid=uid,
+            data=contents,
+            content_type=file.content_type or "image/jpeg",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return {"url": url}
+
+
+@api_router.get("/inspections/{inspection_id}/checklist-photo/{file_id_hex}")
+async def get_checklist_photo(
+    inspection_id: str,
+    file_id_hex: str,
+    uid: str = Depends(get_current_uid),
+):
+    database = require_database()
+    inspection = await database.inspections.find_one({"id": inspection_id}, {"_id": 0})
+
+    if not inspection:
+        raise HTTPException(status_code=404, detail="Vistoria não encontrada")
+
+    _assert_inspection_owner(inspection, uid)
+
+    try:
+        data, media_type = await read_checklist_photo_for_owner(
+            database,
+            inspection_id=inspection_id,
+            owner_uid=uid,
+            file_id_hex=file_id_hex,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Foto não encontrada") from None
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Acesso negado") from None
+
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=media_type,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
 
 
 @api_router.post("/inspections/{inspection_id}/upload-photo")

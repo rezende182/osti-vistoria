@@ -142,28 +142,49 @@ export const formatFileSize = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-/** ~350 KB em data URL — acima disto tenta-se comprimir antes de enviar ao servidor. */
-const ROOM_PHOTO_DATA_URL_COMPRESS_THRESHOLD = 350 * 1024;
+/** Por foto: acima disto comprime antes do PUT (fotos já comprimidas no item costumam ficar ~150–320 KB). */
+const ROOM_PHOTO_DATA_URL_COMPRESS_THRESHOLD = 180 * 1024;
+/**
+ * Soma de todas as data URLs do checklist — muitas NC com fotos «pequenas» somavam MB sem disparar o limite por foto.
+ * Segunda passagem evita timeout/rede e aproxima-se do limite de documento no MongoDB (~16 MB).
+ */
+const ROOM_CHECKLIST_PHOTOS_TOTAL_SOFT_CAP = 5.5 * 1024 * 1024;
+
+const SAVE_COMPRESS_PASS1 = {
+  maxWidth: 960,
+  maxHeight: 960,
+  quality: 0.58,
+  mimeType: 'image/jpeg',
+};
+
+const SAVE_COMPRESS_PASS2 = {
+  maxWidth: 768,
+  maxHeight: 768,
+  quality: 0.5,
+  mimeType: 'image/jpeg',
+};
+
+function sumDataImageBytesInRooms(rooms) {
+  let total = 0;
+  for (const room of rooms || []) {
+    for (const item of room.items || []) {
+      for (const p of item.photos || []) {
+        const url = p?.url;
+        if (typeof url === 'string' && url.startsWith('data:image')) {
+          total += getDataUrlSize(url);
+        }
+      }
+    }
+  }
+  return total;
+}
 
 /**
- * Reduz data URLs grandes em `rooms_checklist` para o PUT não falhar por tempo/tamanho.
- * @param {unknown[]} roomsChecklist
- * @returns {Promise<unknown[]>}
+ * @param {unknown[]} rooms
+ * @param {(url: string) => boolean} shouldCompress
+ * @param {object} settings
  */
-export async function compressRoomsChecklistPhotosIfNeeded(roomsChecklist, options = {}) {
-  const settings = {
-    maxWidth: 1024,
-    maxHeight: 1024,
-    quality: 0.62,
-    mimeType: 'image/jpeg',
-    ...options,
-  };
-  let rooms;
-  try {
-    rooms = JSON.parse(JSON.stringify(roomsChecklist || []));
-  } catch {
-    return roomsChecklist || [];
-  }
+async function compressRoomPhotoDataUrls(rooms, shouldCompress, settings) {
   for (const room of rooms) {
     const items = room.items || [];
     for (const item of items) {
@@ -171,7 +192,7 @@ export async function compressRoomsChecklistPhotosIfNeeded(roomsChecklist, optio
       for (let i = 0; i < photos.length; i++) {
         const url = photos[i]?.url;
         if (typeof url !== 'string' || !url.startsWith('data:image')) continue;
-        if (getDataUrlSize(url) <= ROOM_PHOTO_DATA_URL_COMPRESS_THRESHOLD) continue;
+        if (!shouldCompress(url)) continue;
         try {
           photos[i] = { ...photos[i], url: await compressDataUrl(url, settings) };
         } catch (e) {
@@ -180,6 +201,36 @@ export async function compressRoomsChecklistPhotosIfNeeded(roomsChecklist, optio
       }
     }
   }
+}
+
+/**
+ * Reduz data URLs grandes em `rooms_checklist` para o PUT não falhar por tempo/tamanho.
+ * @param {unknown[]} roomsChecklist
+ * @returns {Promise<unknown[]>}
+ */
+export async function compressRoomsChecklistPhotosIfNeeded(roomsChecklist, options = {}) {
+  const pass1Settings = { ...SAVE_COMPRESS_PASS1, ...options };
+  let rooms;
+  try {
+    rooms = JSON.parse(JSON.stringify(roomsChecklist || []));
+  } catch {
+    return roomsChecklist || [];
+  }
+
+  await compressRoomPhotoDataUrls(
+    rooms,
+    (url) => getDataUrlSize(url) > ROOM_PHOTO_DATA_URL_COMPRESS_THRESHOLD,
+    pass1Settings
+  );
+
+  if (sumDataImageBytesInRooms(rooms) > ROOM_CHECKLIST_PHOTOS_TOTAL_SOFT_CAP) {
+    await compressRoomPhotoDataUrls(
+      rooms,
+      (url) => getDataUrlSize(url) > 65 * 1024,
+      SAVE_COMPRESS_PASS2
+    );
+  }
+
   return rooms;
 }
 

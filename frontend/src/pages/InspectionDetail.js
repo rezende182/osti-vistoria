@@ -22,6 +22,7 @@ import NavigationModal from '../components/NavigationModal';
 import { LogoutHeaderButton } from '../components/LogoutHeaderButton';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth';
+import { hydrateChecklistGridfsPhotosForPdf } from '../utils/checklistRemotePhotos';
 import { generateInspectionPDF } from '../utils/pdfGenerator';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
@@ -143,7 +144,7 @@ function IdRow({ label, children }) {
 const InspectionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, getIdToken } = useAuth();
   const uid = user?.uid;
   const [inspection, setInspection] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -230,7 +231,8 @@ const InspectionDetail = () => {
     toast.info('Gerando PDF...');
 
     try {
-      const result = await generateInspectionPDF(inspection, false);
+      const forPdf = await hydrateChecklistGridfsPhotosForPdf(inspection, getIdToken);
+      const result = await generateInspectionPDF(forPdf, false);
       if (result) {
         toast.success('PDF baixado com sucesso!');
       }
@@ -253,7 +255,8 @@ const InspectionDetail = () => {
     toast.info('Gerando visualização...');
 
     try {
-      const result = await generateInspectionPDF(inspection, true);
+      const forPdf = await hydrateChecklistGridfsPhotosForPdf(inspection, getIdToken);
+      const result = await generateInspectionPDF(forPdf, true);
       if (result && result.blob) {
         // Criar URL do blob para exibir no modal
         const blobUrl = URL.createObjectURL(result.blob);
