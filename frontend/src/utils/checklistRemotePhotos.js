@@ -49,9 +49,14 @@ export function sumChecklistInlinePhotoBytes(rooms) {
   return total;
 }
 
-/** Abaixo disto não descarregamos (margem para o resto do documento da vistoria). */
-const SAFE_INLINE_PHOTO_BYTES = 7.25 * 1024 * 1024;
-const MAX_OFFLOAD_PER_SAVE = 100;
+/**
+ * Limite conservador: o BSON do documento no MongoDB ~16 MB inclui tudo na vistoria.
+ * O JSON do checklist em base64 é bem maior que a soma «decodificada» das imagens.
+ */
+const SAFE_INLINE_PHOTO_BYTES = 4 * 1024 * 1024;
+/** Tamanho UTF-8 de `JSON.stringify(rooms_checklist)` — proxies cortam PUTs enormes (erro «Network»). */
+const MAX_ROOMS_CHECKLIST_JSON_BYTES = 8 * 1024 * 1024;
+const MAX_OFFLOAD_PER_SAVE = 120;
 
 function findLargestDataUrlPhotoSlot(rooms) {
   let best = null;
@@ -74,6 +79,25 @@ function findLargestDataUrlPhotoSlot(rooms) {
   return best;
 }
 
+export function estimateRoomsChecklistJsonUtf8Bytes(rooms) {
+  try {
+    const s = JSON.stringify(rooms || []);
+    if (typeof TextEncoder !== 'undefined') {
+      return new TextEncoder().encode(s).length;
+    }
+    return new Blob([s]).size;
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+function needsMoreOffload(rooms) {
+  return (
+    sumChecklistInlinePhotoBytes(rooms) > SAFE_INLINE_PHOTO_BYTES ||
+    estimateRoomsChecklistJsonUtf8Bytes(rooms) > MAX_ROOMS_CHECKLIST_JSON_BYTES
+  );
+}
+
 /**
  * Substitui as maiores data URLs por referências `gridfs:` até ficar abaixo do limiar seguro.
  * Sem alterar legendas/NC — só o campo `url` de algumas fotos.
@@ -88,10 +112,7 @@ export async function offloadExcessChecklistPhotos(rooms, inspectionId, userId) 
   if (!inspectionId || !userId) return clone;
 
   let n = 0;
-  while (
-    sumChecklistInlinePhotoBytes(clone) > SAFE_INLINE_PHOTO_BYTES &&
-    n < MAX_OFFLOAD_PER_SAVE
-  ) {
+  while (needsMoreOffload(clone) && n < MAX_OFFLOAD_PER_SAVE) {
     n += 1;
     const slot = findLargestDataUrlPhotoSlot(clone);
     if (!slot) break;
@@ -99,7 +120,14 @@ export async function offloadExcessChecklistPhotos(rooms, inspectionId, userId) 
     const url = clone[ri].items[ii].photos[pi].url;
     try {
       const blob = dataUrlToBlob(url);
-      const res = await inspectionsApi.uploadChecklistPhoto(inspectionId, blob, userId);
+      let res = { ok: false };
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        res = await inspectionsApi.uploadChecklistPhoto(inspectionId, blob, userId);
+        if (res.ok && res.data?.url && String(res.data.url).startsWith(GRIDFS_URL_PREFIX)) {
+          break;
+        }
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 600));
+      }
       if (!res.ok || !res.data?.url || !String(res.data.url).startsWith(GRIDFS_URL_PREFIX)) {
         break;
       }

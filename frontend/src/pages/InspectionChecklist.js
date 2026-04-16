@@ -288,6 +288,8 @@ const InspectionChecklist = () => {
   const lastAutosavedRoomsJsonRef = useRef('');
   const roomsDataRef = useRef([]);
   const backupImportInputRef = useRef(null);
+  /** Evita dois PUT/autosave em paralelo (corrida no offload e no tamanho do pedido). */
+  const persistChainRef = useRef(Promise.resolve());
   const [isSavingChecklist, setIsSavingChecklist] = useState(false);
 
   const normalizeRoomsChecklist = (roomsChecklist) =>
@@ -368,75 +370,84 @@ const InspectionChecklist = () => {
 
   /** Grava checklist no dispositivo e tenta enviar ao servidor (autosave + «Salvar e Continuar»). */
   const persistChecklistDraft = useCallback(
-    async (roomsSnapshot) => {
-      if (!uid || !id) return { ok: false, reason: 'auth' };
-      await initDB().catch(() => {});
-      let base = await getInspectionLocally(id);
-      if (!base && inspectionBaseRef.current) {
-        base = { ...inspectionBaseRef.current };
-      }
-      if (!base) {
-        const reload = await loadInspectionWithFallback(id, uid);
-        if (reload.ok && reload.data) {
-          base = {
-            ...reload.data,
-            id: reload.data.id || id,
-            userId: reload.data.userId || uid,
-          };
+    (roomsSnapshot) => {
+      const execute = async () => {
+        if (!uid || !id) return { ok: false, reason: 'auth' };
+        await initDB().catch(() => {});
+        let base = await getInspectionLocally(id);
+        if (!base && inspectionBaseRef.current) {
+          base = { ...inspectionBaseRef.current };
         }
-      }
-      if (!base) return { ok: false, reason: 'no_base' };
+        if (!base) {
+          const reload = await loadInspectionWithFallback(id, uid);
+          if (reload.ok && reload.data) {
+            base = {
+              ...reload.data,
+              id: reload.data.id || id,
+              userId: reload.data.userId || uid,
+            };
+          }
+        }
+        if (!base) return { ok: false, reason: 'no_base' };
 
-      const optimizedRooms = await compressRoomsChecklistPhotosIfNeeded(roomsSnapshot);
-      const roomsToSave = await offloadExcessChecklistPhotos(optimizedRooms, id, uid);
+        const optimizedRooms = await compressRoomsChecklistPhotosIfNeeded(roomsSnapshot);
+        const roomsToSave = await offloadExcessChecklistPhotos(optimizedRooms, id, uid);
 
-      const merged = {
-        ...base,
-        id: base.id || id,
-        userId: uid,
-        rooms_checklist: roomsToSave,
-      };
-      await saveInspectionLocally(merged);
-      inspectionBaseRef.current = {
-        ...(inspectionBaseRef.current || base),
-        ...merged,
-        rooms_checklist: roomsToSave,
-      };
-
-      const result = await inspectionsApi.update(
-        id,
-        { rooms_checklist: roomsToSave },
-        uid
-      );
-      if (result.ok && result.data && typeof result.data === 'object') {
-        inspectionBaseRef.current = {
-          ...inspectionBaseRef.current,
-          ...result.data,
+        const merged = {
+          ...base,
+          id: base.id || id,
+          userId: uid,
           rooms_checklist: roomsToSave,
-          id,
-          userId: uid,
         };
-        try {
-          await saveInspectionLocally(inspectionBaseRef.current);
-        } catch (e) {
-          console.warn('[Checklist] Cache local após resposta do servidor:', e);
+        await saveInspectionLocally(merged);
+        inspectionBaseRef.current = {
+          ...(inspectionBaseRef.current || base),
+          ...merged,
+          rooms_checklist: roomsToSave,
+        };
+
+        const result = await inspectionsApi.update(
+          id,
+          { rooms_checklist: roomsToSave },
+          uid
+        );
+        if (result.ok && result.data && typeof result.data === 'object') {
+          inspectionBaseRef.current = {
+            ...inspectionBaseRef.current,
+            ...result.data,
+            rooms_checklist: roomsToSave,
+            id,
+            userId: uid,
+          };
+          try {
+            await saveInspectionLocally(inspectionBaseRef.current);
+          } catch (e) {
+            console.warn('[Checklist] Cache local após resposta do servidor:', e);
+          }
+        } else if (!result.ok) {
+          await enqueueSyncOperation({
+            method: 'PUT',
+            path: `/inspections/${id}`,
+            payload: { rooms_checklist: roomsToSave },
+            dedupKey: `PUT:/inspections/${id}:checklist`,
+            inspectionId: id,
+            userId: uid,
+          });
         }
-      } else if (!result.ok) {
-        await enqueueSyncOperation({
-          method: 'PUT',
-          path: `/inspections/${id}`,
-          payload: { rooms_checklist: roomsToSave },
-          dedupKey: `PUT:/inspections/${id}:checklist`,
-          inspectionId: id,
-          userId: uid,
-        });
-      }
-      return {
-        ok: true,
-        apiOk: result.ok,
-        apiError: result.error,
-        roomsOptimized: roomsToSave,
+        return {
+          ok: true,
+          apiOk: result.ok,
+          apiError: result.error,
+          roomsOptimized: roomsToSave,
+        };
       };
+
+      const next = persistChainRef.current.then(execute, execute);
+      persistChainRef.current = next.then(
+        () => undefined,
+        () => undefined
+      );
+      return next;
     },
     [id, uid]
   );

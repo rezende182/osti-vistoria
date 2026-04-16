@@ -72,7 +72,7 @@ export function getErrorMessage(error) {
     return String(d);
   }
   if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
-    return 'Sem ligação ao servidor ou o envio foi interrompido. Verifique a internet e use «Salvar» de novo; o progresso pode estar guardado neste dispositivo. Com muitas fotos, prefira Wi-Fi estável e aguarde o envio terminar.';
+    return 'Sem ligação ao servidor ou o envio foi interrompido (rede fraca ou pedido muito grande). Verifique a internet, use Wi-Fi e toque em «Salvar» de novo após alguns segundos; o progresso pode estar neste dispositivo. Com muitas fotos, aguarde o envio terminar.';
   }
   if (error.code === 'ECONNABORTED') {
     return 'Tempo esgotado ao falar com o servidor. Tente de novo — em laudos com muitas fotos o envio demora mais; use Wi-Fi se possível.';
