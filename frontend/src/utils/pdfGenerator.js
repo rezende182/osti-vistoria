@@ -1146,7 +1146,18 @@ function pdfRegistroDisplayValue(s) {
 }
 
 /**
+ * Após cada ponto final, a primeira letra seguinte (ignorando espaços) em maiúsculas — texto corrido das NC.
+ */
+function pdfCapitalizeAfterFullStop(s) {
+  if (!s || typeof s !== 'string') return s;
+  return s.replace(/(\.)([\s\u00A0]*)(\p{Ll})/gu, (match, dot, ws, letter) => {
+    return dot + ws + letter.toLocaleUpperCase('pt-BR');
+  });
+}
+
+/**
  * Problemática no PDF: um único texto corrido; remove travessões / traços usados como separadores.
+ * Não força tudo em minúsculas: mantém o que o utilizador escreveu e só ajusta início e após «.».
  */
 function formatPdfProblematicaParagraph(s) {
   let t = String(s ?? '').trim();
@@ -1155,8 +1166,12 @@ function formatPdfProblematicaParagraph(s) {
   t = t.replace(/\s+-\s+/g, ' ');
   t = t.replace(/\s+/g, ' ');
   t = t.trim();
-  const lower = t.toLowerCase();
-  return lower.charAt(0).toUpperCase() + lower.slice(1);
+  t = pdfCapitalizeAfterFullStop(t);
+  const c0 = t.charAt(0);
+  if (c0 && /\p{Ll}/u.test(c0)) {
+    t = c0.toLocaleUpperCase('pt-BR') + t.slice(1);
+  }
+  return t;
 }
 
 /** Junta as descrições das fotos do mesmo bloco, em texto corrido, removendo traços iniciais tipo lista. */
