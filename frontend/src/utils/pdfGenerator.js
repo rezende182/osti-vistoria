@@ -831,7 +831,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   if (typeof doc.setCharSpace === 'function') {
     doc.setCharSpace(PDF_COVER_TRACKING_PT);
   }
-  const mainLines = doc.splitTextToSize('laudo técnico de constatação', textMaxW);
+  const mainLines = doc.splitTextToSize('LAUDO TÉCNICO DE CONSTATAÇÃO', textMaxW);
   y += mainLineH * 0.85;
   mainLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
