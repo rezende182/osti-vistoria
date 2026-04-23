@@ -717,15 +717,22 @@ const PDF_COVER_GAP_ABOVE_FOOTER_MM = 10;
 /** Cidade e data no fim da capa: 1 cm entre linhas (baseline → baseline); antes 0,5 cm + 0,5 cm. */
 const PDF_COVER_CITY_DATE_LINE_MM = 10;
 
+/** Texto da capa em linha única: remove quebras e colapsa espaços (evita “queda de linha” artificial). */
+function pdfCoverFieldSingleLine(s) {
+  return String(s || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /**
  * Valor do campo Endereço (sem o rótulo): logradouro, unidade em linha, cidade em título - UF.
  * Ex.: Rua …, 357, Apto 1.103 Bloco A, Praia Grande - SP
  */
 function buildPdfCoverEnderecoValor(inspection) {
   const parts = [];
-  const e = pdfTrim(inspection.endereco);
+  const e = pdfCoverFieldSingleLine(pdfTrim(inspection.endereco));
   if (e) parts.push(e);
-  const u = pdfTrim(inspection.unidade);
+  const u = pdfCoverFieldSingleLine(pdfTrim(inspection.unidade));
   if (u) parts.push(u);
   const loc = pdfCidadeUfCapaTitleHyphen(inspection.cidade, inspection.uf);
   if (loc) parts.push(loc);
@@ -831,7 +838,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   if (typeof doc.setCharSpace === 'function') {
     doc.setCharSpace(PDF_COVER_TRACKING_PT);
   }
-  const mainLines = doc.splitTextToSize('LAUDO TÉCNICO DE CONSTATAÇÃO', textMaxW);
+  const mainLines = doc.splitTextToSize('LAUDO DE RECEBIMENTO DE IMÓVEL NOVO', textMaxW);
   y += mainLineH * 0.85;
   mainLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
@@ -847,7 +854,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const camposCapa = [
     {
       label: 'Assunto:',
-      value: 'Laudo de Vistoria Técnica de Constatação – Imóvel Residencial',
+      value: 'Vistoria Técnica - Recebimento de imóvel novo',
     },
     {
       label: 'Contratante:',
