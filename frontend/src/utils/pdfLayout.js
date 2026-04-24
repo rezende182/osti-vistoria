@@ -77,7 +77,7 @@ export function ensureVerticalSpace(doc, y, spaceNeededMm, options = {}) {
   return y;
 }
 
-function justifyLine(doc, words, x, y, maxWidth) {
+export function justifyLine(doc, words, x, y, maxWidth) {
   if (words.length === 0) return;
   if (words.length === 1) {
     doc.text(words[0], x, y);

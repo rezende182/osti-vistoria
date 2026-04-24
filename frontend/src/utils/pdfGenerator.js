@@ -27,6 +27,7 @@ import {
   PDF_PT_TO_MM,
   PDF_PAGE_MARGIN_MM,
   PDF_LINE_HEIGHT_FACTOR,
+  justifyLine,
 } from './pdfLayout';
 import { formatPdfAssinaturaDataLine } from './pdfAssinaturaFormat';
 import { METODOLOGIA_PLACEHOLDER_REG_NC } from '../constants/laudoEntregaTextos';
@@ -707,9 +708,15 @@ const PDF_COVER_TITLE_MAIN_PT = 24;
 const PDF_COVER_GAP_AFTER_TITLE_MM = 8;
 /** Assunto, Contratante, Endereço, Responsável Técnico na capa. */
 const PDF_COVER_INFO_PT = 14;
-/** Entrelinha (entre baselines) para o texto a 14 pt quando o valor quebra em várias linhas. */
-const PDF_COVER_FIELD_LINE_STEP_MM = 17.5;
-/** Espaço entre um bloco de campo e o seguinte na capa (Assunto, Contratante, …). */
+/** Entrelinha normal (14 pt × 1,5) só entre linhas de continuação do mesmo valor na capa. */
+const PDF_COVER_VALUE_CONT_LINE_MM =
+  PDF_COVER_INFO_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
+/**
+ * Após a última linha de cada campo: mantém o ritmo vertical entre blocos (Assunto, Contratante, …).
+ * Antes valia para todas as linhas, o que deixava quebras longas do endereço com “buraco” grande.
+ */
+const PDF_COVER_AFTER_VALUE_LAST_LINE_MM = 17.5;
+/** Espaço extra entre um campo e o seguinte (após o avanço pós-última linha). */
 const PDF_COVER_GAP_BETWEEN_FIELDS_MM = 0.5;
 const PDF_COVER_TRACKING_PT = 0.35;
 /** Espaço entre o bloco central e a cidade no rodapé. */
@@ -739,7 +746,7 @@ function buildPdfCoverEnderecoValor(inspection) {
   return parts.length ? parts.join(', ') : '\u2014';
 }
 
-function measureCoverFieldsHeightMm(doc, maxW, lineStepMm, fields, gapBetweenFieldsMm = 0) {
+function measureCoverFieldsHeightMm(doc, maxW, fields, gapBetweenFieldsMm = 0) {
   let h = 0;
   doc.setFontSize(PDF_COVER_INFO_PT);
   fields.forEach((field, idx) => {
@@ -751,7 +758,11 @@ function measureCoverFieldsHeightMm(doc, maxW, lineStepMm, fields, gapBetweenFie
     const v = value != null && String(value).trim() !== '' ? String(value) : '\u2014';
     const valueLines = doc.splitTextToSize(v, Math.max(8, maxW - labelW));
     const n = Math.max(1, valueLines.length);
-    h += n * lineStepMm;
+    if (n === 1) {
+      h += PDF_COVER_AFTER_VALUE_LAST_LINE_MM;
+    } else {
+      h += (n - 1) * PDF_COVER_VALUE_CONT_LINE_MM + PDF_COVER_AFTER_VALUE_LAST_LINE_MM;
+    }
     if (idx < fields.length - 1) h += gapBetweenFieldsMm;
   });
   return h;
@@ -760,7 +771,7 @@ function measureCoverFieldsHeightMm(doc, maxW, lineStepMm, fields, gapBetweenFie
 /**
  * Rótulo em negrito + valor à direita (continuação com indent); alinhado à esquerda em xLeft.
  */
-function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, lineStepMm, fields, gapBetweenFieldsMm = 0) {
+function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, fields, gapBetweenFieldsMm = 0) {
   let y = yStart;
   doc.setFontSize(PDF_COVER_INFO_PT);
   fields.forEach((field, fieldIdx) => {
@@ -779,10 +790,14 @@ function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, lineStepMm, fields, gapBe
         doc.setFont(PDF_FONT, 'normal');
         doc.text(vl, xLeft + labelW, y);
       } else {
+        doc.setFont(PDF_FONT, 'normal');
         doc.text(vl, xLeft + labelW, y);
       }
-      y += lineStepMm;
+      if (i < lines.length - 1) {
+        y += PDF_COVER_VALUE_CONT_LINE_MM;
+      }
     });
+    y += PDF_COVER_AFTER_VALUE_LAST_LINE_MM;
     if (fieldIdx < fields.length - 1) y += gapBetweenFieldsMm;
   });
   return y;
@@ -873,7 +888,6 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const alturaBloco = measureCoverFieldsHeightMm(
     doc,
     textMaxW,
-    PDF_COVER_FIELD_LINE_STEP_MM,
     camposCapa,
     PDF_COVER_GAP_BETWEEN_FIELDS_MM
   );
@@ -889,7 +903,6 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     xLeft,
     yBloco,
     textMaxW,
-    PDF_COVER_FIELD_LINE_STEP_MM,
     camposCapa,
     PDF_COVER_GAP_BETWEEN_FIELDS_MM
   );
@@ -1181,6 +1194,18 @@ function formatPdfProblematicaParagraph(s) {
   return t;
 }
 
+/** Texto da não conformidade: mesma regra do corpo (última linha à esquerda). */
+function drawRegistroNcJustifiedLine(doc, line, x, y, maxW, isLastParagraphLine) {
+  const trimmed = String(line).trim();
+  if (!trimmed) return;
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (!isLastParagraphLine && words.length > 1) {
+    justifyLine(doc, words, x, y, maxW);
+  } else {
+    doc.text(trimmed, x, y);
+  }
+}
+
 /** Junta as descrições das fotos do mesmo bloco, em texto corrido, removendo traços iniciais tipo lista. */
 function mergeRegistroNcDescriptionsRaw(photos) {
   const parts = (photos || []).map((p) => pdfTrim(p?.description)).filter(Boolean);
@@ -1340,18 +1365,20 @@ function drawPdfRegistroElementoLocalNcBlockPaged(
   doc.setFont(PDF_FONT, 'normal');
   const linesFirst = doc.splitTextToSize(descNorm, firstW);
   const firstLine = linesFirst[0] || '';
-  if (firstLine) {
-    doc.text(firstLine, x, y);
-  }
   const rest = descNorm.substring(firstLine.length).replace(/^\s+/, '');
   const restLineArr = rest ? doc.splitTextToSize(rest, innerW) : [];
-  restLineArr.forEach((ln) => {
+  const hasMoreNcLines = restLineArr.length > 0;
+  if (firstLine) {
+    drawRegistroNcJustifiedLine(doc, firstLine, x, y, firstW, !hasMoreNcLines);
+  }
+  restLineArr.forEach((ln, idx) => {
     y += lh;
     if (y + lh > bottomLimit()) {
       doc.addPage();
       y = PDF_PAGE_TOP_SAFE_MM + lh * 0.5;
     }
-    doc.text(ln, innerX, y);
+    const isLastNc = idx === restLineArr.length - 1;
+    drawRegistroNcJustifiedLine(doc, ln, innerX, y, innerW, isLastNc);
   });
 
   return y + pad;
