@@ -705,6 +705,9 @@ const PDF_COVER_MARGIN_MM = 20;
 const PDF_COVER_LOGO_W_MM = 70;
 const PDF_COVER_GAP_BELOW_LOGO_MM = 28;
 const PDF_COVER_TITLE_MAIN_PT = 24;
+/** Subtítulo abaixo do título principal (recebimento de imóvel novo). */
+const PDF_COVER_TITLE_SUB_PT = 15;
+const PDF_COVER_GAP_MAIN_TO_SUB_MM = 2.5;
 const PDF_COVER_GAP_AFTER_TITLE_MM = 8;
 /** Assunto, Contratante, Endereço, Responsável Técnico na capa. */
 const PDF_COVER_INFO_PT = 14;
@@ -746,17 +749,42 @@ function buildPdfCoverEnderecoValor(inspection) {
   return parts.length ? parts.join(', ') : '\u2014';
 }
 
+/**
+ * Endereço na capa: primeira linha ao lado de «Endereço:»; continuação com a mesma margem esquerda
+ * que o rótulo (sem deslocar o texto para a coluna do valor) e largura de linha total da página.
+ */
+function getCoverEnderecoMargemValueLines(doc, v, maxW, labelPart) {
+  doc.setFontSize(PDF_COVER_INFO_PT);
+  doc.setFont(PDF_FONT, 'bold');
+  const labelW = doc.getTextWidth(labelPart);
+  doc.setFont(PDF_FONT, 'normal');
+  const s = v != null && String(v).trim() !== '' ? String(v) : '\u2014';
+  const w0 = Math.max(8, maxW - labelW);
+  const w1 = Math.max(8, maxW);
+  const firstChunk = doc.splitTextToSize(s, w0);
+  if (!firstChunk.length) return [''];
+  const first = firstChunk[0];
+  if (firstChunk.length === 1) return [first];
+  const rest = s.length > first.length ? s.slice(first.length).replace(/^\s+/, '') : '';
+  if (!rest) return [first];
+  const cont = doc.splitTextToSize(rest, w1);
+  return [first, ...cont];
+}
+
 function measureCoverFieldsHeightMm(doc, maxW, fields, gapBetweenFieldsMm = 0) {
   let h = 0;
   doc.setFontSize(PDF_COVER_INFO_PT);
   fields.forEach((field, idx) => {
-    const { label, value } = field;
+    const { label, value, valueWrap } = field;
     doc.setFont(PDF_FONT, 'bold');
     const labelPart = `${label} `;
     const labelW = doc.getTextWidth(labelPart);
     doc.setFont(PDF_FONT, 'normal');
     const v = value != null && String(value).trim() !== '' ? String(value) : '\u2014';
-    const valueLines = doc.splitTextToSize(v, Math.max(8, maxW - labelW));
+    const valueLines =
+      valueWrap === 'endereco-margem'
+        ? getCoverEnderecoMargemValueLines(doc, v, maxW, labelPart)
+        : doc.splitTextToSize(v, Math.max(8, maxW - labelW));
     const n = Math.max(1, valueLines.length);
     if (n === 1) {
       h += PDF_COVER_AFTER_VALUE_LAST_LINE_MM;
@@ -770,19 +798,24 @@ function measureCoverFieldsHeightMm(doc, maxW, fields, gapBetweenFieldsMm = 0) {
 
 /**
  * Rótulo em negrito + valor à direita (continuação com indent); alinhado à esquerda em xLeft.
+ * Campo com `valueWrap: 'endereco-margem'`: continuação alinhada à mesma esquerda do rótulo.
  */
 function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, fields, gapBetweenFieldsMm = 0) {
   let y = yStart;
   doc.setFontSize(PDF_COVER_INFO_PT);
   fields.forEach((field, fieldIdx) => {
-    const { label, value } = field;
+    const { label, value, valueWrap } = field;
     doc.setFont(PDF_FONT, 'bold');
     const labelPart = `${label} `;
     const labelW = doc.getTextWidth(labelPart);
     doc.setFont(PDF_FONT, 'normal');
     const v = value != null && String(value).trim() !== '' ? String(value) : '\u2014';
-    const valueLines = doc.splitTextToSize(v, Math.max(8, maxW - labelW));
+    const useMargem = valueWrap === 'endereco-margem';
+    const valueLines = useMargem
+      ? getCoverEnderecoMargemValueLines(doc, v, maxW, labelPart)
+      : doc.splitTextToSize(v, Math.max(8, maxW - labelW));
     const lines = valueLines.length ? valueLines : [''];
+    const contX = useMargem ? xLeft : xLeft + labelW;
     lines.forEach((vl, i) => {
       if (i === 0) {
         doc.setFont(PDF_FONT, 'bold');
@@ -791,7 +824,7 @@ function drawCoverFieldsLeft(doc, xLeft, yStart, maxW, fields, gapBetweenFieldsM
         doc.text(vl, xLeft + labelW, y);
       } else {
         doc.setFont(PDF_FONT, 'normal');
-        doc.text(vl, xLeft + labelW, y);
+        doc.text(vl, contX, y);
       }
       if (i < lines.length - 1) {
         y += PDF_COVER_VALUE_CONT_LINE_MM;
@@ -848,12 +881,13 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
 
   doc.setTextColor(0, 0, 0);
   const mainLineH = PDF_COVER_TITLE_MAIN_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
+  const subLineH = PDF_COVER_TITLE_SUB_PT * PDF_PT_TO_MM * PDF_LINE_HEIGHT_FACTOR;
   doc.setFont(PDF_FONT, 'bold');
   doc.setFontSize(PDF_COVER_TITLE_MAIN_PT);
   if (typeof doc.setCharSpace === 'function') {
     doc.setCharSpace(PDF_COVER_TRACKING_PT);
   }
-  const mainLines = doc.splitTextToSize('LAUDO DE RECEBIMENTO DE IMÓVEL NOVO', textMaxW);
+  const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA', textMaxW);
   y += mainLineH * 0.85;
   mainLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
@@ -862,6 +896,15 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   if (typeof doc.setCharSpace === 'function') {
     doc.setCharSpace(0);
   }
+
+  y += PDF_COVER_GAP_MAIN_TO_SUB_MM;
+  doc.setFont(PDF_FONT, 'normal');
+  doc.setFontSize(PDF_COVER_TITLE_SUB_PT);
+  const subLines = doc.splitTextToSize('RECEBIMENTO DE IMÓVEL NOVO', textMaxW);
+  subLines.forEach((ln) => {
+    doc.text(ln, cx, y, { align: 'center' });
+    y += subLineH;
+  });
 
   const yAposTitulo = y + PDF_COVER_GAP_AFTER_TITLE_MM;
 
@@ -878,6 +921,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
     {
       label: 'Endereço:',
       value: buildPdfCoverEnderecoValor(inspection),
+      valueWrap: 'endereco-margem',
     },
     {
       label: 'Responsável Técnico:',
