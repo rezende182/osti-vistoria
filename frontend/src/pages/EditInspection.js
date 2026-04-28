@@ -109,6 +109,8 @@ const EditInspection = () => {
     energia_disponivel: '',
     documentos_recebidos: [],
     pdf_logo_data_url: '',
+    laudo_capa_titulo: '',
+    laudo_capa_assunto: '',
     tipo_vistoria_fluxo: '',
     imovel_categoria: '',
     responsavel_cpf_cnpj: '',
@@ -164,6 +166,8 @@ const EditInspection = () => {
         energia_disponivel: data.energia_disponivel ?? '',
         documentos_recebidos: data.documentos_recebidos || [],
         pdf_logo_data_url: data.pdf_logo_data_url || '',
+        laudo_capa_titulo: data.laudo_capa_titulo || '',
+        laudo_capa_assunto: data.laudo_capa_assunto || '',
         tipo_vistoria_fluxo: data.tipo_vistoria_fluxo || '',
         imovel_categoria:
           data.imovel_categoria === 'casa'
@@ -467,7 +471,35 @@ const EditInspection = () => {
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] p-6">
           {formData.tipo_vistoria_fluxo === 'apartamento' ? (
             <>
-              {sectionTitle('Identificação do Responsável Técnico')}
+              {sectionTitle('Informações do Laudo')}
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Título da capa do laudo (opcional)
+                </label>
+                <input
+                  data-testid="input-laudo-capa-titulo"
+                  type="text"
+                  name="laudo_capa_titulo"
+                  value={formData.laudo_capa_titulo}
+                  onChange={handleChange}
+                  placeholder="Ex.: LAUDO DE VISTORIA"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Assunto da capa do laudo (opcional)
+                </label>
+                <input
+                  data-testid="input-laudo-capa-assunto"
+                  type="text"
+                  name="laudo_capa_assunto"
+                  value={formData.laudo_capa_assunto}
+                  onChange={handleChange}
+                  placeholder="Ex.: RECEBIMENTO DE IMÓVEL NOVO"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
               <div className="mb-6">
                 <InspectionPdfLogoField
                   value={formData.pdf_logo_data_url}
@@ -476,6 +508,7 @@ const EditInspection = () => {
                   }
                 />
               </div>
+              {sectionTitle('Identificação do Responsável Técnico')}
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Nome do Responsável Técnico *
@@ -835,12 +868,41 @@ const EditInspection = () => {
             </>
           ) : (
             <>
+              {sectionTitle('Informações do Laudo')}
               <InspectionPdfLogoField
                 value={formData.pdf_logo_data_url}
                 onChange={(url) =>
                   setFormData((prev) => ({ ...prev, pdf_logo_data_url: url || '' }))
                 }
               />
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Título da capa do laudo (opcional)
+                </label>
+                <input
+                  data-testid="input-laudo-capa-titulo"
+                  type="text"
+                  name="laudo_capa_titulo"
+                  value={formData.laudo_capa_titulo}
+                  onChange={handleChange}
+                  placeholder="Ex.: LAUDO DE VISTORIA"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Assunto da capa do laudo (opcional)
+                </label>
+                <input
+                  data-testid="input-laudo-capa-assunto"
+                  type="text"
+                  name="laudo_capa_assunto"
+                  value={formData.laudo_capa_assunto}
+                  onChange={handleChange}
+                  placeholder="Ex.: VISTORIA TÉCNICA"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
               {sectionTitle('Identificação do Responsável Técnico')}
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">

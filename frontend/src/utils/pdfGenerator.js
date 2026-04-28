@@ -855,6 +855,8 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const yDataRodape = pageHeight - PDF_COVER_MARGIN_MM - 2;
   const yCidadeRodape = yDataRodape - PDF_COVER_CITY_DATE_LINE_MM;
   const yLimiteBlocoCentral = yCidadeRodape - PDF_COVER_GAP_ABOVE_FOOTER_MM;
+  const coverTitle = pdfTrim(inspection.laudo_capa_titulo) || 'LAUDO DE VISTORIA';
+  const coverSubject = pdfTrim(inspection.laudo_capa_assunto) || 'RECEBIMENTO DE IMÓVEL NOVO';
 
   let y = PDF_COVER_MARGIN_MM;
 
@@ -887,7 +889,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   if (typeof doc.setCharSpace === 'function') {
     doc.setCharSpace(PDF_COVER_TRACKING_PT);
   }
-  const mainLines = doc.splitTextToSize('LAUDO DE VISTORIA', textMaxW);
+  const mainLines = doc.splitTextToSize(coverTitle, textMaxW);
   y += mainLineH * 0.85;
   mainLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
@@ -900,7 +902,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   y += PDF_COVER_GAP_MAIN_TO_SUB_MM;
   doc.setFont(PDF_FONT, 'normal');
   doc.setFontSize(PDF_COVER_TITLE_SUB_PT);
-  const subLines = doc.splitTextToSize('RECEBIMENTO DE IMÓVEL NOVO', textMaxW);
+  const subLines = doc.splitTextToSize(coverSubject, textMaxW);
   subLines.forEach((ln) => {
     doc.text(ln, cx, y, { align: 'center' });
     y += subLineH;
@@ -912,7 +914,7 @@ async function drawPdfCoverPage(doc, inspection, pageWidth, pageHeight) {
   const camposCapa = [
     {
       label: 'Assunto:',
-      value: 'Vistoria Técnica - Recebimento de imóvel novo',
+      value: pdfTrim(inspection.laudo_capa_assunto) || 'Vistoria Técnica - Recebimento de imóvel novo',
     },
     {
       label: 'Contratante:',
