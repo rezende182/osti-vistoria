@@ -137,6 +137,9 @@ class InspectionCreateIn(BaseModel):
         max_length=2_500_000,
         description="data:image/png ou data:image/jpeg;base64,... para o cabeçalho do PDF",
     )
+    laudo_capa_titulo: str = ""
+    laudo_capa_subtitulo: str = ""
+    laudo_capa_assunto: str = ""
     pdf_empresa_nome: Optional[str] = Field(
         default=None,
         max_length=300,
@@ -209,6 +212,9 @@ class InspectionUpdate(BaseModel):
     outro_somente_conclusao: Optional[bool] = None
     classificacao_escolha_rotulo: Optional[str] = None
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
+    laudo_capa_titulo: Optional[str] = None
+    laudo_capa_subtitulo: Optional[str] = None
+    laudo_capa_assunto: Optional[str] = None
     pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
     pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
 
@@ -280,6 +286,9 @@ class Inspection(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     status: Literal["em_andamento", "concluida"] = "em_andamento"
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
+    laudo_capa_titulo: str = ""
+    laudo_capa_subtitulo: str = ""
+    laudo_capa_assunto: str = ""
     pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
     pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
     tipo_vistoria_fluxo: Optional[
@@ -350,6 +359,9 @@ class IdentificationUpdate(BaseModel):
     energia_disponivel: Optional[Literal["sim", "nao"]] = None
     documentos_recebidos: Optional[List[str]] = None
     pdf_logo_data_url: Optional[str] = Field(default=None, max_length=2_500_000)
+    laudo_capa_titulo: Optional[str] = None
+    laudo_capa_subtitulo: Optional[str] = None
+    laudo_capa_assunto: Optional[str] = None
     pdf_empresa_nome: Optional[str] = Field(default=None, max_length=300)
     pdf_empresa_cnpj: Optional[str] = Field(default=None, max_length=32)
     tipo_vistoria_fluxo: Optional[
