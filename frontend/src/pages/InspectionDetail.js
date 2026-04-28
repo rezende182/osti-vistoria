@@ -24,7 +24,6 @@ import { toast } from 'sonner';
 import { useAuth } from '@/auth';
 import { hydrateChecklistGridfsPhotosForPdf } from '../utils/checklistRemotePhotos';
 import { generateInspectionPDF } from '../utils/pdfGenerator';
-import { generateInspectionWord } from '../utils/wordGenerator';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import { CLASSIFICACAO_BADGE_SHORT } from '../constants/inspectionClassificacao';
 import BrandLogo from '@/components/BrandLogo';
@@ -152,7 +151,6 @@ const InspectionDetail = () => {
   const [showExitModal, setShowExitModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [generatingWord, setGeneratingWord] = useState(false);
   const [showPdfViewer, setShowPdfViewer] = useState(false);
   const [pdfDataUrl, setPdfDataUrl] = useState(null);
   /** IDs dos ambientes com a lista de itens recolhida (chevron na secção de verificações). */
@@ -243,24 +241,6 @@ const InspectionDetail = () => {
       toast.error('Erro ao gerar PDF. Tente novamente.');
     } finally {
       setGeneratingPdf(false);
-    }
-  };
-
-  const handleDownloadWord = async () => {
-    if (!inspection) {
-      toast.error('Dados da vistoria não disponíveis');
-      return;
-    }
-    setGeneratingWord(true);
-    toast.info('Gerando Word...');
-    try {
-      generateInspectionWord(inspection);
-      toast.success('Arquivo Word baixado com sucesso!');
-    } catch (error) {
-      console.error('Erro ao gerar Word:', error);
-      toast.error('Erro ao gerar Word. Tente novamente.');
-    } finally {
-      setGeneratingWord(false);
     }
   };
 
@@ -790,7 +770,7 @@ const InspectionDetail = () => {
               <button
                 data-testid="download-pdf-button"
                 onClick={handleDownloadPDF}
-                disabled={generatingPdf || generatingWord}
+                disabled={generatingPdf}
                 className="w-full bg-blue-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-blue-700 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {generatingPdf ? (
@@ -802,24 +782,6 @@ const InspectionDetail = () => {
                   <>
                     <Download size={20} />
                     Baixar PDF
-                  </>
-                )}
-              </button>
-              <button
-                data-testid="download-word-button"
-                onClick={handleDownloadWord}
-                disabled={generatingPdf || generatingWord}
-                className="w-full bg-slate-600 text-white py-4 rounded-lg font-bold font-secondary uppercase text-lg transition-all duration-200 hover:bg-slate-700 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {generatingWord ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Gerando...
-                  </>
-                ) : (
-                  <>
-                    <Download size={20} />
-                    Baixar Word
                   </>
                 )}
               </button>
@@ -866,16 +828,6 @@ const InspectionDetail = () => {
                 <Download size={18} />
                 Baixar
               </button>
-              <button
-                onClick={() => {
-                  closePdfViewer();
-                  handleDownloadWord();
-                }}
-                className="px-4 py-2 bg-slate-700 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-slate-600"
-              >
-                <Download size={18} />
-                Word
-              </button>
               <button 
                 onClick={closePdfViewer} 
                 className="p-2 text-white hover:bg-slate-700 rounded-lg"
@@ -906,16 +858,6 @@ const InspectionDetail = () => {
             >
               <Download size={18} />
               Baixar PDF
-            </button>
-            <button
-              onClick={() => {
-                closePdfViewer();
-                handleDownloadWord();
-              }}
-              className="px-6 py-3 bg-slate-700 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-slate-600"
-            >
-              <Download size={18} />
-              Baixar Word
             </button>
             <button
               onClick={() => setShowShareModal(true)}
