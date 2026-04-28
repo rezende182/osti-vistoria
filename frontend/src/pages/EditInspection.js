@@ -39,7 +39,10 @@ function validateIdentificationRequired(fd) {
     isFilled(fd.crea) &&
     isFilled(fd.responsavel_cpf_cnpj) &&
     isFilled(fd.data) &&
-    isFilled(fd.horario_inicio)
+    isFilled(fd.horario_inicio) &&
+    isFilled(fd.laudo_capa_titulo) &&
+    isFilled(fd.laudo_capa_subtitulo) &&
+    isFilled(fd.laudo_capa_assunto)
   );
 }
 
@@ -110,6 +113,7 @@ const EditInspection = () => {
     documentos_recebidos: [],
     pdf_logo_data_url: '',
     laudo_capa_titulo: '',
+    laudo_capa_subtitulo: '',
     laudo_capa_assunto: '',
     tipo_vistoria_fluxo: '',
     imovel_categoria: '',
@@ -167,6 +171,7 @@ const EditInspection = () => {
         documentos_recebidos: data.documentos_recebidos || [],
         pdf_logo_data_url: data.pdf_logo_data_url || '',
         laudo_capa_titulo: data.laudo_capa_titulo || '',
+        laudo_capa_subtitulo: data.laudo_capa_subtitulo || '',
         laudo_capa_assunto: data.laudo_capa_assunto || '',
         tipo_vistoria_fluxo: data.tipo_vistoria_fluxo || '',
         imovel_categoria:
@@ -474,7 +479,7 @@ const EditInspection = () => {
               {sectionTitle('Informações do Laudo')}
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Título da capa do laudo (opcional)
+                  Título da capa do laudo *
                 </label>
                 <input
                   data-testid="input-laudo-capa-titulo"
@@ -482,13 +487,29 @@ const EditInspection = () => {
                   name="laudo_capa_titulo"
                   value={formData.laudo_capa_titulo}
                   onChange={handleChange}
+                  required
                   placeholder="Ex.: LAUDO DE VISTORIA"
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Assunto da capa do laudo (opcional)
+                  Subtítulo da capa do laudo *
+                </label>
+                <input
+                  data-testid="input-laudo-capa-subtitulo"
+                  type="text"
+                  name="laudo_capa_subtitulo"
+                  value={formData.laudo_capa_subtitulo}
+                  onChange={handleChange}
+                  required
+                  placeholder="Ex.: RECEBIMENTO DE IMÓVEL NOVO"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Assunto da capa do laudo *
                 </label>
                 <input
                   data-testid="input-laudo-capa-assunto"
@@ -496,7 +517,8 @@ const EditInspection = () => {
                   name="laudo_capa_assunto"
                   value={formData.laudo_capa_assunto}
                   onChange={handleChange}
-                  placeholder="Ex.: RECEBIMENTO DE IMÓVEL NOVO"
+                  required
+                  placeholder="Ex.: Vistoria Técnica - Recebimento de imóvel novo"
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -877,7 +899,7 @@ const EditInspection = () => {
               />
               <div className="mb-4">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Título da capa do laudo (opcional)
+                  Título da capa do laudo *
                 </label>
                 <input
                   data-testid="input-laudo-capa-titulo"
@@ -885,13 +907,29 @@ const EditInspection = () => {
                   name="laudo_capa_titulo"
                   value={formData.laudo_capa_titulo}
                   onChange={handleChange}
+                  required
                   placeholder="Ex.: LAUDO DE VISTORIA"
+                  className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Subtítulo da capa do laudo *
+                </label>
+                <input
+                  data-testid="input-laudo-capa-subtitulo"
+                  type="text"
+                  name="laudo_capa_subtitulo"
+                  value={formData.laudo_capa_subtitulo}
+                  onChange={handleChange}
+                  required
+                  placeholder="Ex.: RECEBIMENTO DE IMÓVEL NOVO"
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="mb-6">
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Assunto da capa do laudo (opcional)
+                  Assunto da capa do laudo *
                 </label>
                 <input
                   data-testid="input-laudo-capa-assunto"
@@ -899,7 +937,8 @@ const EditInspection = () => {
                   name="laudo_capa_assunto"
                   value={formData.laudo_capa_assunto}
                   onChange={handleChange}
-                  placeholder="Ex.: VISTORIA TÉCNICA"
+                  required
+                  placeholder="Ex.: Vistoria Técnica - Recebimento de imóvel novo"
                   className="w-full rounded-lg border border-slate-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
