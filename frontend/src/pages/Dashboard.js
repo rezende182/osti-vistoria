@@ -22,8 +22,12 @@ import {
 import ConfirmModal from '../components/ConfirmModal';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth';
-import { inspectionsApi } from '../services/api';
-import { getAllInspectionsLocally, initDB } from '../utils/offlineStorage';
+import { inspectionsApi, isConnectivityError } from '../services/api';
+import {
+  getAllInspectionsLocally,
+  initDB,
+  cacheInspectionsLocally,
+} from '../utils/offlineStorage';
 import { loadInspectionWithFallback } from '../utils/inspectionLoader';
 import { hydrateChecklistGridfsPhotosForPdf } from '../utils/checklistRemotePhotos';
 import { generateInspectionPDF } from '../utils/pdfGenerator';
@@ -49,17 +53,35 @@ const Dashboard = () => {
         toast.error('Sessão inválida. Inicie sessão novamente.');
         return;
       }
-      const result = await inspectionsApi.list(uid);
+      let result = await inspectionsApi.list(uid);
+      if (!result.ok && isConnectivityError(result.status, result.error)) {
+        await new Promise((r) => setTimeout(r, 2500));
+        result = await inspectionsApi.list(uid);
+      }
       if (result.ok) {
         setInspections(result.data);
+        await cacheInspectionsLocally(result.data);
         return;
       }
       console.warn('API lista:', result.error);
       const local = await getAllInspectionsLocally();
-      const mine = local.filter((row) => row.userId === uid);
+      const mine = local.filter((row) => {
+        const rowUid = String(row.userId || '').trim();
+        return !rowUid || rowUid === uid;
+      });
       if (mine.length) {
         setInspections(mine);
-        toast.info('Sem conexão com o servidor — mostrando dados salvos neste dispositivo.');
+        if (result.status === 401 || result.status === 403) {
+          toast.warning(
+            'Sessão expirada — a mostrar laudos guardados neste dispositivo. Saia e entre novamente para sincronizar.'
+          );
+        } else {
+          toast.info(
+            'Sem conexão com o servidor — mostrando dados salvos neste dispositivo.'
+          );
+        }
+      } else if (result.status === 401 || result.status === 403) {
+        toast.error('Sessão expirada. Saia e entre novamente.');
       } else {
         toast.error(result.error || 'Não foi possível carregar as vistorias.');
       }

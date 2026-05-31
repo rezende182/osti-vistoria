@@ -42,9 +42,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    setApiAuthTokenGetter(async () => {
+    setApiAuthTokenGetter(async (options) => {
       if (!user) return null;
-      return user.getIdToken();
+      const forceRefresh = options?.forceRefresh === true;
+      return user.getIdToken(forceRefresh);
     });
     return () => setApiAuthTokenGetter(null);
   }, [user]);

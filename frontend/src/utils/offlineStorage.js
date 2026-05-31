@@ -104,6 +104,17 @@ export const getInspectionLocally = async (id) => {
   });
 };
 
+/** Grava várias vistorias no IndexedDB (cache após listagem na API). */
+export const cacheInspectionsLocally = async (inspections) => {
+  if (!Array.isArray(inspections) || inspections.length === 0) return;
+  await initDB().catch(() => {});
+  await Promise.all(
+    inspections.map((inspection) =>
+      saveInspectionLocally({ ...inspection, isOffline: false }).catch(() => {})
+    )
+  );
+};
+
 export const getAllInspectionsLocally = async () => {
   const database = await initDB();
 
@@ -296,6 +307,7 @@ export const registerConnectivityListeners = (onOnline, onOffline) => {
 export default {
   initDB,
   saveInspectionLocally,
+  cacheInspectionsLocally,
   getInspectionLocally,
   getAllInspectionsLocally,
   deleteInspectionLocally,

@@ -166,10 +166,13 @@ const InspectionDetail = () => {
   };
 
   const loadInspection = useCallback(async () => {
+    if (!uid) return;
+    setLoading(true);
     try {
       const res = await loadInspectionWithFallback(id, uid);
       if (!res.ok) {
         toast.error(res.error || 'Erro ao carregar vistoria');
+        setInspection(null);
         return;
       }
       if (res.fromLocal) {
@@ -179,6 +182,7 @@ const InspectionDetail = () => {
     } catch (error) {
       console.error('Erro ao carregar vistoria:', error);
       toast.error('Erro ao carregar vistoria');
+      setInspection(null);
     } finally {
       setLoading(false);
     }
@@ -305,8 +309,27 @@ const InspectionDetail = () => {
 
   if (!inspection) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-500">Vistoria não encontrada</p>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-slate-500 text-center">Vistoria não encontrada</p>
+        <p className="text-sm text-slate-400 text-center max-w-sm">
+          Se o laudo está no servidor, verifique a internet e tente de novo. Se a sessão expirou, saia e entre novamente.
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={loadInspection}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Tentar novamente
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            Voltar ao início
+          </button>
+        </div>
       </div>
     );
   }

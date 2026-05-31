@@ -47,6 +47,31 @@ client.interceptors.request.use(async (config) => {
   return config;
 });
 
+/** Reenvia uma vez com token Firebase renovado após 401 (sessão expirada). */
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+    if (!config || config._authRetry) {
+      return Promise.reject(error);
+    }
+    if (error.response?.status !== 401) {
+      return Promise.reject(error);
+    }
+    config._authRetry = true;
+    try {
+      const token = await getIdTokenFn({ forceRefresh: true });
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        return client.request(config);
+      }
+    } catch {
+      /* mantém o 401 original */
+    }
+    return Promise.reject(error);
+  }
+);
+
 /** Cliente axios base (usado pelo syncManager) */
 export const apiClient = client;
 
@@ -82,12 +107,34 @@ export function getErrorMessage(error) {
 
 function wrap(promise) {
   return promise
-    .then((data) => ({ ok: true, data, error: null }))
-    .catch((e) => ({ ok: false, data: null, error: getErrorMessage(e) }));
+    .then((data) => ({ ok: true, data, error: null, status: null }))
+    .catch((e) => ({
+      ok: false,
+      data: null,
+      error: getErrorMessage(e),
+      status: e.response?.status ?? null,
+    }));
 }
 
 function rejectNoUser() {
-  return Promise.resolve({ ok: false, data: null, error: AUTH_REQUIRED_MSG });
+  return Promise.resolve({
+    ok: false,
+    data: null,
+    error: AUTH_REQUIRED_MSG,
+    status: 401,
+  });
+}
+
+/** Erro de rede ou servidor indisponível (não é falha de autenticação). */
+export function isConnectivityError(status, errorMessage) {
+  if (status === 401 || status === 403) return false;
+  if (status === 503) return true;
+  if (status == null && errorMessage) {
+    return /sem ligação|network|tempo esgotado|comunicar com o servidor/i.test(
+      errorMessage
+    );
+  }
+  return status != null && status >= 500;
 }
 
 /** Corpo sem userId — o servidor define o dono pelo token. */
